@@ -1,0 +1,29 @@
+{
+  "id": "navigation.touch-targets",
+  "module": "navigation",
+  "title": "Touch-size sidebar rows and list actions",
+  "proposal": "P-11",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "Sidebar rows grow from 36px to 44px on touch screens (`pointer: coarse`, e.g. iPad) and stay 36px with a mouse. ListGroup header actions (\u201cRefresh\u201d, \u201cSee all\u201d) get the `hit-area` utility.",
+  "requires": [
+    {
+      "id": "tokens.hit-area",
+      "why": "ListGroup actions use the `hit-area` utility that tokens.hit-area adds"
+    }
+  ],
+  "newFiles": {},
+  "migration": "No API change. Sidebar height on touch devices increases by 8px per row.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Grouped list with a header action (Refresh)",
+        "before": "ListGroup",
+        "after": "ListGroup",
+        "width": 760,
+        "note": "Sidebar rows change only on touch screens (pointer: coarse), so the desktop preview shows no difference there."
+      }
+    ],
+    "hitAreas": true
+  }
+}

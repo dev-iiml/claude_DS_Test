@@ -1,0 +1,31 @@
+diff --git a/src/components/creatorco/verification.tsx b/src/components/creatorco/verification.tsx
+index a7bce91..4825e6a 100644
+--- a/src/components/creatorco/verification.tsx
++++ b/src/components/creatorco/verification.tsx
+@@ -1,11 +1,16 @@
+-import { CircleAlert, CircleCheck, CircleDashed, CircleDot } from "lucide-react";
++import { CircleAlert, CircleCheck, CircleDashed, CircleDot, Sparkles } from "lucide-react";
+ 
+ import { cn } from "@/lib/cn";
+ 
+-export type VerificationState = "verified" | "declared" | "attention" | "missing";
++/**
++ * Attribute-level verification. `derived` = computed from verified data (say what from, e.g.
++ * "Derived from connected accounts"); it is never shown for the Passport as a whole.
++ */
++export type VerificationState = "verified" | "derived" | "declared" | "attention" | "missing";
+ 
+ const MARKS = {
+   verified: { Icon: CircleCheck, className: "text-success", label: "Verified" },
++  derived: { Icon: Sparkles, className: "text-info", label: "Derived" },
+   declared: { Icon: CircleDot, className: "text-ink-subtle", label: "Self-declared" },
+   attention: { Icon: CircleAlert, className: "text-warning", label: "Needs attention" },
+   missing: { Icon: CircleDashed, className: "text-ink-subtle", label: "Not provided" },
+@@ -24,6 +29,7 @@ export function VerificationMark({ state, className }: { state: VerificationStat
+ 
+ export const VERIFICATION_LABELS: Record<VerificationState, string> = {
+   verified: MARKS.verified.label,
++  derived: MARKS.derived.label,
+   declared: MARKS.declared.label,
+   attention: MARKS.attention.label,
+   missing: MARKS.missing.label,

@@ -1,0 +1,47 @@
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 1be28bb..9999ae4 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -167,6 +167,24 @@
+   }
+ }
+ 
++/*
++ * 44pt tap target without changing the visual size: an invisible ::before grows the
++ * hit area to at least --touch-target (MIN_TOUCH_TARGET) in both directions, centred.
++ * Taps on it reach the element itself. Don't combine with another ::before on the same
++ * element, and keep 8px or more between neighbouring hit areas.
++ */
++@utility hit-area {
++  position: relative;
++  &::before {
++    content: "";
++    position: absolute;
++    top: min(0px, calc((100% - var(--touch-target)) / 2));
++    bottom: min(0px, calc((100% - var(--touch-target)) / 2));
++    left: min(0px, calc((100% - var(--touch-target)) / 2));
++    right: min(0px, calc((100% - var(--touch-target)) / 2));
++  }
++}
++
+ @layer base {
+   * {
+     @apply border-border;
+diff --git a/tests/unit/design-tokens.test.ts b/tests/unit/design-tokens.test.ts
+index a0480c4..970280e 100644
+--- a/tests/unit/design-tokens.test.ts
++++ b/tests/unit/design-tokens.test.ts
+@@ -116,6 +116,13 @@ describe("touch targets", () => {
+       expect(sizes[k]).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+     }
+   });
++
++  it("the hit-area utility grows controls to --touch-target, which renders MIN_TOUCH_TARGET", () => {
++    const globals = readFileSync("src/app/globals.css", "utf8");
++    const utility = /@utility hit-area \{([\s\S]*?)\n\}/.exec(globals)?.[1] ?? "";
++    expect(utility).toContain("var(--touch-target)");
++    expect(renderTokensCss()).toContain(`--touch-target: ${MIN_TOUCH_TARGET}px;`);
++  });
+ });
+ 
+ const decls = (s: string) =>

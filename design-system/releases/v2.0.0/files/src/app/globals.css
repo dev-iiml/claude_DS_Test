@@ -1,0 +1,212 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+ * CreatorCo — dark-first, iOS/macOS-native design language.
+ * Colour values live in src/design/tokens.ts (→ tokens.css). This file only
+ * maps them to Tailwind and sets platform behaviour (safe areas, tap
+ * highlight, Dynamic Type-like sizing, reduced motion).
+ *
+ * Theme selection: <html data-theme="dark|light|system">. Dark is default.
+ */
+
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  /* Legacy alias: "brand" is the gold accent. */
+  --color-brand: var(--gold);
+  --color-brand-soft: var(--gold-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-bar: var(--bar);
+  --color-thumb: var(--thumb);
+  --color-membership-base: var(--membership-base);
+  --color-membership-ink: var(--membership-ink);
+  --color-membership-accent: var(--membership-accent);
+
+  /* shadcn/ui semantic names */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--elevated);
+  --color-popover-foreground: var(--ink);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--elevated);
+  --color-secondary-foreground: var(--ink);
+  --color-muted: var(--elevated);
+  --color-muted-foreground: var(--ink-muted);
+  --color-accent: var(--elevated);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--danger);
+  --color-border: var(--line);
+  --color-input: var(--input-border);
+  --color-input-border: var(--input-border);
+  --color-ring: var(--gold);
+
+  /* Radius scale (tokens.ts → radius). rounded-sm · md · control · lg · card · xl · pill */
+  --radius-sm: var(--radius-token-sm);
+  --radius-md: var(--radius-token-md);
+  --radius-control: var(--radius-token-control);
+  --radius-lg: var(--radius-token-lg);
+  --radius-card: var(--radius-token-card);
+  --radius-xl: var(--radius-token-xl);
+  --radius-pill: var(--radius-token-pill);
+
+  /* Type scale (tokens.ts → type): text-large-title … text-caption-2 set size + line height. */
+  --text-large-title: var(--type-large-title-size);
+  --text-large-title--line-height: var(--type-large-title-line);
+  --text-title-1: var(--type-title-1-size);
+  --text-title-1--line-height: var(--type-title-1-line);
+  --text-title-2: var(--type-title-2-size);
+  --text-title-2--line-height: var(--type-title-2-line);
+  --text-title-3: var(--type-title-3-size);
+  --text-title-3--line-height: var(--type-title-3-line);
+  --text-headline: var(--type-headline-size);
+  --text-headline--line-height: var(--type-headline-line);
+  --text-body: var(--type-body-size);
+  --text-body--line-height: var(--type-body-line);
+  --text-callout: var(--type-callout-size);
+  --text-callout--line-height: var(--type-callout-line);
+  --text-subhead: var(--type-subhead-size);
+  --text-subhead--line-height: var(--type-subhead-line);
+  --text-footnote: var(--type-footnote-size);
+  --text-footnote--line-height: var(--type-footnote-line);
+  --text-caption: var(--type-caption-size);
+  --text-caption--line-height: var(--type-caption-line);
+  --text-caption-2: var(--type-caption-2-size);
+  --text-caption-2--line-height: var(--type-caption-2-line);
+
+  /* Component sizes (tokens.ts → sizes): h-control, min-h-row, size-touch, w-switch … */
+  --spacing-button-sm: var(--size-button-sm);
+  --spacing-control: var(--size-control);
+  --spacing-control-lg: var(--size-control-lg);
+  --spacing-row: var(--size-row);
+  --spacing-choice-row: var(--size-choice-row);
+  --spacing-chip: var(--size-chip);
+  --spacing-segment: var(--size-segment);
+  --spacing-switch-w: var(--size-switch-width);
+  --spacing-switch-h: var(--size-switch-height);
+  --spacing-switch-thumb: var(--size-switch-thumb);
+  --spacing-indicator: var(--size-indicator);
+  --spacing-top-bar: var(--size-top-bar);
+  --spacing-tab-bar: var(--size-tab-bar);
+  --spacing-sidebar: var(--size-sidebar);
+  --spacing-membership-card: var(--size-membership-card);
+  --spacing-touch: var(--touch-target);
+
+  /* Elevation (tokens.ts → shadows): the only three shadows. */
+  --shadow-membership-card: var(--shadow-token-membership-card);
+  --shadow-thumb: var(--shadow-token-thumb);
+  --shadow-overlay: var(--shadow-token-overlay);
+
+  /* Motion (tokens.ts → motion). */
+  --ease-spring: var(--motion-spring);
+
+  --font-sans: var(--font-stack-sans);
+  --font-serif: var(--font-stack-serif);
+  --font-mono: var(--font-stack-mono);
+
+  --tracking-eyebrow: 0.08em;
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+/* Space for the iPhone tab bar (49pt + home indicator). */
+@utility pb-tabbar {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 6rem);
+}
+/*
+ * Sticky bottom action bar. Inside AppShell it sits above the tab bar
+ * (AppShell sets --tabbar-offset); elsewhere it clears the home indicator.
+ */
+@utility sticky-footer {
+  bottom: var(--tabbar-offset, 0px);
+  padding-bottom: max(0.75rem, var(--footer-safe, env(safe-area-inset-bottom)));
+}
+@utility bar-blur {
+  background-color: var(--bar);
+  -webkit-backdrop-filter: saturate(180%) blur(var(--motion-bar-blur));
+  backdrop-filter: saturate(180%) blur(var(--motion-bar-blur));
+}
+/* Press feedback for buttons and tappable rows (no scale under reduced motion). */
+@utility press {
+  transition-property: transform, opacity, background-color;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--motion-spring);
+  &:active {
+    transform: scale(var(--motion-press-scale));
+    opacity: var(--motion-press-opacity);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    background: var(--paper);
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-size: 17px;
+    line-height: 1.35;
+    letter-spacing: -0.012em;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+  button,
+  [role="button"],
+  a {
+    touch-action: manipulation;
+  }
+  :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--gold-soft);
+    color: var(--ink);
+  }
+  /* Reduced motion: no scale, no blur transitions, instant state changes. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+    :active {
+      transform: none !important;
+    }
+  }
+}

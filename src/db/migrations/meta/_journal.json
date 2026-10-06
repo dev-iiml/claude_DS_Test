@@ -1,0 +1,223 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790939952187,
+      "tag": "0000_core_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790939953068,
+      "tag": "0001_guards_and_reference_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790964723635,
+      "tag": "0002_onboarding_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790964733176,
+      "tag": "0003_onboarding_v2_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790969441360,
+      "tag": "0004_passport_social_graph",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790969442276,
+      "tag": "0005_passport_social_graph_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790973919323,
+      "tag": "0006_consent_centre",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790973938165,
+      "tag": "0007_consent_centre_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790976009491,
+      "tag": "0008_financial_eligibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790976010557,
+      "tag": "0009_financial_eligibility_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790977839735,
+      "tag": "0010_underwriting",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790977840862,
+      "tag": "0011_underwriting_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790983130165,
+      "tag": "0012_integration_control_plane",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790983131122,
+      "tag": "0013_integration_control_plane_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790989473495,
+      "tag": "0014_fraud_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790989481773,
+      "tag": "0015_fraud_engine_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791000736998,
+      "tag": "0016_multi_account",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791000737996,
+      "tag": "0017_multi_account_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791003422403,
+      "tag": "0018_stage09b_prepare",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791003450556,
+      "tag": "0019_stage09b_multi_account_aa",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791003476587,
+      "tag": "0020_stage09b_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791003486266,
+      "tag": "0021_stage09b_purge_job",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791005360052,
+      "tag": "0022_stage09b_confirmed_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791005361277,
+      "tag": "0023_stage09b_legacy_bank_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791008113167,
+      "tag": "0024_stage12_lender_proposals",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791008134590,
+      "tag": "0025_stage12_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791009780192,
+      "tag": "0026_stage12_sending_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1791015234827,
+      "tag": "0027_stage12b_partner_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1791015236143,
+      "tag": "0028_stage12b_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791029762421,
+      "tag": "0029_stage13_offers",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791029763579,
+      "tag": "0030_stage13_guards",
+      "breakpoints": true
+    }
+  ]
+}

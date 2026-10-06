@@ -1,0 +1,23 @@
+{
+  "id": "membership.card-not-payment",
+  "module": "membership",
+  "title": "Membership card reads as a status object, not a payment card",
+  "proposal": "P-02",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "The member number is shown as a labelled detail (\u201cMember no.\u201d) in the interface typeface instead of spaced monospace digits, and a visible caption \u201cMembership card \u2014 not a payment card\u201d sits under the card.",
+  "requires": [],
+  "newFiles": {},
+  "migration": "`className` now applies to the outer figure (card + caption); width classes behave the same. New optional prop `caption` (default true). Optional app follow-up: format numbers as \u201cNo. 1A2B3C4D\u201d in memberNumberFor (passport-view.ts).",
+  "preview": {
+    "compare": [
+      {
+        "title": "Membership card",
+        "before": "MembershipCard",
+        "after": "MembershipCard",
+        "width": 1180
+      }
+    ],
+    "hitAreas": false
+  }
+}

@@ -1,0 +1,19 @@
+.next
+node_modules
+src/db/migrations/meta
+playwright-report
+test-results
+coverage
+package-lock.json
+next-env.d.ts
+# design-system: generated preview bundle, preview documents and archived versions
+design-system/components/bundle.*
+design-system/design-system.html
+design-system/components/**/preview.html
+design-system/archive
+# design-system versioning: immutable release snapshots and generated experiment previews
+design-system/releases
+design-system/experiments/**/preview.html
+# design-system pin (app side): written by npm run ds:pin; screens from npm run ds:screens
+design-system.lock.json
+.ds-screens

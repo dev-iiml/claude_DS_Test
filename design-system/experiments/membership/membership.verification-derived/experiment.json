@@ -1,0 +1,23 @@
+{
+  "id": "membership.verification-derived",
+  "module": "membership",
+  "title": "\u201cDerived\u201d verification state",
+  "proposal": "P-01",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "VerificationMark gains a fifth state, `derived` (sparkles glyph, info colour, word \u201cDerived\u201d), for attributes computed from verified data. The four existing states are unchanged.",
+  "requires": [],
+  "newFiles": {},
+  "migration": "Additive: VerificationState widens to include \"derived\"; the app's own 4-state type in passport-view.ts stays assignable. Use it only with wording that says what it was derived from.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Verification marks",
+        "before": "VerificationMark",
+        "after": "VerificationDerived",
+        "width": 760
+      }
+    ],
+    "hitAreas": false
+  }
+}

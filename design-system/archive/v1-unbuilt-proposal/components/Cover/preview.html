@@ -1,0 +1,42 @@
+<!-- @dsCard height=300 -->
+<!doctype html>
+<html lang="en-IN"><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: var(--canvas); }
+  .cover { position: relative; width: 960px; height: 300px; overflow: hidden; background: var(--canvas); }
+  svg { position: absolute; inset: 0; }
+  .slab { fill: var(--surface-inverse); }
+  .ti { fill: var(--tier-icon-base); }
+  .brass { fill: var(--brass); }
+  .rani { fill: var(--accent); }
+  .tile { rx: var(--radius-lg); }
+  .door { fill: none; stroke: var(--tier-icon-mark); stroke-width: 1.25; }
+  .door2 { fill: none; stroke: var(--tier-icon-ink); stroke-width: 1.25; opacity: .5; }
+  .text { position: absolute; left: 40px; bottom: 40px; max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 88px; line-height: .92; letter-spacing: -0.02em; color: var(--text); }
+  .name i { display: inline-block; width: 14px; height: 14px; border-radius: 9999px; background: var(--accent); margin-left: 4px; }
+  .tag { margin: 14px 0 0; font-family: var(--font-sans); font-size: 14px; line-height: 1.43; color: var(--text-muted); }
+</style></head>
+<body>
+<div class="cover">
+  <svg width="960" height="300" viewBox="0 0 960 300" aria-hidden="true">
+    <!--
+      blocks: surface-inverse slab 200×316 (bleeds top+bottom), tier-icon-base titanium 208×164 (bleeds top/right), brass 208×128 (bleeds bottom/right), one accent (Rani) door 72×104 on the slab; corners radius-lg; gaps space-2
+      arrangement: one tall slab with two satellites flush right — the black card, the metal, the brass detail
+      pattern: literal motif (the Door, "your influence opens doors") — three arch outlines from radius-full semicircles, Rani on titanium, ink on brass
+      scales: space-2 gaps, space-6 inset, radius-lg tiles, radius-full arch heads, space-10 text inset
+    -->
+    <rect class="slab tile" x="544" y="-8" width="200" height="316"/>
+    <rect class="ti tile" x="752" y="-8" width="216" height="172"/>
+    <rect class="brass tile" x="752" y="172" width="216" height="136"/>
+    <path class="rani" d="M608 252 V168 A36 36 0 0 1 680 168 V252 Z"/>
+    <path class="door" d="M792 140 V72 A28 28 0 0 1 848 72 V140 Z"/>
+    <path class="door" d="M872 140 V72 A28 28 0 0 1 928 72 V140 Z" style="opacity:.45"/>
+    <path class="door2" d="M792 280 V228 A28 28 0 0 1 848 228 V280" style="stroke:var(--tier-member-ink)"/>
+  </svg>
+  <div class="text">
+    <p class="name">CreatorCo<i></i></p>
+    <p class="tag">Your influence opens doors. Your business earns the limit.</p>
+  </div>
+</div>
+</body></html>

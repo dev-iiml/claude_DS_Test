@@ -1,0 +1,28 @@
+{
+  "id": "buttons.touch-targets",
+  "module": "buttons",
+  "title": "44px hit areas for small and link buttons",
+  "proposal": "P-11",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "Button size `sm` (36px) and variant `link` get the `hit-area` utility, so every button meets the 44px touch target with no visual change.",
+  "requires": [
+    {
+      "id": "tokens.hit-area",
+      "why": "uses the `hit-area` utility that tokens.hit-area adds to globals.css; without it the class does nothing and the touch target still fails"
+    }
+  ],
+  "newFiles": {},
+  "migration": "No API change. Small buttons placed closer than 8px apart now have overlapping hit areas; keep at least `gap-2` between them.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Buttons",
+        "before": "Button",
+        "after": "Button",
+        "width": 960
+      }
+    ],
+    "hitAreas": true
+  }
+}

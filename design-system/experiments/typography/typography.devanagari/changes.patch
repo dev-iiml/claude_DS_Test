@@ -1,0 +1,65 @@
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 1be28bb..9a599a5 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -210,3 +210,18 @@
+     }
+   }
+ }
++
++/*
++ * Hindi / Devanagari (mark content with lang="hi"). Unlayered on purpose so it wins over
++ * utilities: no letter-spacing (it breaks conjuncts), no forced capitals (Devanagari has no
++ * case — uppercase only spaces it out), and body text gets the taller line Devanagari matras need.
++ */
++:lang(hi) {
++  letter-spacing: normal;
++}
++:lang(hi) .uppercase {
++  text-transform: none;
++}
++:lang(hi) :is(p, li, dd, label, td, blockquote) {
++  line-height: 1.6;
++}
+diff --git a/src/design/tokens.ts b/src/design/tokens.ts
+index 857aaa9..5fb2c8f 100644
+--- a/src/design/tokens.ts
++++ b/src/design/tokens.ts
+@@ -221,7 +221,11 @@ export const motion = {
+ } as const;
+ 
+ export const fonts = {
+-  sans: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter Variable", system-ui, "Segoe UI", Roboto, sans-serif',
++  /**
++   * Latin first, then Devanagari: Kohinoor Devanagari ships with iOS/macOS, Noto Sans Devanagari
++   * with Android. No web font is downloaded; Hindi text picks these up glyph by glyph.
++   */
++  sans: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter Variable", "Kohinoor Devanagari", "Noto Sans Devanagari", system-ui, "Segoe UI", Roboto, sans-serif',
+   /** Brand moments only (wordmark, membership card). */
+   serif: '"Newsreader Variable", "New York", ui-serif, Georgia, serif',
+   mono: 'ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace',
+diff --git a/tests/unit/typography.test.ts b/tests/unit/typography.test.ts
+new file mode 100644
+index 0000000..8cdf0a2
+--- /dev/null
++++ b/tests/unit/typography.test.ts
+@@ -0,0 +1,19 @@
++import { readFileSync } from "node:fs";
++
++import { describe, expect, it } from "vitest";
++
++import { fonts } from "@/design/tokens";
++
++describe("Devanagari pairing", () => {
++  it("the sans stack falls back to system Devanagari faces after Inter", () => {
++    const s = fonts.sans;
++    expect(s.indexOf('"Kohinoor Devanagari"')).toBeGreaterThan(s.indexOf('"Inter Variable"'));
++    expect(s).toContain('"Noto Sans Devanagari"');
++  });
++
++  it("Hindi text is never letter-spaced or forced to capitals", () => {
++    const css = readFileSync("src/app/globals.css", "utf8");
++    expect(css).toMatch(/:lang\(hi\) \{\s*letter-spacing: normal;/);
++    expect(css).toMatch(/:lang\(hi\) \.uppercase \{\s*text-transform: none;/);
++  });
++});

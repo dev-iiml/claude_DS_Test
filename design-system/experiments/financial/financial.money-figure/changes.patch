@@ -1,0 +1,118 @@
+diff --git a/src/components/creatorco/money.tsx b/src/components/creatorco/money.tsx
+new file mode 100644
+index 0000000..ba14c18
+--- /dev/null
++++ b/src/components/creatorco/money.tsx
+@@ -0,0 +1,47 @@
++import { formatInr, formatInrCompact } from "@/design/money";
++import { cn } from "@/lib/cn";
++
++/**
++ * An amount or a range in rupees, in the financial-trust style: ink colours, tabular figures,
++ * no gold, no tier marks, no celebration. Screen readers hear a range as "… to …".
++ * Gate visibility in the page: creators never see recommendation figures before a
++ * partner-lender review.
++ */
++export function MoneyFigure({
++  amount,
++  max,
++  compact = false,
++  size = "body",
++  label,
++  className,
++}: {
++  amount: number;
++  /** Upper bound — renders a range. */
++  max?: number;
++  /** Lakh/crore form (₹1.5 L). */
++  compact?: boolean;
++  size?: "body" | "title";
++  /** Spoken before the amount, e.g. "Proposed eligibility". */
++  label?: string;
++  className?: string;
++}) {
++  const f = compact ? formatInrCompact : formatInr;
++  const shown = max === undefined ? f(amount) : `${f(amount)} – ${f(max)}`;
++  const spoken = max === undefined ? f(amount) : `${f(amount)} to ${f(max)}`;
++  return (
++    <span
++      data-slot="money"
++      className={cn(
++        "text-ink tabular-nums",
++        size === "title" ? "text-title-1 leading-tight font-bold tracking-tight" : "text-body font-semibold",
++        className,
++      )}
++    >
++      <span aria-hidden="true">{shown}</span>
++      <span className="sr-only">
++        {label ? `${label}: ` : ""}
++        {spoken}
++      </span>
++    </span>
++  );
++}
+diff --git a/src/design/money.ts b/src/design/money.ts
+new file mode 100644
+index 0000000..e452028
+--- /dev/null
++++ b/src/design/money.ts
+@@ -0,0 +1,30 @@
++/**
++ * Indian-rupee formatting for presentation. Pure (Intl only, no Node/DOM/Next), so native apps
++ * and server code can share it.
++ *
++ * - Full: Indian digit grouping, no paise — ₹1,50,000.
++ * - Compact: lakh and crore — ₹1.5 L, ₹2 Cr (below one lakh the full form is used).
++ * - Range: an en dash between two amounts in the same form — ₹1,50,000 – ₹2,00,000.
++ */
++const full = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
++const short = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
++
++export const LAKH = 1_00_000;
++export const CRORE = 1_00_00_000;
++
++export function formatInr(amount: number): string {
++  return full.format(amount);
++}
++
++export function formatInrCompact(amount: number): string {
++  const abs = Math.abs(amount);
++  const sign = amount < 0 ? "-" : "";
++  if (abs >= CRORE) return `${sign}₹${short.format(abs / CRORE)} Cr`;
++  if (abs >= LAKH) return `${sign}₹${short.format(abs / LAKH)} L`;
++  return formatInr(amount);
++}
++
++export function formatInrRange(min: number, max: number, { compact = false } = {}): string {
++  const f = compact ? formatInrCompact : formatInr;
++  return `${f(min)} – ${f(max)}`;
++}
+diff --git a/tests/unit/money-format.test.ts b/tests/unit/money-format.test.ts
+new file mode 100644
+index 0000000..7629874
+--- /dev/null
++++ b/tests/unit/money-format.test.ts
+@@ -0,0 +1,23 @@
++import { describe, expect, it } from "vitest";
++
++import { formatInr, formatInrCompact, formatInrRange } from "@/design/money";
++
++describe("rupee formatting", () => {
++  it("uses Indian digit grouping without paise", () => {
++    expect(formatInr(150000)).toBe("₹1,50,000");
++    expect(formatInr(12345678)).toBe("₹1,23,45,678");
++    expect(formatInr(999.6)).toBe("₹1,000");
++  });
++
++  it("compacts to lakh and crore from one lakh up", () => {
++    expect(formatInrCompact(99999)).toBe("₹99,999");
++    expect(formatInrCompact(150000)).toBe("₹1.5 L");
++    expect(formatInrCompact(20000000)).toBe("₹2 Cr");
++    expect(formatInrCompact(-250000)).toBe("-₹2.5 L");
++  });
++
++  it("formats ranges with an en dash", () => {
++    expect(formatInrRange(150000, 200000)).toBe("₹1,50,000 – ₹2,00,000");
++    expect(formatInrRange(150000, 200000, { compact: true })).toBe("₹1.5 L – ₹2 L");
++  });
++});

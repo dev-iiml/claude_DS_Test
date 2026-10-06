@@ -1,0 +1,30 @@
+diff --git a/src/components/ui/button.tsx b/src/components/ui/button.tsx
+index 778c399..cb40d62 100644
+--- a/src/components/ui/button.tsx
++++ b/src/components/ui/button.tsx
+@@ -4,7 +4,10 @@ import * as React from "react";
+ 
+ import { cn } from "@/lib/cn";
+ 
+-/** iOS-style buttons: 50pt filled primary, tinted secondary, plain text; press feedback via scale. */
++/**
++ * iOS-style buttons: 50pt filled primary, tinted secondary, plain text; press feedback via scale.
++ * Every size meets the 44pt touch target: md/lg/icon by size, sm and link through `hit-area`.
++ */
+ export const buttonVariants = cva(
+   "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-semibold press disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40 [&_svg]:pointer-events-none [&_svg]:size-[18px] [&_svg]:shrink-0",
+   {
+@@ -14,11 +17,11 @@ export const buttonVariants = cva(
+         secondary: "bg-elevated text-ink ring-1 ring-line ring-inset",
+         gold: "bg-gold text-paper",
+         ghost: "text-ink hover:bg-elevated",
+-        link: "h-auto px-0 text-gold underline-offset-4 hover:underline",
++        link: "hit-area h-auto px-0 text-gold underline-offset-4 hover:underline",
+         destructive: "bg-danger-soft text-danger",
+       },
+       size: {
+-        sm: "h-button-sm rounded-full px-4 text-subhead",
++        sm: "hit-area h-button-sm rounded-full px-4 text-subhead",
+         md: "h-control rounded-control px-5 text-body",
+         lg: "h-control-lg rounded-lg px-6 text-body",
+         icon: "size-touch rounded-full",

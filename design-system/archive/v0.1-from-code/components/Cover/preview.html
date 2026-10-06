@@ -1,0 +1,40 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en-IN"><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; background: var(--paper); }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; background: var(--paper); }
+  svg { position: absolute; inset: 0; }
+  .ink { fill: var(--ink); }
+  .brand { fill: var(--brand); }
+  .soft { fill: var(--brand-soft); }
+  .strong { fill: var(--line-strong); }
+  .tile { rx: var(--radius-lg); }
+  .rule { stroke: var(--line-strong); stroke-width: 1; }
+  .text { position: absolute; left: 40px; bottom: 40px; max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-serif); font-weight: 400; font-size: 80px; line-height: .92; letter-spacing: -0.025em; color: var(--ink); }
+  .tag { margin: 12px 0 0; font-family: var(--font-sans); font-size: 14px; line-height: 1.43; color: var(--ink-muted); }
+</style></head>
+<body>
+<div class="cover">
+  <svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
+    <!--
+      blocks: ink 184×304 slab (bleeds top+bottom), brand 224×168 (bleeds top/right), brand-soft 224×128 (bleeds bottom/right), line-strong 72×80 satellite; corners radius-lg; gaps space-2 (8px)
+      arrangement: one tall ink slab with bronze satellites stacked to its right, flush to the right edge — ink leads because the primary action is ink; bronze is the single accent
+      pattern: hairline rules (README: "Borders, not shadows" — editorial serif, hierarchy from hairlines) — three line-strong rules at a 64px pitch crossing the blocks
+      scales: space-2 gaps, space-8×2 rule pitch, radius-lg tiles, space-10 text inset
+    -->
+    <rect class="ink tile" x="560" y="-8" width="184" height="304"/>
+    <rect class="brand tile" x="752" y="-8" width="224" height="168"/>
+    <rect class="soft tile" x="752" y="168" width="224" height="128"/>
+    <rect class="strong tile" x="480" y="216" width="72" height="80"/>
+    <line class="rule" x1="480" y1="64" x2="960" y2="64"/>
+    <line class="rule" x1="480" y1="128" x2="960" y2="128"/>
+    <line class="rule" x1="480" y1="192" x2="960" y2="192"/>
+  </svg>
+  <div class="text">
+    <p class="name">CreatorCo</p>
+    <p class="tag">A professional and financial network for creators in India.</p>
+  </div>
+</div>
+</body></html>

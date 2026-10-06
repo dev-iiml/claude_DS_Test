@@ -1,0 +1,43 @@
+diff --git a/src/components/creatorco/choices.tsx b/src/components/creatorco/choices.tsx
+index 10119c5..bd11927 100644
+--- a/src/components/creatorco/choices.tsx
++++ b/src/components/creatorco/choices.tsx
+@@ -84,7 +84,10 @@ export function CheckboxRow({
+   );
+ }
+ 
+-/** Multi-select chips for longer lists (categories, languages). Selected chips invert. */
++/**
++ * Multi-select chips for longer lists (categories, languages). Selected chips invert.
++ * 40pt visual height; `hit-area` makes the tap target 44pt (keep `gap-2` between chips).
++ */
+ export function CheckboxChip({
+   label,
+   className,
+@@ -93,7 +96,7 @@ export function CheckboxChip({
+   return (
+     <label
+       className={cn(
+-        "relative inline-flex min-h-chip cursor-pointer items-center gap-2 rounded-full bg-elevated px-4 text-subhead font-medium ring-1 ring-line transition-colors select-none ring-inset",
++        "hit-area inline-flex min-h-chip cursor-pointer items-center gap-2 rounded-full bg-elevated px-4 text-subhead font-medium ring-1 ring-line transition-colors select-none ring-inset",
+         "hover:ring-line-strong has-[:checked]:bg-ink has-[:checked]:text-paper has-[:checked]:ring-ink",
+         "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-40",
+         "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-gold",
+@@ -150,7 +153,7 @@ export function SwitchRow({
+   );
+ }
+ 
+-/** iOS segmented control (radio group). */
++/** iOS segmented control (radio group). Segments are 34pt; `hit-area` makes each tap target 44pt. */
+ export function SegmentedControl({
+   name,
+   legend,
+@@ -176,7 +179,7 @@ export function SegmentedControl({
+           <label
+             key={o.value}
+             className={cn(
+-              "relative flex min-h-segment cursor-pointer items-center justify-center rounded-[9px] px-3 text-subhead font-medium text-ink-muted transition-colors select-none",
++              "hit-area flex min-h-segment cursor-pointer items-center justify-center rounded-[9px] px-3 text-subhead font-medium text-ink-muted transition-colors select-none",
+               "has-[:checked]:bg-ink has-[:checked]:text-paper has-[:checked]:shadow-thumb",
+               "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-gold",
+             )}

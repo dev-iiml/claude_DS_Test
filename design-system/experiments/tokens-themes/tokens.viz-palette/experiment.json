@@ -1,0 +1,24 @@
+{
+  "id": "tokens.viz-palette",
+  "module": "tokens-themes",
+  "title": "Data-visualisation palette (viz-1\u20264)",
+  "proposal": "P-09",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "Adds four categorical chart colours per theme as tokens (`viz-1`\u2026`viz-4`), validated for colour-vision deficiency and \u2265 3:1 against surface in both themes. Charts can use `stroke-viz-1`, `bg-viz-2` and so on instead of local hex.",
+  "requires": [],
+  "newFiles": {},
+  "migration": "Additive. New CSS variables `--viz-1\u20264` and Tailwind colours `viz-1\u20264`; tokens.json gains four colour tokens. Never use gold for data. Text stays in ink tokens.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Trend chart",
+        "before": "ProposedDataViz",
+        "after": "VizAfter",
+        "width": 760,
+        "note": "Before: v2.0.0 has no chart palette \u2014 the proposal specimen defines local CSS variables. After: the series use the viz tokens (stroke-viz-1\u2026) and switch with the theme."
+      }
+    ],
+    "hitAreas": false
+  }
+}

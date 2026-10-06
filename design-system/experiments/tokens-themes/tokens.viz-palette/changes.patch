@@ -1,0 +1,99 @@
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 1be28bb..18f6d1e 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -36,6 +36,10 @@
+   --color-info-soft: var(--info-soft);
+   --color-bar: var(--bar);
+   --color-thumb: var(--thumb);
++  --color-viz-1: var(--viz-1);
++  --color-viz-2: var(--viz-2);
++  --color-viz-3: var(--viz-3);
++  --color-viz-4: var(--viz-4);
+   --color-membership-base: var(--membership-base);
+   --color-membership-ink: var(--membership-ink);
+   --color-membership-accent: var(--membership-accent);
+diff --git a/src/design/render-json.ts b/src/design/render-json.ts
+index 4b54fd5..1ef19d9 100644
+--- a/src/design/render-json.ts
++++ b/src/design/render-json.ts
+@@ -47,6 +47,10 @@ const COLOR_USAGE: Record<keyof ColorTokens, string> = {
+   infoSoft: "Ground for info alerts and badges.",
+   bar: "Translucent top bar, tab bar and sticky form footer, always with the bar-blur utility.",
+   thumb: "Switch thumb (white in both themes).",
++  viz1: "Chart series 1 (blue). Fixed order; never gold for data; labels in ink tokens.",
++  viz2: "Chart series 2 (orange).",
++  viz3: "Chart series 3 (green).",
++  viz4: "Chart series 4 (purple). A fifth series folds into “Other”.",
+ };
+ 
+ const MEMBERSHIP_USAGE: Record<keyof typeof membership, string> = {
+diff --git a/src/design/tokens.ts b/src/design/tokens.ts
+index 857aaa9..281b0e1 100644
+--- a/src/design/tokens.ts
++++ b/src/design/tokens.ts
+@@ -58,6 +58,15 @@ export interface ColorTokens {
+   bar: string;
+   /** Switch thumb (white in both themes, like iOS). */
+   thumb: string;
++  /**
++   * Categorical data-visualisation series, in fixed order (never cycled; a fifth series folds
++   * into "Other"). Validated for colour-vision deficiency and ≥ 3:1 on paper and surface.
++   * Never gold for data; labels and values stay in ink tokens.
++   */
++  viz1: string;
++  viz2: string;
++  viz3: string;
++  viz4: string;
+ }
+ 
+ export const colors: Record<ThemeName, ColorTokens> = {
+@@ -85,6 +94,10 @@ export const colors: Record<ThemeName, ColorTokens> = {
+     infoSoft: "#0e2530",
+     bar: "rgba(18, 18, 20, 0.78)",
+     thumb: "#ffffff",
++    viz1: "#5b8def",
++    viz2: "#d47a3e",
++    viz3: "#34a07f",
++    viz4: "#a273cc",
+   },
+   light: {
+     paper: "#f2f2f7",
+@@ -110,6 +123,10 @@ export const colors: Record<ThemeName, ColorTokens> = {
+     infoSoft: "#e2f2f8",
+     bar: "rgba(249, 249, 251, 0.82)",
+     thumb: "#ffffff",
++    viz1: "#2f6bd8",
++    viz2: "#c4621e",
++    viz3: "#1b8a68",
++    viz4: "#8a52b8",
+   },
+ };
+ 
+diff --git a/tests/unit/design-tokens.test.ts b/tests/unit/design-tokens.test.ts
+index a0480c4..7b12220 100644
+--- a/tests/unit/design-tokens.test.ts
++++ b/tests/unit/design-tokens.test.ts
+@@ -85,6 +85,13 @@ describe.each(THEMES)("%s theme contrast (WCAG AA)", (theme) => {
+     expect(contrast(c.gold, over(c.lineStrong, c.surface, 0.6))).toBeGreaterThanOrEqual(3);
+   });
+ 
++  it("chart series viz-1…4 are ≥ 3:1 on paper and surface and never gold", () => {
++    for (const v of [c.viz1, c.viz2, c.viz3, c.viz4]) {
++      for (const bg of [c.paper, c.surface]) expect(contrast(v, bg)).toBeGreaterThanOrEqual(3);
++      expect(v).not.toBe(c.gold);
++    }
++  });
++
+   it("line and lineStrong are decorative only (documented as < 3:1)", () => {
+     // Guard: if these ever pass 3:1 the docs can relax the rule; until then they must not mark controls.
+     for (const bg of [c.surface, c.elevated]) expect(contrast(c.lineStrong, bg)).toBeLessThan(3);
+@@ -144,7 +151,7 @@ describe("token utilities used in components exist", () => {
+     const globals = readFileSync("src/app/globals.css", "utf8");
+     const defined = new Set([...globals.matchAll(/--color-([a-z0-9-]+):/g)].map((m) => m[1]));
+     const STEMS =
+-      /^(paper|surface|elevated|ink|line|input|primary|gold|brand|success|warning|danger|info|bar|thumb|membership)/;
++      /^(paper|surface|elevated|ink|line|input|primary|gold|brand|success|warning|danger|info|bar|thumb|membership|viz)/;
+     const files: string[] = [];
+     const walk = (d: string) => {
+       for (const f of readdirSync(d)) {

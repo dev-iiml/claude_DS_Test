@@ -1,0 +1,38 @@
+diff --git a/src/components/creatorco/app-nav.tsx b/src/components/creatorco/app-nav.tsx
+index 29836df..7e0caf6 100644
+--- a/src/components/creatorco/app-nav.tsx
++++ b/src/components/creatorco/app-nav.tsx
+@@ -81,7 +81,10 @@ export function TabBar({ items }: { items: NavItem[] }) {
+   );
+ }
+ 
+-/** Mac / large screens: source-list sidebar like macOS apps. */
++/**
++ * Mac / large screens: source-list sidebar like macOS apps. Rows are 36pt for a mouse and grow to
++ * the 44pt touch target on touch screens (iPad) via `pointer-coarse`.
++ */
+ export function Sidebar({ items, footer }: { items: NavItem[]; footer?: React.ReactNode }) {
+   const pathname = usePathname();
+   return (
+@@ -100,7 +103,7 @@ export function Sidebar({ items, footer }: { items: NavItem[]; footer?: React.Re
+                   href={item.href}
+                   aria-current={active ? "page" : undefined}
+                   className={cn(
+-                    "flex h-9 items-center gap-3 rounded-sm px-3 text-subhead font-medium transition-colors",
++                    "flex h-9 items-center gap-3 rounded-sm px-3 text-subhead font-medium transition-colors pointer-coarse:h-touch",
+                     active ? "bg-elevated text-ink" : "text-ink-muted hover:bg-elevated/60 hover:text-ink",
+                   )}
+                 >
+diff --git a/src/components/creatorco/list.tsx b/src/components/creatorco/list.tsx
+index 94437db..c0380d0 100644
+--- a/src/components/creatorco/list.tsx
++++ b/src/components/creatorco/list.tsx
+@@ -32,7 +32,7 @@ export function ListGroup({
+       {label || action ? (
+         <div className="flex items-end justify-between gap-3 pr-4">
+           {label ? <GroupLabel id={headingId}>{label}</GroupLabel> : <span />}
+-          {action ? <div className="pb-1.5">{action}</div> : null}
++          {action ? <div className="pb-1.5 [&>a]:hit-area [&>button]:hit-area">{action}</div> : null}
+         </div>
+       ) : null}
+       <ul

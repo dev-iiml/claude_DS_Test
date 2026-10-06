@@ -1,0 +1,119 @@
+import type { ConsentKey, ErasureScope } from "@/modules/consent/domain";
+import { CONSENT_KEYS } from "@/modules/consent/domain";
+
+/**
+ * What each consent purpose means and what withdrawing it does. Pure data:
+ * shared by the web consent centre, the API and future native apps, and the
+ * single place the withdrawal service reads its effects from.
+ */
+export interface PurposePolicy {
+  key: ConsentKey;
+  /** Short name used in lists. */
+  label: string;
+  /** One line on what the purpose covers. */
+  summary: string;
+  /** The Creator Profile consent: withdrawing it pauses membership. */
+  core: boolean;
+  /** Creator-facing description of the consequences of withdrawing. */
+  onWithdraw: readonly string[];
+  /** Data erased on withdrawal (subject to retention holds). */
+  erasure: readonly ErasureScope[];
+}
+
+export const PURPOSES: readonly PurposePolicy[] = [
+  {
+    key: CONSENT_KEYS.creatorProfile,
+    label: "Creator Professional Profile",
+    summary: "Keeping your profile so you can be a CreatorCo member.",
+    core: true,
+    onWithdraw: [
+      "Your membership is paused. Home, Passport and Access close until you give this consent again.",
+      "We stop processing your profile, connected accounts and signals.",
+      "Your details are kept, so you can resume at any time. Closing your account is a separate request.",
+    ],
+    erasure: [],
+  },
+  {
+    key: CONSENT_KEYS.identityPrefill,
+    label: "Identity verification",
+    summary: "Fetching your PAN-linked name to verify and prefill your legal name.",
+    core: false,
+    onWithdraw: [
+      "Your verified identity details (verified name and masked PAN) are erased.",
+      "Your legal name stays on your profile, marked as self-declared.",
+    ],
+    erasure: ["identity_lookup"],
+  },
+  {
+    key: CONSENT_KEYS.socialAccountConnection,
+    label: "Social account connection",
+    summary: "Reading metrics from the accounts you connect, to verify your creator activity.",
+    core: false,
+    onWithdraw: [
+      "Every connected account is disconnected. Platforms you declared stay as self-declared.",
+      "Stored monthly metrics from those accounts are erased.",
+      "Signals computed from them are erased and, if signals are on, recomputed without them.",
+    ],
+    erasure: ["social_account_data", "professional_graph"],
+  },
+  {
+    key: CONSENT_KEYS.professionalAnalytics,
+    label: "Professional signals",
+    summary: "Computing signals about your creator business. Not a credit score.",
+    core: false,
+    onWithdraw: [
+      "We stop computing professional signals.",
+      "Signals already computed are erased, along with any CreatorCo recommendation that used them.",
+    ],
+    erasure: ["professional_graph"],
+  },
+  {
+    key: CONSENT_KEYS.financialEligibility,
+    label: "Financial eligibility",
+    summary: "Checking your eligibility for creator business finance from partner lenders.",
+    core: false,
+    onWithdraw: [
+      "Any open eligibility check is closed.",
+      "Its financial inputs — bureau summary, bank cashflow totals and what you declared — and any recommendation and fraud-check results are erased.",
+    ],
+    erasure: ["financial_inputs"],
+  },
+  {
+    key: CONSENT_KEYS.lenderSharing,
+    label: "Share with a partner lender",
+    summary: "Sending your confirmed eligibility checks to a partner lender as a credit proposal.",
+    core: false,
+    onWithdraw: [
+      "Proposals not yet sent to a partner lender are cancelled.",
+      "Checks you confirm from now on aren't sent.",
+      "A proposal already sent stays with that lender under its legal retention rules.",
+    ],
+    erasure: [],
+  },
+  {
+    key: CONSENT_KEYS.lenderHandoff,
+    label: "Continue with the partner lender",
+    summary: "Passing your acceptance and contact details to the partner lender whose offer you accept.",
+    core: false,
+    onWithdraw: [
+      "CreatorCo stops passing your details to partner lenders, including for an accepted offer whose lender hasn't collected them yet.",
+      "Details already passed to a partner lender stay with that lender under its legal retention rules.",
+    ],
+    erasure: [],
+  },
+];
+
+/** Shown wherever erasure is mentioned: credit records follow the partner lender's retention rules. */
+export const RETENTION_HOLD_NOTE =
+  "If any of this data supports an open application or financial product with a partner lender, we stop using it straight away but erase it only once that relationship is closed and any records the law requires are no longer needed.";
+
+export function purposeFor(key: string): PurposePolicy | null {
+  return PURPOSES.find((p) => p.key === key) ?? null;
+}
+
+export const WITHDRAWAL_REASON_LABELS = {
+  not_using: "I'm not using this",
+  privacy: "Privacy concerns",
+  too_much_data: "It asks for too much data",
+  other: "Something else",
+} as const;

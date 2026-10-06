@@ -1,0 +1,25 @@
+<!-- @dsCard group="Screens" height=1346 width=1180 page -->
+<!doctype html>
+<html lang="en-IN">
+<head><meta charset="utf-8" />
+<style>
+  body { margin: 0; background: var(--paper); color: var(--ink-muted); font: 13px/1.4 var(--font-sans); }
+  .shot { display: flex; gap: 24px; align-items: flex-start; padding: 16px 20px; }
+  figure { margin: 0; }
+  img { display: block; height: auto; border-radius: 12px; outline: 1px solid var(--line); }
+  figcaption { margin-top: 8px; }
+  .t-light { display: none; }
+  [data-theme="light"] .t-light { display: flex; }
+  [data-theme="light"] .t-dark { display: none; }
+</style></head>
+<body>
+  <div class="shot t-dark">
+    <figure class="m"><img src="../../screens/connect-mobile-dark.webp" alt="Connect an account, iPhone, dark" width="340" /><figcaption>iPhone · 390pt</figcaption></figure>
+    <figure class="d"><img src="../../screens/connect-desktop-dark.webp" alt="Connect an account, desktop, dark" width="768" /><figcaption>Desktop · 1280px</figcaption></figure>
+  </div>
+  <div class="shot t-light">
+    <figure class="m"><img src="../../screens/connect-mobile-light.webp" alt="Connect an account, iPhone, light" width="340" /><figcaption>iPhone · 390pt</figcaption></figure>
+    <figure class="d"><img src="../../screens/connect-desktop-light.webp" alt="Connect an account, desktop, light" width="768" /><figcaption>Desktop · 1280px</figcaption></figure>
+  </div>
+</body>
+</html>

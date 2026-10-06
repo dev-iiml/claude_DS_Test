@@ -1,0 +1,31 @@
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 1be28bb..8ffa62f 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1,6 +1,9 @@
+ @import "tailwindcss";
+ @import "./tokens.css";
+ 
++/* The design-system folder (docs, previews, experiments, release snapshots) is never part of the app build. */
++@source not "../../design-system";
++
+ /*
+  * CreatorCo — dark-first, iOS/macOS-native design language.
+  * Colour values live in src/design/tokens.ts (→ tokens.css). This file only
+diff --git a/tests/unit/design-tokens.test.ts b/tests/unit/design-tokens.test.ts
+index a0480c4..e37894c 100644
+--- a/tests/unit/design-tokens.test.ts
++++ b/tests/unit/design-tokens.test.ts
+@@ -137,6 +137,12 @@ describe("generated files", () => {
+   });
+ });
+ 
++describe("build isolation", () => {
++  it("Tailwind never scans the design-system folder for the app's CSS", () => {
++    expect(readFileSync("src/app/globals.css", "utf8")).toContain('@source not "../../design-system";');
++  });
++});
++
+ describe("token utilities used in components exist", () => {
+   it("every colour utility built on a token name maps to a --color-* in globals.css", async () => {
+     const { readdirSync, statSync } = await import("node:fs");

@@ -1,0 +1,35 @@
+{
+  "id": "typography.devanagari",
+  "module": "typography",
+  "title": "Devanagari pairing and Hindi text rules",
+  "proposal": "P-10",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "Adds system Devanagari faces (Kohinoor Devanagari on Apple, Noto Sans Devanagari on Android) after Inter in the sans stack, and `:lang(hi)` rules: body line-height \u2265 1.6, no letter-spacing, no forced uppercase on eyebrows and group labels.",
+  "requires": [],
+  "newFiles": {
+    "tests/unit/typography.test.ts": "typography"
+  },
+  "migration": "No new font downloads (system fonts only). Mark Hindi content with lang=\"hi\" to get the rules. tokens.json `families.sans` changes. Full Hindi consent text still needs a qualified translator.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Hindi copy in the product components",
+        "before": "HindiSample",
+        "after": "HindiSample",
+        "width": 760,
+        "note": "Same markup on both sides (lang=\"hi\"). The preview gives both sides the same Devanagari glyphs (Noto Sans Devanagari, preview only), so the comparison isolates the new rules: taller lines, no spaced capitals on the eyebrow and group label, no negative tracking."
+      }
+    ],
+    "hitAreas": false,
+    "fonts": [
+      {
+        "family": "Inter Variable",
+        "file": "preview-fonts/noto-sans-devanagari-devanagari-wght-normal.woff2",
+        "weight": "100 900",
+        "unicodeRange": "U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+25CC, U+A830-A839, U+A8E0-A8FF"
+      }
+    ],
+    "shared": true
+  }
+}

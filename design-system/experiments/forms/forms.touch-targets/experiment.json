@@ -1,0 +1,34 @@
+{
+  "id": "forms.touch-targets",
+  "module": "forms",
+  "title": "44px hit areas for chips and segments",
+  "proposal": "P-11",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "CheckboxChip (40px) and SegmentedControl segments (34px) get the `hit-area` utility. Visual sizes stay the same.",
+  "requires": [
+    {
+      "id": "tokens.hit-area",
+      "why": "uses the `hit-area` utility that tokens.hit-area adds to globals.css"
+    }
+  ],
+  "newFiles": {},
+  "migration": "No API change. The language chip's \u2715 remove button lives in app code (onboarding about-form) \u2014 apply `hit-area` there in the adoption PR.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Choice chips",
+        "before": "Choices",
+        "after": "Choices",
+        "width": 760
+      },
+      {
+        "title": "Segmented control",
+        "before": "SegmentedControl",
+        "after": "SegmentedControl",
+        "width": 760
+      }
+    ],
+    "hitAreas": true
+  }
+}

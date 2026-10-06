@@ -1,0 +1,32 @@
+{
+  "buttons.touch-targets": {
+    "decision": "proposed"
+  },
+  "financial.money-figure": {
+    "decision": "proposed"
+  },
+  "forms.touch-targets": {
+    "decision": "proposed"
+  },
+  "membership.card-not-payment": {
+    "decision": "proposed"
+  },
+  "membership.verification-derived": {
+    "decision": "proposed"
+  },
+  "navigation.touch-targets": {
+    "decision": "proposed"
+  },
+  "tokens.hit-area": {
+    "decision": "proposed"
+  },
+  "tokens.source-isolation": {
+    "decision": "proposed"
+  },
+  "tokens.viz-palette": {
+    "decision": "proposed"
+  },
+  "typography.devanagari": {
+    "decision": "proposed"
+  }
+}

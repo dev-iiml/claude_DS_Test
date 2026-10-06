@@ -1,0 +1,13 @@
+{
+  "id": "tokens.source-isolation",
+  "module": "tokens-themes",
+  "title": "Keep design-system files out of the app's CSS build",
+  "proposal": "Versioning",
+  "base": "2.0.0",
+  "bump": "patch",
+  "summary": "Adds `@source not \"../../design-system\";` to globals.css so Tailwind no longer scans the design-system folder (viewer specimens, previews, experiments, release snapshots) when building the app's CSS. Today about ten unused utility classes from those files end up in the app stylesheet; with this they cannot.",
+  "requires": [],
+  "newFiles": {},
+  "migration": "No visual change. If a future app file ever imports from design-system/ (it should not), its classes would need an explicit @source.",
+  "preview": { "compare": [], "hitAreas": false }
+}

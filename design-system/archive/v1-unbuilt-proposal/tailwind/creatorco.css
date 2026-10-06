@@ -1,0 +1,235 @@
+/*
+ * CreatorCo v1 theme — Tailwind CSS v4 + shadcn/ui.
+ * Generated from design-system/tokens.json. Drop-in replacement for the :root/@theme blocks in src/app/globals.css.
+ * Note: the design-system token `accent` (Rani) is exposed here as --rani, because shadcn reserves
+ * --accent for the neutral hover fill.
+ */
+@import "tailwindcss";
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+:root {
+  --canvas: #f4f1ea;
+  --surface: #fbf9f5;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ebe7de;
+  --surface-inverse: #121110;
+  --text: #121110;
+  --text-muted: #57534b;
+  --text-subtle: #6b665c;
+  --text-inverse: #f4f1ea;
+  --border: #e2ddd2;
+  --border-strong: #8a8478;
+  --focus: #121110;
+  --rani: #b5166e;
+  --rani-soft: #f8e2ee;
+  --on-rani: #ffffff;
+  --brass: #82612a;
+  --brass-soft: #f0e7d4;
+  --success: #2a6a48;
+  --success-soft: #e2efe6;
+  --warning: #875709;
+  --warning-soft: #f6ebd4;
+  --danger: #a8320f;
+  --danger-soft: #f8e3db;
+  --on-danger: #ffffff;
+  --info: #33506e;
+  --info-soft: #e2e9f1;
+  --tier-member-base: #ece6d9;
+  --tier-member-edge: #cfc5b0;
+  --tier-member-ink: #1b1a17;
+  --tier-member-mark: #82612a;
+  --tier-onyx-base: #141312;
+  --tier-onyx-edge: #3a3733;
+  --tier-onyx-ink: #ece7dd;
+  --tier-onyx-mark: #a9a398;
+  --tier-icon-base: #24272c;
+  --tier-icon-sheen: #3d4249;
+  --tier-icon-edge: #5d636c;
+  --tier-icon-ink: #eef0f3;
+  --tier-icon-mark: #ff5fae;
+  --card-graphite: #2b2b2d;
+  --card-chalk: #e7e2d6;
+  --chart-1-c: #b7861c;
+  --chart-2-c: #3566ad;
+  --chart-3-c: #cc5f33;
+  --chart-4-c: #0f8f78;
+  --chart-5-c: #8d4caf;
+  --chart-grid: #e2ddd2;
+  --chart-diverge-neg: #cc5f33;
+  --chart-diverge-mid: #e9e6df;
+  --chart-diverge-pos: #3566ad;
+  --seq-100: #f2e6c9;
+  --seq-200: #e2c98d;
+  --seq-300: #cfa957;
+  --seq-400: #b7861c;
+  --seq-500: #8f6714;
+  --seq-600: #694b0e;
+
+  /* shadcn/ui semantic aliases */
+  --background: var(--canvas);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text);
+  --primary: var(--surface-inverse);
+  --primary-foreground: var(--text-inverse);
+  --secondary: var(--surface-sunken);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface-sunken);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--surface-sunken); /* shadcn 'accent' = hover fill. Brand accent is --rani below. */
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
+  --input: var(--border-strong);
+  --ring: var(--focus);
+  --chart-1: var(--chart-1-c); --chart-2: var(--chart-2-c); --chart-3: var(--chart-3-c); --chart-4: var(--chart-4-c); --chart-5: var(--chart-5-c);
+  --radius: 12px;
+  --shadow-1: 0 1px 2px rgba(18,17,16,.06);
+  --shadow-2: 0 8px 24px -8px rgba(18,17,16,.16), 0 2px 6px rgba(18,17,16,.06);
+  --shadow-3: 0 24px 64px -16px rgba(18,17,16,.28);
+  --shadow-card: 0 18px 40px -18px rgba(18,17,16,.45), inset 0 1px 0 rgba(255,255,255,.08);
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --canvas: #0d0d0c;
+  --surface: #161514;
+  --surface-raised: #1f1e1c;
+  --surface-sunken: #080807;
+  --surface-inverse: #f4f1ea;
+  --text: #f2eee6;
+  --text-muted: #aaa498;
+  --text-subtle: #8f8a7f;
+  --text-inverse: #121110;
+  --border: #2b2926;
+  --border-strong: #6e695f;
+  --focus: #f2eee6;
+  --rani: #ff5fae;
+  --rani-soft: #3a1428;
+  --on-rani: #121110;
+  --brass: #d4b06e;
+  --brass-soft: #2c2416;
+  --success: #6fc79a;
+  --success-soft: #12271b;
+  --warning: #ebb65c;
+  --warning-soft: #2c2210;
+  --danger: #ff8466;
+  --danger-soft: #34170e;
+  --on-danger: #121110;
+  --info: #97b5d6;
+  --info-soft: #15202c;
+  --tier-member-base: #e3dccd;
+  --tier-member-edge: #bdb39d;
+  --tier-member-ink: #1b1a17;
+  --tier-member-mark: #82612a;
+  --tier-onyx-base: #1a1918;
+  --tier-onyx-edge: #4a4640;
+  --tier-onyx-ink: #ece7dd;
+  --tier-onyx-mark: #b3ada2;
+  --tier-icon-base: #24272c;
+  --tier-icon-sheen: #3d4249;
+  --tier-icon-edge: #6a717b;
+  --tier-icon-ink: #eef0f3;
+  --tier-icon-mark: #ff5fae;
+  --card-graphite: #2b2b2d;
+  --card-chalk: #e7e2d6;
+  --chart-1-c: #bd8b22;
+  --chart-2-c: #5487cf;
+  --chart-3-c: #d46a38;
+  --chart-4-c: #1c9a83;
+  --chart-5-c: #9b6cc0;
+  --chart-grid: #2b2926;
+  --chart-diverge-neg: #d46a38;
+  --chart-diverge-mid: #34322f;
+  --chart-diverge-pos: #5487cf;
+  --shadow-1: 0 1px 2px rgba(0,0,0,.5);
+  --shadow-2: 0 8px 24px -8px rgba(0,0,0,.7), 0 2px 6px rgba(0,0,0,.4);
+  --shadow-3: 0 24px 64px -16px rgba(0,0,0,.85);
+  --shadow-card: 0 18px 40px -18px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.08);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-inverse: var(--text-inverse);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-focus: var(--focus);
+  --color-rani: var(--rani);
+  --color-rani-soft: var(--rani-soft);
+  --color-on-rani: var(--on-rani);
+  --color-brass: var(--brass);
+  --color-brass-soft: var(--brass-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-tier-member-base: var(--tier-member-base);
+  --color-tier-member-edge: var(--tier-member-edge);
+  --color-tier-member-ink: var(--tier-member-ink);
+  --color-tier-member-mark: var(--tier-member-mark);
+  --color-tier-onyx-base: var(--tier-onyx-base);
+  --color-tier-onyx-edge: var(--tier-onyx-edge);
+  --color-tier-onyx-ink: var(--tier-onyx-ink);
+  --color-tier-onyx-mark: var(--tier-onyx-mark);
+  --color-tier-icon-base: var(--tier-icon-base);
+  --color-tier-icon-sheen: var(--tier-icon-sheen);
+  --color-tier-icon-edge: var(--tier-icon-edge);
+  --color-tier-icon-ink: var(--tier-icon-ink);
+  --color-tier-icon-mark: var(--tier-icon-mark);
+  --color-card-graphite: var(--card-graphite);
+  --color-card-chalk: var(--card-chalk);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-diverge-neg: var(--chart-diverge-neg);
+  --color-chart-diverge-mid: var(--chart-diverge-mid);
+  --color-chart-diverge-pos: var(--chart-diverge-pos);
+  --color-seq-100: var(--seq-100);
+  --color-seq-200: var(--seq-200);
+  --color-seq-300: var(--seq-300);
+  --color-seq-400: var(--seq-400);
+  --color-seq-500: var(--seq-500);
+  --color-seq-600: var(--seq-600);
+  --color-background: var(--background); --color-foreground: var(--foreground);
+  --color-card: var(--card); --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive); --color-input: var(--input); --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3); --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5);
+
+  --font-display: "Instrument Serif", "Tiro Devanagari Hindi", Georgia, serif;
+  --font-sans: "Instrument Sans", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Noto Sans Devanagari", ui-monospace, Menlo, monospace;
+  --font-hindi: "Noto Sans Devanagari", "Instrument Sans", system-ui, sans-serif;
+
+  --radius-xs: 4px; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 20px; --radius-card: 14px;
+  --shadow-1: var(--shadow-1); --shadow-2: var(--shadow-2); --shadow-3: var(--shadow-3); --shadow-card: var(--shadow-card);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1); --ease-exit: cubic-bezier(0.4, 0, 1, 1); --ease-reveal: cubic-bezier(0.16, 1, 0.3, 1);
+  --tracking-eyebrow: 0.16em;
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply bg-canvas font-sans text-text antialiased; font-size: 15px; line-height: 1.55; }
+  :lang(hi), [lang="hi"] { font-family: var(--font-hindi); line-height: 1.75; }
+  .num, [data-num] { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  ::selection { background: var(--rani-soft); color: var(--text); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+}

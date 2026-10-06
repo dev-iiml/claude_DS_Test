@@ -1,0 +1,24 @@
+{
+  "id": "tokens.hit-area",
+  "module": "tokens-themes",
+  "title": "44px hit-area utility",
+  "proposal": "P-11",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "Adds a `hit-area` utility that extends a control's tappable area to the 44px touch target with an invisible ::before, without changing how it looks. It reads the existing `--touch-target` token (MIN_TOUCH_TARGET), and a test keeps the two in sync.",
+  "requires": [],
+  "newFiles": {},
+  "migration": "Additive. No component uses the utility until a buttons/forms/navigation experiment applies it. Don't put `hit-area` on an element that already uses ::before.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Utility demo \u2014 a 36px control with and without the hit area",
+        "before": null,
+        "after": "HitAreaDemo",
+        "width": 760,
+        "note": "Turn on \u201cShow 44px hit areas\u201d to see the invisible tap target."
+      }
+    ],
+    "hitAreas": true
+  }
+}

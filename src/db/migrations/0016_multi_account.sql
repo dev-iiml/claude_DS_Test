@@ -1,0 +1,3 @@
+ALTER TABLE "creator_social_accounts" ADD COLUMN "is_primary" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "social_connection_requests" ADD COLUMN "additional" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "creator_social_accounts_primary_key" ON "creator_social_accounts" USING btree ("creator_id","platform") WHERE "creator_social_accounts"."is_primary" and "creator_social_accounts"."connection_status" <> 'disconnected';

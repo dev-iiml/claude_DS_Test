@@ -1,0 +1,103 @@
+{
+  "$comment": "Module ownership for design-system releases. Every design-system source file belongs to exactly one module. A change to a file owned by another module is a cross-module touch and needs that module's review as well. Generated files are rebuilt from src/design/tokens.ts on compose, never patched.",
+  "modules": {
+    "tokens-themes": {
+      "title": "Tokens and themes",
+      "description": "Colour, shape, depth, size and motion tokens; dark/light/system themes; the Tailwind mapping and platform utilities; the token pipeline and its tests; surface primitives and the component barrel.",
+      "files": [
+        "src/design/tokens.ts",
+        "src/design/render-css.ts",
+        "src/design/render-json.ts",
+        "src/design/scripts/generate-css.ts",
+        "src/design/scripts/generate-json.ts",
+        "src/app/globals.css",
+        "src/lib/cn.ts",
+        "src/components/ui/card.tsx",
+        "src/components/ui/separator.tsx",
+        "src/components/ui/skeleton.tsx",
+        "src/components/creatorco/index.ts",
+        "tests/unit/design-tokens.test.ts"
+      ],
+      "generated": [
+        "src/app/tokens.css",
+        "design-system/tokens.json"
+      ],
+      "sharedSections": {
+        "src/design/tokens.ts": "Owns colors, membership, shadows, radius, space, sizes, motion and MIN_TOUCH_TARGET. The fonts and type sections belong to typography."
+      }
+    },
+    "typography": {
+      "title": "Typography",
+      "description": "Font stacks and the type scale (the fonts and type sections of tokens.ts), heading roles, label and the wordmark.",
+      "files": [
+        "src/components/creatorco/heading.tsx",
+        "src/components/creatorco/wordmark.tsx",
+        "src/components/ui/label.tsx"
+      ],
+      "generated": [],
+      "sharedSections": {
+        "src/design/tokens.ts": "fonts and type sections."
+      }
+    },
+    "buttons": {
+      "title": "Buttons",
+      "description": "Button variants and sizes, press feedback, the pending SubmitButton.",
+      "files": [
+        "src/components/ui/button.tsx",
+        "src/components/creatorco/submit-button.tsx"
+      ],
+      "generated": []
+    },
+    "forms": {
+      "title": "Forms",
+      "description": "Text fields, selects, field wrappers and messages, choice controls, live checklists, step progress and inline alerts.",
+      "files": [
+        "src/components/ui/input.tsx",
+        "src/components/ui/select.tsx",
+        "src/components/ui/alert.tsx",
+        "src/components/creatorco/form-field.tsx",
+        "src/components/creatorco/form-message.tsx",
+        "src/components/creatorco/choices.tsx",
+        "src/components/creatorco/password-checklist.tsx",
+        "src/components/creatorco/progress.tsx"
+      ],
+      "generated": []
+    },
+    "navigation": {
+      "title": "Navigation",
+      "description": "Tab bar and sidebar, the app/onboarding/auth shells (page header, form footer, back link, compliance note), grouped lists and empty states.",
+      "files": [
+        "src/components/creatorco/app-nav.tsx",
+        "src/components/creatorco/shells.tsx",
+        "src/components/creatorco/list.tsx",
+        "src/components/creatorco/empty-state.tsx"
+      ],
+      "generated": []
+    },
+    "membership": {
+      "title": "Membership",
+      "description": "The membership card, Creator Status and status badges, verification marks.",
+      "files": [
+        "src/components/creatorco/membership-card.tsx",
+        "src/components/creatorco/status-badge.tsx",
+        "src/components/creatorco/verification.tsx",
+        "src/components/ui/badge.tsx"
+      ],
+      "generated": []
+    },
+    "financial": {
+      "title": "Financial patterns",
+      "description": "Consent text, figures and amounts, and the financial-trust presentation rules. ComplianceNote lives in shells.tsx (navigation), so changing it is a cross-module touch.",
+      "files": [
+        "src/components/creatorco/consent-text.tsx",
+        "src/components/creatorco/metric-block.tsx"
+      ],
+      "generated": []
+    }
+  },
+  "watch": [
+    "src/design",
+    "src/components/ui",
+    "src/components/creatorco"
+  ]
+}

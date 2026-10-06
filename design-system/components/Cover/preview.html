@@ -1,0 +1,44 @@
+<!-- @dsCard height=300 -->
+<!doctype html>
+<html lang="en-IN">
+<head><meta charset="utf-8" />
+<style>
+  html, body { margin: 0; background: var(--paper); }
+  .cover { position: relative; width: 960px; height: 300px; overflow: hidden; background: var(--paper); }
+  svg { position: absolute; inset: 0; }
+  .platinum { fill: var(--primary); }
+  .gold { fill: var(--gold); }
+  .subtle { fill: var(--ink-subtle); }
+  .cut { fill: var(--paper); }
+  .card { rx: var(--radius-card, 20px); }
+  .tile { rx: var(--radius-xl, 22px); }
+  .text { position: absolute; left: 40px; bottom: 40px; max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-serif, "Newsreader Variable", serif); font-weight: 400; font-size: 88px; line-height: 0.92; letter-spacing: -0.02em; color: var(--ink); }
+  .name i { display: inline-block; width: 14px; height: 14px; border-radius: 999px; background: var(--gold); margin-left: 6px; }
+  .tag { margin: 14px 0 0; font-family: var(--font-sans, system-ui, sans-serif); font-size: 14px; line-height: 1.43; color: var(--ink-muted); }
+</style></head>
+<body>
+<div class="cover">
+  <svg width="960" height="300" viewBox="0 0 960 300" aria-hidden="true">
+    <!--
+      blocks: primary (platinum / near-black) card 280×176 at the membership-card aspect, gold slab 136×196 bleeding top/right, ink-subtle tile 136×104 bleeding bottom/right; card corners radius-card, tiles radius-xl; gaps space-4
+      arrangement: one card-shaped block with two satellites flush right — the membership card beside the champagne and the platinum
+      pattern: soft iOS radii → pills and discs (radius-pill = half the short side): two cut-out pills on the card, the wordmark's gold full stop, an iOS switch (track + thumb) on the tile
+      scales: space-4 gaps, space-6 card inset, radius-card / radius-xl / radius-pill, space-10 text inset
+    -->
+    <rect class="platinum card" x="520" y="62" width="280" height="176" />
+    <rect class="gold tile" x="816" y="-8" width="152" height="196" />
+    <rect class="subtle tile" x="816" y="204" width="152" height="104" />
+    <rect class="cut" x="544" y="94" width="128" height="12" rx="6" />
+    <rect class="cut" x="544" y="118" width="80" height="12" rx="6" />
+    <circle class="gold" cx="764" cy="206" r="10" />
+    <rect class="cut" x="844" y="232" width="96" height="58" rx="29" />
+    <circle class="gold" cx="911" cy="261" r="23" />
+  </svg>
+  <div class="text">
+    <p class="name">CreatorCo<i></i></p>
+    <p class="tag">A professional and financial network for creators in India.</p>
+  </div>
+</div>
+</body>
+</html>

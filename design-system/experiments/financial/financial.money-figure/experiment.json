@@ -1,0 +1,27 @@
+{
+  "id": "financial.money-figure",
+  "module": "financial",
+  "title": "MoneyFigure: amounts and ranges in Indian format",
+  "proposal": "P-15",
+  "base": "2.0.0",
+  "bump": "minor",
+  "summary": "A presentational MoneyFigure component and pure formatters (`formatInr`, `formatInrCompact`, `formatInrRange`) for amounts and ranges: en-IN grouping (1,50,000), lakh/crore compact form, tabular figures, ink colours only \u2014 never gold, never a tier mark. Screen readers hear ranges as \u201cto\u201d.",
+  "requires": [],
+  "newFiles": {
+    "src/components/creatorco/money.tsx": "financial",
+    "src/design/money.ts": "financial",
+    "tests/unit/money-format.test.ts": "financial"
+  },
+  "migration": "Additive. modules/financial-eligibility/presentation.ts keeps its own formatInr; it can import from @/design/money later (same output). Respect the rule that creators never see recommendation figures before partner-lender review.",
+  "preview": {
+    "compare": [
+      {
+        "title": "Amounts and ranges",
+        "before": null,
+        "after": "MoneyFigureDemo",
+        "width": 760
+      }
+    ],
+    "hitAreas": false
+  }
+}

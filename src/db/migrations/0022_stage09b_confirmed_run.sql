@@ -1,0 +1,1 @@
+ALTER TABLE "fin"."credit_applications" ADD COLUMN "financial_run_id" uuid;
