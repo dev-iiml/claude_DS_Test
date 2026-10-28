@@ -17,3 +17,7 @@ design-system/experiments/**/preview.html
 # design-system pin (app side): written by npm run ds:pin; screens from npm run ds:screens
 design-system.lock.json
 .ds-screens
+# verbatim copies of external source documents (claude.ai Project "DS_Test"); keep byte-identical to the source
+docs/PROJECT_KNOWLEDGE.md
+design-system-prompt.md
+Claude outputs

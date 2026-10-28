@@ -1,3 +1,5 @@
+import { pathToFileURL } from "node:url";
+
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 
 import { createDb } from "../create-db";
@@ -29,7 +31,8 @@ async function migrateAndPublish(url: string) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL percent-encodes the path (e.g. spaces), matching import.meta.url.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const url = requireDatabaseUrl();
   migrateAndPublish(url)
     .then(() => console.log(`✓ migrations and reference data applied to ${describeUrl(url)}`))
