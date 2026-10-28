@@ -1,3 +1,4 @@
 # access (Stage 14)
 
-PR / Access preview. Currently only static, clearly labelled sample opportunities for the dashboard.
+Access preview: sample opportunities from fictional brands, requests that hold Creator Points, the partnerships-desk
+review, expiry, and erasure on withdrawal of the `brand_opportunities` consent. Creator-professional domain only.

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { check, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { check, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-import type { TierChecklist } from "@/modules/creator-status/rules";
+import type { CriterionResult } from "@/modules/creator-status/rules";
 import { CREATOR_STATUS_TIERS } from "@/modules/creator-status/status";
 
 import { createdAt, sqlInList } from "./_shared";
@@ -9,13 +9,10 @@ import { creatorProfiles } from "./creator-profile";
 import { professionalGraphRuns } from "./professional-graph";
 
 /**
- * One Creator Status calculation (Stage 14), tied to the Professional Graph
- * run it read. Append-only. Deleting the graph run (consent withdrawal or
- * erasure) cascades here, so Status is erased with the signals it came from
- * and the creator falls back to Member.
- *
- * Creator-professional domain only. Status is never creditworthiness and no
- * credit module may read this table.
+ * Creator Status evaluations (Stage 14). Creator-professional domain: derived
+ * only from a Professional Graph run, so it is erased with that run (cascade)
+ * when the creator withdraws the consents behind the signals. Append-only.
+ * Never read by underwriting, fraud or lending.
  */
 export const creatorStatusRuns = pgTable(
   "creator_status_runs",
@@ -29,17 +26,17 @@ export const creatorStatusRuns = pgTable(
       .references(() => professionalGraphRuns.id, { onDelete: "cascade" }),
     rulesVersion: text("rules_version").notNull(),
     tier: text("tier", { enum: CREATOR_STATUS_TIERS }).notNull(),
-    /** Per-tier checklist: criterion, met, the signal value used and its threshold. Numbers and booleans only. */
-    criteria: jsonb("criteria").$type<TierChecklist[]>().notNull(),
+    /** Per-criterion results (state, threshold, value) — small and non-sensitive. */
+    criteria: jsonb("criteria").$type<CriterionResult[]>().notNull(),
+    inputsHash: text("inputs_hash").notNull(),
     computedAt: timestamp("computed_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
   },
   (t) => [
-    // The same graph run under the same rules always gives the same status — calculate it once.
-    uniqueIndex("creator_status_runs_reproducible_key").on(t.graphRunId, t.rulesVersion),
-    index("creator_status_runs_creator_idx").on(t.creatorId, t.computedAt.desc()),
+    index("creator_status_runs_creator_idx").on(t.creatorId, t.computedAt.desc(), t.createdAt.desc()),
+    index("creator_status_runs_graph_run_idx").on(t.graphRunId),
     check("creator_status_runs_tier_valid", sql`${t.tier} in (${sqlInList(CREATOR_STATUS_TIERS)})`),
-    check("creator_status_runs_rules_version_format", sql`${t.rulesVersion} ~ '^cs-[0-9]+\\.[0-9]+\\.[0-9]+$'`),
+    check("creator_status_runs_inputs_hash_format", sql`${t.inputsHash} ~ '^[0-9a-f]{64}$'`),
     check(
       "creator_status_runs_criteria_bounded",
       sql`jsonb_typeof(${t.criteria}) = 'array' and pg_column_size(${t.criteria}) <= 4096`,

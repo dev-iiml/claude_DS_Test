@@ -14,5 +14,4 @@ export * from "./financial";
 export * from "./ops";
 export * from "./partners";
 export * from "./creator-status";
-export * from "./rewards";
 export * from "./access";

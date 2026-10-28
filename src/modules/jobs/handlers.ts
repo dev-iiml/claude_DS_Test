@@ -1,4 +1,4 @@
-import { expireAccessRequests } from "@/modules/access/access-service";
+import { expireAccessRequests } from "@/modules/access";
 import { expireStaleApplications } from "@/modules/financial-eligibility/application-service";
 import { resolveProvider, resolveProviderByKey } from "@/modules/integrations/router";
 import { processLenderProposals } from "@/modules/lending";

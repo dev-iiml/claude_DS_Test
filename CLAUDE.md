@@ -9,7 +9,7 @@ loads it. Read it before any product, architecture, data, underwriting, regulato
 
 ## Build status
 
-Stages 00–13 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
+Stages 00–14 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
 self-managed auth and roles, Cohort A0 onboarding, Creator Passport, social connection (mock provider), the
 Professional Graph feature engine, the consent centre (receipts, withdrawal, hold-aware erasure, paused membership),
 financial eligibility (separate `fin` schema, Financial Capacity features), Underwriting Engine v0 (Traditional vs
@@ -21,7 +21,8 @@ Account Aggregator sharing with an explicit Review → confirm step and bank-ver
 a "Share with a partner lender" consent, the Models & rules page and a maker-checker simulated lender policy (12),
 the partner API with hashed maker-checker API keys, thin HMAC-signed webhooks, a vendor-neutral `partner_api` lender
 adapter and confirm-or-query review of partner decisions (12b), the creator's offer screen with partner-provided terms
-and KFS, accept/decline with a purpose-specific handoff consent and per-check retention holds (13), plus API v1 for
+and KFS, accept/decline with a purpose-specific handoff consent and per-check retention holds (13), Creator Status
+(`cs-0.1.0`), the Access preview with sample brands, Creator Points and the `/partnerships` desk (14), plus API v1 for
 future native apps.
 
 ## Implementation conventions (established in Stages 00–04)
@@ -92,4 +93,11 @@ future native apps.
   are illustrative (policy pricing). Creators accept the exact terms shown (`termsHash`); the `lender_handoff`
   consent is granted inside `acceptOffer`. Retention holds are per check (`heldLenderCheckIds`); declined/expired
   offers are kept until withdrawal and then erased via the hold checker's `releasedApplications`.
+- Creator Status / Access / points (Stage 14): Status rules live in `modules/creator-status/rules.ts` (pure); any
+  change bumps `STATUS_RULES_VERSION`. Status is evaluated after each graph run and erased with it, and is never imported
+  by credit modules (a unit test enforces this). Points rules live in `modules/rewards/rules.ts` (`POINTS_RULES_VERSION`):
+  milestones and tiers only — never credit actions, consents or data sharing; never shown as money. Balance changes
+  take `lockPointsAccount` (`FOR NO KEY UPDATE`). Access requests need `brand_opportunities`, granted inside
+  `requestAccess`; consent withdrawal locks receipts before effects. Partnerships staff see creator-professional data
+  only (`requirePartnershipsAdmin`).
 - Before handing off, run `npm run check`, then `npm run build && npm run test:e2e`.

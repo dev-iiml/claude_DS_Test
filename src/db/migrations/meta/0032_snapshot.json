@@ -1,6 +1,6 @@
 {
-  "id": "0f433483-a90a-4ff3-84e4-7f314d44d6d6",
-  "prevId": "ab62fe0a-ca71-4034-b29e-12a4a2d90e6d",
+  "id": "d61d0a26-1f68-46c6-862b-794d8af12ab6",
+  "prevId": "e339aadb-37ad-43da-bf66-33c6567a0e37",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -8646,6 +8646,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "inputs_hash": {
+          "name": "inputs_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "computed_at": {
           "name": "computed_at",
           "type": "timestamp with time zone",
@@ -8661,27 +8667,6 @@
         }
       },
       "indexes": {
-        "creator_status_runs_reproducible_key": {
-          "name": "creator_status_runs_reproducible_key",
-          "columns": [
-            {
-              "expression": "graph_run_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "rules_version",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
         "creator_status_runs_creator_idx": {
           "name": "creator_status_runs_creator_idx",
           "columns": [
@@ -8695,6 +8680,27 @@
               "expression": "computed_at",
               "isExpression": false,
               "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "creator_status_runs_graph_run_idx": {
+          "name": "creator_status_runs_graph_run_idx",
+          "columns": [
+            {
+              "expression": "graph_run_id",
+              "isExpression": false,
+              "asc": true,
               "nulls": "last"
             }
           ],
@@ -8740,13 +8746,569 @@
           "name": "creator_status_runs_tier_valid",
           "value": "\"creator_status_runs\".\"tier\" in ('member', 'onyx', 'icon')"
         },
-        "creator_status_runs_rules_version_format": {
-          "name": "creator_status_runs_rules_version_format",
-          "value": "\"creator_status_runs\".\"rules_version\" ~ '^cs-[0-9]+\\.[0-9]+\\.[0-9]+$'"
+        "creator_status_runs_inputs_hash_format": {
+          "name": "creator_status_runs_inputs_hash_format",
+          "value": "\"creator_status_runs\".\"inputs_hash\" ~ '^[0-9a-f]{64}$'"
         },
         "creator_status_runs_criteria_bounded": {
           "name": "creator_status_runs_criteria_bounded",
           "value": "jsonb_typeof(\"creator_status_runs\".\"criteria\") = 'array' and pg_column_size(\"creator_status_runs\".\"criteria\") <= 4096"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.access_opportunities": {
+      "name": "access_opportunities",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "brand_id": {
+          "name": "brand_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "min_tier": {
+          "name": "min_tier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'member'"
+        },
+        "points_cost": {
+          "name": "points_cost",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seats": {
+          "name": "seats",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "opens_at": {
+          "name": "opens_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closes_at": {
+          "name": "closes_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "is_sample": {
+          "name": "is_sample",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "access_opportunities_status_idx": {
+          "name": "access_opportunities_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "closes_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "access_opportunities_brand_id_brands_id_fk": {
+          "name": "access_opportunities_brand_id_brands_id_fk",
+          "tableFrom": "access_opportunities",
+          "columnsFrom": [
+            "brand_id"
+          ],
+          "tableTo": "brands",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "access_opportunities_created_by_users_id_fk": {
+          "name": "access_opportunities_created_by_users_id_fk",
+          "tableFrom": "access_opportunities",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "access_opportunities_kind_valid": {
+          "name": "access_opportunities_kind_valid",
+          "value": "\"access_opportunities\".\"kind\" in ('pr_drop', 'programme', 'experience', 'event')"
+        },
+        "access_opportunities_status_valid": {
+          "name": "access_opportunities_status_valid",
+          "value": "\"access_opportunities\".\"status\" in ('draft', 'live', 'closed')"
+        },
+        "access_opportunities_min_tier_valid": {
+          "name": "access_opportunities_min_tier_valid",
+          "value": "\"access_opportunities\".\"min_tier\" in ('member', 'onyx', 'icon')"
+        },
+        "access_opportunities_cost_range": {
+          "name": "access_opportunities_cost_range",
+          "value": "\"access_opportunities\".\"points_cost\" between 0 and 100000"
+        },
+        "access_opportunities_seats_range": {
+          "name": "access_opportunities_seats_range",
+          "value": "\"access_opportunities\".\"seats\" between 1 and 1000"
+        },
+        "access_opportunities_window": {
+          "name": "access_opportunities_window",
+          "value": "\"access_opportunities\".\"closes_at\" > \"access_opportunities\".\"opens_at\""
+        },
+        "access_opportunities_title_length": {
+          "name": "access_opportunities_title_length",
+          "value": "char_length(\"access_opportunities\".\"title\") between 3 and 80"
+        },
+        "access_opportunities_summary_length": {
+          "name": "access_opportunities_summary_length",
+          "value": "char_length(\"access_opportunities\".\"summary\") between 3 and 200"
+        },
+        "access_opportunities_details_length": {
+          "name": "access_opportunities_details_length",
+          "value": "char_length(\"access_opportunities\".\"details\") between 3 and 2000"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.access_requests": {
+      "name": "access_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "opportunity_id": {
+          "name": "opportunity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creator_id": {
+          "name": "creator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'requested'"
+        },
+        "points_held": {
+          "name": "points_held",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier_at_request": {
+          "name": "tier_at_request",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "consent_receipt_id": {
+          "name": "consent_receipt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decline_reason": {
+          "name": "decline_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "access_requests_active_key": {
+          "name": "access_requests_active_key",
+          "columns": [
+            {
+              "expression": "opportunity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "creator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "where": "\"access_requests\".\"status\" in ('requested', 'approved')",
+          "concurrently": false
+        },
+        "access_requests_queue_idx": {
+          "name": "access_requests_queue_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "access_requests_user_idx": {
+          "name": "access_requests_user_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "requested_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "access_requests_opportunity_id_access_opportunities_id_fk": {
+          "name": "access_requests_opportunity_id_access_opportunities_id_fk",
+          "tableFrom": "access_requests",
+          "columnsFrom": [
+            "opportunity_id"
+          ],
+          "tableTo": "access_opportunities",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "access_requests_user_id_users_id_fk": {
+          "name": "access_requests_user_id_users_id_fk",
+          "tableFrom": "access_requests",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "access_requests_creator_id_creator_profiles_id_fk": {
+          "name": "access_requests_creator_id_creator_profiles_id_fk",
+          "tableFrom": "access_requests",
+          "columnsFrom": [
+            "creator_id"
+          ],
+          "tableTo": "creator_profiles",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "access_requests_consent_receipt_id_consent_receipts_id_fk": {
+          "name": "access_requests_consent_receipt_id_consent_receipts_id_fk",
+          "tableFrom": "access_requests",
+          "columnsFrom": [
+            "consent_receipt_id"
+          ],
+          "tableTo": "consent_receipts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "access_requests_decided_by_users_id_fk": {
+          "name": "access_requests_decided_by_users_id_fk",
+          "tableFrom": "access_requests",
+          "columnsFrom": [
+            "decided_by"
+          ],
+          "tableTo": "users",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "access_requests_status_valid": {
+          "name": "access_requests_status_valid",
+          "value": "\"access_requests\".\"status\" in ('requested', 'approved', 'declined', 'cancelled', 'expired')"
+        },
+        "access_requests_tier_valid": {
+          "name": "access_requests_tier_valid",
+          "value": "\"access_requests\".\"tier_at_request\" in ('member', 'onyx', 'icon')"
+        },
+        "access_requests_decline_reason_valid": {
+          "name": "access_requests_decline_reason_valid",
+          "value": "\"access_requests\".\"decline_reason\" is null or \"access_requests\".\"decline_reason\" in ('no_seats', 'not_a_fit', 'profile_incomplete', 'other')"
+        },
+        "access_requests_points_range": {
+          "name": "access_requests_points_range",
+          "value": "\"access_requests\".\"points_held\" between 0 and 100000"
+        },
+        "access_requests_note_length": {
+          "name": "access_requests_note_length",
+          "value": "\"access_requests\".\"note\" is null or char_length(\"access_requests\".\"note\") <= 280"
+        },
+        "access_requests_decision_shape": {
+          "name": "access_requests_decision_shape",
+          "value": "(\"access_requests\".\"status\" in ('approved', 'declined')) = (\"access_requests\".\"decided_at\" is not null)\n        and (\"access_requests\".\"status\" = 'declined') = (\"access_requests\".\"decline_reason\" is not null)\n        and (\"access_requests\".\"status\" = 'requested') = (\"access_requests\".\"closed_at\" is null)"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.brands": {
+      "name": "brands",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_sample": {
+          "name": "is_sample",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "brands_name_key": {
+          "name": "brands_name_key",
+          "columns": [
+            {
+              "expression": "lower(\"name\")",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "brands_name_length": {
+          "name": "brands_name_length",
+          "value": "char_length(\"brands\".\"name\") between 2 and 80"
         }
       },
       "isRLSEnabled": true
@@ -8780,21 +9342,33 @@
           "primaryKey": false,
           "notNull": true
         },
-        "milestone": {
-          "name": "milestone",
+        "rule": {
+          "name": "rule",
           "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "access_request_id": {
-          "name": "access_request_id",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
         "rules_version": {
           "name": "rules_version",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "earn_key": {
+          "name": "earn_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -8807,8 +9381,8 @@
         }
       },
       "indexes": {
-        "creator_points_ledger_creator_idx": {
-          "name": "creator_points_ledger_creator_idx",
+        "creator_points_ledger_earn_key": {
+          "name": "creator_points_ledger_earn_key",
           "columns": [
             {
               "expression": "creator_id",
@@ -8817,28 +9391,7 @@
               "nulls": "last"
             },
             {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "creator_points_ledger_milestone_key": {
-          "name": "creator_points_ledger_milestone_key",
-          "columns": [
-            {
-              "expression": "creator_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "milestone",
+              "expression": "earn_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8847,14 +9400,14 @@
           "isUnique": true,
           "with": {},
           "method": "btree",
-          "where": "\"creator_points_ledger\".\"milestone\" is not null",
+          "where": "\"creator_points_ledger\".\"earn_key\" is not null",
           "concurrently": false
         },
         "creator_points_ledger_request_entry_key": {
           "name": "creator_points_ledger_request_entry_key",
           "columns": [
             {
-              "expression": "access_request_id",
+              "expression": "request_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8869,7 +9422,28 @@
           "isUnique": true,
           "with": {},
           "method": "btree",
-          "where": "\"creator_points_ledger\".\"access_request_id\" is not null",
+          "where": "\"creator_points_ledger\".\"request_id\" is not null",
+          "concurrently": false
+        },
+        "creator_points_ledger_creator_idx": {
+          "name": "creator_points_ledger_creator_idx",
+          "columns": [
+            {
+              "expression": "creator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
           "concurrently": false
         }
       },
@@ -8892,562 +9466,13 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "creator_points_ledger_entry_type_valid": {
-          "name": "creator_points_ledger_entry_type_valid",
+        "creator_points_ledger_type_valid": {
+          "name": "creator_points_ledger_type_valid",
           "value": "\"creator_points_ledger\".\"entry_type\" in ('earn', 'hold', 'release')"
-        },
-        "creator_points_ledger_milestone_valid": {
-          "name": "creator_points_ledger_milestone_valid",
-          "value": "\"creator_points_ledger\".\"milestone\" is null or \"creator_points_ledger\".\"milestone\" in ('welcome', 'verified_mobile', 'tier_onyx', 'tier_icon')"
-        },
-        "creator_points_ledger_amount_sign": {
-          "name": "creator_points_ledger_amount_sign",
-          "value": "(\"creator_points_ledger\".\"entry_type\" = 'hold' and \"creator_points_ledger\".\"amount\" < 0) or (\"creator_points_ledger\".\"entry_type\" <> 'hold' and \"creator_points_ledger\".\"amount\" > 0)"
         },
         "creator_points_ledger_shape": {
           "name": "creator_points_ledger_shape",
-          "value": "(\"creator_points_ledger\".\"entry_type\" = 'earn') = (\"creator_points_ledger\".\"milestone\" is not null)\n          and (\"creator_points_ledger\".\"entry_type\" = 'earn') = (\"creator_points_ledger\".\"access_request_id\" is null)"
-        },
-        "creator_points_ledger_rules_version_format": {
-          "name": "creator_points_ledger_rules_version_format",
-          "value": "\"creator_points_ledger\".\"rules_version\" ~ '^pts-[0-9]+\\.[0-9]+\\.[0-9]+$'"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.access_opportunities": {
-      "name": "access_opportunities",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "brand_name": {
-          "name": "brand_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "summary": {
-          "name": "summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "min_tier": {
-          "name": "min_tier",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "points_cost": {
-          "name": "points_cost",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "places": {
-          "name": "places",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "opens_at": {
-          "name": "opens_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "closes_at": {
-          "name": "closes_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "is_preview": {
-          "name": "is_preview",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "access_opportunities_slug_key": {
-          "name": "access_opportunities_slug_key",
-          "columns": [
-            {
-              "expression": "slug",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "access_opportunities_listing_idx": {
-          "name": "access_opportunities_listing_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "closes_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "access_opportunities_created_by_users_id_fk": {
-          "name": "access_opportunities_created_by_users_id_fk",
-          "tableFrom": "access_opportunities",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
-        },
-        "access_opportunities_updated_by_users_id_fk": {
-          "name": "access_opportunities_updated_by_users_id_fk",
-          "tableFrom": "access_opportunities",
-          "columnsFrom": [
-            "updated_by"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "access_opportunities_slug_format": {
-          "name": "access_opportunities_slug_format",
-          "value": "\"access_opportunities\".\"slug\" ~ '^[a-z0-9][a-z0-9-]{2,63}$'"
-        },
-        "access_opportunities_kind_valid": {
-          "name": "access_opportunities_kind_valid",
-          "value": "\"access_opportunities\".\"kind\" in ('pr_drop', 'programme', 'experience', 'event')"
-        },
-        "access_opportunities_status_valid": {
-          "name": "access_opportunities_status_valid",
-          "value": "\"access_opportunities\".\"status\" in ('open', 'closed')"
-        },
-        "access_opportunities_min_tier_valid": {
-          "name": "access_opportunities_min_tier_valid",
-          "value": "\"access_opportunities\".\"min_tier\" in ('member', 'onyx', 'icon')"
-        },
-        "access_opportunities_points_cost_range": {
-          "name": "access_opportunities_points_cost_range",
-          "value": "\"access_opportunities\".\"points_cost\" between 0 and 100000"
-        },
-        "access_opportunities_places_range": {
-          "name": "access_opportunities_places_range",
-          "value": "\"access_opportunities\".\"places\" between 1 and 1000"
-        },
-        "access_opportunities_window_valid": {
-          "name": "access_opportunities_window_valid",
-          "value": "\"access_opportunities\".\"closes_at\" > \"access_opportunities\".\"opens_at\""
-        },
-        "access_opportunities_preview_only": {
-          "name": "access_opportunities_preview_only",
-          "value": "\"access_opportunities\".\"is_preview\""
-        },
-        "access_opportunities_text_bounded": {
-          "name": "access_opportunities_text_bounded",
-          "value": "char_length(\"access_opportunities\".\"brand_name\") between 2 and 60 and char_length(\"access_opportunities\".\"title\") between 3 and 80\n          and char_length(\"access_opportunities\".\"category\") between 2 and 40 and char_length(\"access_opportunities\".\"summary\") between 10 and 600"
-        }
-      },
-      "isRLSEnabled": true
-    },
-    "public.access_requests": {
-      "name": "access_requests",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "opportunity_id": {
-          "name": "opportunity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "creator_id": {
-          "name": "creator_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'requested'"
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "points_held": {
-          "name": "points_held",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consent_receipt_id": {
-          "name": "consent_receipt_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "requested_at": {
-          "name": "requested_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "decided_at": {
-          "name": "decided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_by": {
-          "name": "decided_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decline_reason": {
-          "name": "decline_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "access_requests_active_key": {
-          "name": "access_requests_active_key",
-          "columns": [
-            {
-              "expression": "creator_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "opportunity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "with": {},
-          "method": "btree",
-          "where": "\"access_requests\".\"status\" in ('requested', 'approved')",
-          "concurrently": false
-        },
-        "access_requests_queue_idx": {
-          "name": "access_requests_queue_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "requested_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "access_requests_opportunity_idx": {
-          "name": "access_requests_opportunity_idx",
-          "columns": [
-            {
-              "expression": "opportunity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "access_requests_creator_idx": {
-          "name": "access_requests_creator_idx",
-          "columns": [
-            {
-              "expression": "creator_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "requested_at",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "access_requests_expiry_idx": {
-          "name": "access_requests_expiry_idx",
-          "columns": [
-            {
-              "expression": "expires_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "where": "\"access_requests\".\"status\" = 'requested'",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "access_requests_opportunity_id_access_opportunities_id_fk": {
-          "name": "access_requests_opportunity_id_access_opportunities_id_fk",
-          "tableFrom": "access_requests",
-          "columnsFrom": [
-            "opportunity_id"
-          ],
-          "tableTo": "access_opportunities",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
-        },
-        "access_requests_creator_id_creator_profiles_id_fk": {
-          "name": "access_requests_creator_id_creator_profiles_id_fk",
-          "tableFrom": "access_requests",
-          "columnsFrom": [
-            "creator_id"
-          ],
-          "tableTo": "creator_profiles",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        },
-        "access_requests_user_id_users_id_fk": {
-          "name": "access_requests_user_id_users_id_fk",
-          "tableFrom": "access_requests",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
-        },
-        "access_requests_consent_receipt_id_consent_receipts_id_fk": {
-          "name": "access_requests_consent_receipt_id_consent_receipts_id_fk",
-          "tableFrom": "access_requests",
-          "columnsFrom": [
-            "consent_receipt_id"
-          ],
-          "tableTo": "consent_receipts",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
-        },
-        "access_requests_decided_by_users_id_fk": {
-          "name": "access_requests_decided_by_users_id_fk",
-          "tableFrom": "access_requests",
-          "columnsFrom": [
-            "decided_by"
-          ],
-          "tableTo": "users",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "access_requests_status_valid": {
-          "name": "access_requests_status_valid",
-          "value": "\"access_requests\".\"status\" in ('requested', 'approved', 'declined', 'cancelled', 'expired')"
-        },
-        "access_requests_points_held_range": {
-          "name": "access_requests_points_held_range",
-          "value": "\"access_requests\".\"points_held\" >= 0"
-        },
-        "access_requests_note_bounded": {
-          "name": "access_requests_note_bounded",
-          "value": "\"access_requests\".\"note\" is null or char_length(\"access_requests\".\"note\") between 1 and 280"
-        },
-        "access_requests_expiry_after_request": {
-          "name": "access_requests_expiry_after_request",
-          "value": "\"access_requests\".\"expires_at\" > \"access_requests\".\"requested_at\""
-        },
-        "access_requests_decline_reason_valid": {
-          "name": "access_requests_decline_reason_valid",
-          "value": "\"access_requests\".\"decline_reason\" is null or \"access_requests\".\"decline_reason\" in ('places_filled', 'not_a_fit', 'profile_incomplete', 'other')"
-        },
-        "access_requests_cancel_reason_valid": {
-          "name": "access_requests_cancel_reason_valid",
-          "value": "\"access_requests\".\"cancel_reason\" is null or \"access_requests\".\"cancel_reason\" in ('creator', 'membership_paused', 'consent_withdrawn')"
-        },
-        "access_requests_outcome_shape": {
-          "name": "access_requests_outcome_shape",
-          "value": "(\"access_requests\".\"status\" = 'requested') = (\"access_requests\".\"decided_at\" is null)\n          and (\"access_requests\".\"status\" in ('approved', 'declined')) = (\"access_requests\".\"decided_by\" is not null)\n          and (\"access_requests\".\"status\" = 'declined') = (\"access_requests\".\"decline_reason\" is not null)\n          and (\"access_requests\".\"status\" = 'cancelled') = (\"access_requests\".\"cancel_reason\" is not null)"
+          "value": "case \"creator_points_ledger\".\"entry_type\"\n        when 'earn' then \"creator_points_ledger\".\"amount\" > 0 and \"creator_points_ledger\".\"rule\" is not null and \"creator_points_ledger\".\"rules_version\" is not null and \"creator_points_ledger\".\"earn_key\" is not null\n        when 'hold' then \"creator_points_ledger\".\"amount\" < 0 and \"creator_points_ledger\".\"rule\" is null and \"creator_points_ledger\".\"earn_key\" is null\n        when 'release' then \"creator_points_ledger\".\"amount\" > 0 and \"creator_points_ledger\".\"rule\" is null and \"creator_points_ledger\".\"earn_key\" is null\n      end"
         }
       },
       "isRLSEnabled": true

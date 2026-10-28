@@ -64,8 +64,7 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
   {
     type: "expire_access_requests",
     label: "Expire Access requests",
-    description:
-      "Expires undecided Access requests past their deadline or whose opportunity closed, and returns their points.",
+    description: "Closes pending Access requests whose opportunity has closed and returns their Creator Points.",
     everyMinutes: 60,
   },
   {

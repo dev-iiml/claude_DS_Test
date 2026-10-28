@@ -6,8 +6,8 @@ import type { FeatureConfidence, FeatureSource } from "./domain";
  *
  * Same inputs + same ENGINE_VERSION ⇒ byte-identical outputs. Features
  * describe the creator *business* (longevity, consistency, platform mix,
- * authenticity signals). None of them is a credit score, and none feeds
- * Creator Status or any limit automatically.
+ * authenticity signals). None of them is a credit score. Creator Status (a
+ * membership tier) reads some of them; no limit is ever raised automatically.
  *
  * Bump ENGINE_VERSION (and the affected FEATURE_VERSIONS) whenever a formula
  * changes; old runs stay reproducible under their recorded version.

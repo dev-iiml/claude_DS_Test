@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AccessError } from "@/modules/access";
 import { ConsentError } from "@/modules/consent";
 import { OnboardingError } from "@/modules/creator-profile/onboarding-service";
 import { SocialConnectionError } from "@/modules/social-data/connection-service";
@@ -25,6 +26,24 @@ export function toApiError(error: unknown): never {
       status,
       error.code,
       error.message !== error.code ? error.message : "The connection couldn't be completed.",
+    );
+  }
+  if (error instanceof AccessError) {
+    const status = {
+      not_found: 404,
+      invalid: 422,
+      wrong_state: 409,
+      closed: 409,
+      full: 409,
+      tier_required: 403,
+      insufficient_points: 409,
+      consent_required: 409,
+      profile_inactive: 409,
+    }[error.code];
+    throw new ApiError(
+      status,
+      error.code,
+      error.message !== error.code ? error.message : "This can't be done right now.",
     );
   }
   if (error instanceof ConsentError) {

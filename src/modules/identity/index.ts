@@ -4,6 +4,7 @@ export {
   requireAdmin,
   requireCreator,
   requireOpsAdmin,
+  requirePartnershipsAdmin,
   requireUser,
   homePathForUser,
   authDeps,

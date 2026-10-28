@@ -86,6 +86,20 @@ the lender's offer and Key Fact Statement fields, illustrative for the simulated
 "no income") · `skipped`; `bankCoverage` is `none` · `partial` · `complete`. With the mock AA, tests complete a journey
 with `params: { reference, status: "approved", accounts: "<last4>-<n>,…" }` (see `e2e/api.spec.ts`).
 
+### Creator Status, Access and Creator Points (Stage 14)
+
+All need an active membership (`409 membership_paused` / `profile_incomplete` otherwise). Access is a **preview**:
+brands are fictional samples and nothing is sent to them. Points are simulated membership points, never money.
+
+| Endpoint                            | Notes                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`                       | `{ tier: member\|onyx\|icon, rulesVersion, computedAt, basis: signals\|no_signals, criteria: [{ tier, key, state: met\|not_met\|missing, threshold, value }] }`. Membership standing only — never a credit input.                                                                                              |
+| `GET /access`                       | `{ preview, points: { balance, onHold }, opportunities, requests }`. Each opportunity has `availability`: `open` · `requested` · `approved` · `tier_locked` · `insufficient_points` · `full` · `not_open_yet` · `closed`, and the creator's latest `request`.                                                  |
+| `GET /access/{id}`                  | `{ preview, opportunity, consentRequired }` (drafts are 404).                                                                                                                                                                                                                                                  |
+| `POST /access/{id}/request`         | `{ note?, consentDefinitionId?, agree? }`. If `brand_opportunities` isn't given yet, send its active definition id with `agree: true`; it's granted with the request or not at all. Holds the points. `403 tier_required`, `409 insufficient_points` · `full` · `closed` · `wrong_state` · `consent_required`. |
+| `POST /access/requests/{id}/cancel` | Cancels a pending request; points returned → `{ cancelled, points }`.                                                                                                                                                                                                                                          |
+| `GET /points`                       | `{ balance, onHold, history: [{ type: earned\|held\|spent\|returned, amount, label, occurredAt }], rulesVersion, earnRules, terms }`.                                                                                                                                                                          |
+
 ## Partner API
 
 Partner lenders use a separate API, `/api/partner/v1`, with API keys only (no sessions or cookies). The endpoints,

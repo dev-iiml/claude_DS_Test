@@ -9,12 +9,12 @@ import {
   dataErasureRequests,
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
-import { cancelPendingAccessRequests, eraseAccessRequests } from "@/modules/access/access-service";
 import { recordAuditEvent } from "@/modules/audit";
 import { CONSENT_KEYS, grantConsent, hasValidConsent, withdrawConsent } from "@/modules/consent";
 import type { ConsentKey, ConsentSource, ErasureScope, WithdrawalReason } from "@/modules/consent/domain";
 import { pauseMembership, resumeMembership } from "@/modules/creator-profile/membership";
 import { closeOpenApplications } from "@/modules/financial-eligibility/application-service";
+import { cancelPendingAccessRequests, eraseAccessRequests } from "@/modules/access";
 import { eraseFinancialInputs } from "@/modules/financial-eligibility/erasure";
 import { eraseUnderwritingRuns } from "@/modules/underwriting/erasure";
 import { withdrawUnsentProposals } from "@/modules/lending/proposal-service";
@@ -97,7 +97,7 @@ async function erase(
     case "financial_inputs":
       return eraseFinancialInputs(tx, { userId: ids.userId, before, now: new Date(), releasedSubmitted: released });
     case "access_requests":
-      return ids.creatorId ? eraseAccessRequests(tx, { creatorId: ids.creatorId, before }) : {};
+      return eraseAccessRequests(tx, { userId: ids.userId, before });
   }
 }
 
@@ -137,29 +137,15 @@ export async function withdrawPurpose(
         ),
       )
       .orderBy(desc(consentDefinitions.version))
-      // Lock the receipts before any effect: a concurrent request that relies on this consent waits or loses.
+      // Lock the receipts before applying effects: an action that holds a receipt (an Access request, an
+      // offer acceptance) either commits first — and is then undone by the effects below — or sees it withdrawn.
       .for("update", { of: consentReceipts });
     if (!granted.length) throw new PrivacyError("not_granted");
 
     const profile = await profileFor(tx, input.userId);
     const effects: Record<string, string | number | boolean> = {};
 
-    // 1. Stop processing immediately. (Access requests before pausing: request rows lock before the profile.)
-    if (policy.core && profile) {
-      const cancelled = await cancelPendingAccessRequests(tx, {
-        creatorId: profile.id,
-        reason: "membership_paused",
-        now,
-      });
-      if (cancelled) effects.access_requests_cancelled = cancelled;
-    }
-    if (policy.key === CONSENT_KEYS.brandOpportunities && profile) {
-      effects.access_requests_cancelled = await cancelPendingAccessRequests(tx, {
-        creatorId: profile.id,
-        reason: "consent_withdrawn",
-        now,
-      });
-    }
+    // 1. Stop processing immediately.
     if (policy.core) effects.membership_paused = await pauseMembership(tx, { userId: input.userId, now });
     if (policy.key === CONSENT_KEYS.socialAccountConnection && profile) {
       effects.accounts_disconnected = await disconnectAllAccounts(tx, { creatorId: profile.id, now });
@@ -169,6 +155,10 @@ export async function withdrawPurpose(
     }
     if (policy.key === CONSENT_KEYS.lenderSharing) {
       effects.proposals_cancelled = await withdrawUnsentProposals(tx, { userId: input.userId });
+    }
+    if (policy.key === CONSENT_KEYS.brandOpportunities || policy.core) {
+      // Brand consent withdrawn, or membership paused: pending Access requests are cancelled, points returned.
+      effects.access_requests_cancelled = await cancelPendingAccessRequests(tx, { userId: input.userId, now });
     }
 
     // 2. Withdraw the receipts and record the withdrawal (effects on the newest).

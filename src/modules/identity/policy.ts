@@ -67,9 +67,8 @@ export function safeNextPath(next: string | null | undefined, subject: RoutingSu
   if (path === "/login" || path === "/signup") return null;
   if (path === "/admin" || path.startsWith("/admin/")) return canAccessAdmin(subject.role) ? next : null;
   if (path === "/ops" || path.startsWith("/ops/")) return canAccessOps(subject.role) ? next : null;
-  if (path === "/partnerships" || path.startsWith("/partnerships/")) {
+  if (path === "/partnerships" || path.startsWith("/partnerships/"))
     return canAccessPartnerships(subject.role) ? next : null;
-  }
   if (path.startsWith("/onboarding")) return canAccessCreatorArea(subject.role) ? next : null;
   if (MEMBER_AREAS.some((area) => path === area || path.startsWith(`${area}/`))) {
     if (!canAccessCreatorArea(subject.role)) return null;

@@ -9,10 +9,10 @@ import {
   professionalGraphRuns,
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
+import { describeError, logger } from "@/lib/logger";
 import { recordAuditEvent } from "@/modules/audit";
 import { CONSENT_KEYS, hasValidConsent } from "@/modules/consent";
 import { refreshCreatorStatus } from "@/modules/creator-status/status-service";
-import { describeError, logger } from "@/lib/logger";
 
 import type { GraphRunTrigger } from "./domain";
 import { ENGINE_VERSION, computeFeatures, type EngineInput, type FeatureKey, type FeatureResult } from "./engine";
@@ -160,12 +160,12 @@ export async function runProfessionalGraph(
     });
     return { ok: true as const, runId: run.id, reused: false, features };
   });
-
-  // Creator Status follows every graph run, in its own transaction: a failure there never fails the run.
+  // Creator Status is evaluated from the run just computed (membership tier — never a credit input).
+  // A failure there never fails the graph run, which has committed; the next run re-evaluates.
   try {
     await refreshCreatorStatus(db, { creatorId: input.creatorId, graphRunId: result.runId, now });
   } catch (error) {
-    logger.warn("creator_status.refresh_failed", { error: describeError(error) });
+    logger.error("creator_status.refresh_failed", describeError(error));
   }
   return result;
 }

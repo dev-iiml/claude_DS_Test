@@ -6,7 +6,7 @@ import { CONSENT_KEYS, findValidReceipt, getActiveDefinition } from "@/modules/c
 import { GST_STATUS_OPTIONS, LANGUAGES, LEGAL_FORM_OPTIONS } from "@/modules/creator-profile/reference";
 import { getOnboardingState, listCategories, listPlatforms } from "@/modules/creator-profile/queries";
 import { getLatestProfessionalGraph } from "@/modules/professional-graph/graph-service";
-import { currentCreatorStatus } from "@/modules/creator-status/status";
+import { getCreatorStatus } from "@/modules/creator-status/status-service";
 import { resolveProvider } from "@/modules/integrations/router";
 import { MAX_ACCOUNTS_PER_PLATFORM } from "@/modules/social-data/domain";
 
@@ -150,7 +150,10 @@ export async function getPassport(db: DbExecutor, userId: string) {
         },
   ];
 
-  const graph = await getLatestProfessionalGraph(db, profile.id);
+  const [graph, status] = await Promise.all([
+    getLatestProfessionalGraph(db, profile.id),
+    getCreatorStatus(db, profile.id),
+  ]);
   const [analyticsReceipt, analyticsDefinition, connectionDefinition] = await Promise.all([
     findValidReceipt(db, userId, CONSENT_KEYS.professionalAnalytics),
     getActiveDefinition(db, CONSENT_KEYS.professionalAnalytics),
@@ -172,7 +175,8 @@ export async function getPassport(db: DbExecutor, userId: string) {
     displayName: profile.displayName,
     legalName: profile.legalName,
     handle: profile.primaryCreatorHandle,
-    tier: currentCreatorStatus(),
+    tier: status.tier,
+    status,
     memberSince: monthYear.format(memberSince),
     memberNumber: memberNumberFor(profile.id),
     location: [profile.city, profile.state].filter(Boolean).join(", ") || null,

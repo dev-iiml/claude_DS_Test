@@ -24,6 +24,7 @@ export const config = {
     "/onboarding/:path*",
     "/admin/:path*",
     "/ops/:path*",
+    "/partnerships/:path*",
     "/passport/:path*",
     "/account/:path*",
     "/access/:path*",

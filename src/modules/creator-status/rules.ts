@@ -1,130 +1,196 @@
 import type { CreatorStatusTier } from "./status";
 
 /**
- * Creator Status rules — pure and deterministic (no Node/DOM/Next APIs, so
- * native apps and audits can reuse them).
+ * Creator Status rules — pure and deterministic (no Node/DOM APIs).
  *
- * A tier is earned only when EVERY criterion for it is met. Each criterion
- * reads one Professional Graph signal; a missing signal is "not met" — never
- * guessed. Reach is one criterion among several, so reach alone never earns a
- * tier. Nothing here reads, or may ever read, financial data.
+ * Status is a membership tier built from Professional Graph signals about the
+ * creator's professional standing. Every tier is an explicit checklist, so a
+ * creator can see exactly why they hold a tier and what the next one asks for.
+ * Reach is one criterion among several — never the whole picture — and a
+ * missing signal is "not met", never guessed.
  *
- * Thresholds are product hypotheses (Stage 14), not validated measures. Any
- * change bumps CREATOR_STATUS_RULES_VERSION; stored runs keep the version
- * they were calculated under.
+ * NOT creditworthiness: nothing here is read by underwriting, fraud or lending.
+ *
+ * Thresholds are product hypotheses (Stage 14) to be tuned with real creators.
+ * Any change bumps STATUS_RULES_VERSION; stored runs keep their version.
+ * Brand activity is part of Status in CLAUDE.md §15 but has no data source yet,
+ * so it is not a criterion until it does.
  */
-export const CREATOR_STATUS_RULES_VERSION = "cs-0.1.0";
+export const STATUS_RULES_VERSION = "cs-0.1.0";
+
+/** Signals Status reads, all from the creator's latest Professional Graph run. */
+export interface StatusInputs {
+  /** Professional longevity — only when verified from connected accounts (self-declared doesn't count). */
+  verifiedLongevityMonths: number | null;
+  connectedPlatforms: number;
+  totalAudience: number | null;
+  /** Average engagement rate over the last 3 months, as a ratio (0.025 = 2.5%). */
+  engagementRate3m: number | null;
+  /** 0–1, higher is steadier. */
+  engagementStability: number | null;
+  /** Share of the last 12 months with posts, 0–1. */
+  postingConsistency12m: number | null;
+  followerSpikeDetected: boolean | null;
+  handleMismatches: number | null;
+}
+
+export const EMPTY_STATUS_INPUTS: StatusInputs = {
+  verifiedLongevityMonths: null,
+  connectedPlatforms: 0,
+  totalAudience: null,
+  engagementRate3m: null,
+  engagementStability: null,
+  postingConsistency12m: null,
+  followerSpikeDetected: null,
+  handleMismatches: null,
+};
 
 export const STATUS_CRITERIA = [
   "verified_activity",
-  "verified_longevity",
+  "longevity",
   "reach",
   "engagement_quality",
-  "posting_consistency",
-  "steady_engagement",
+  "consistency",
+  "engagement_stability",
   "authenticity",
 ] as const;
 export type StatusCriterion = (typeof STATUS_CRITERIA)[number];
 
-export type EarnedTier = Exclude<CreatorStatusTier, "member">;
-
-interface Thresholds {
-  platforms: number;
-  longevityMonths: number;
-  audience: number;
-  /** Ratio, e.g. 0.02 = 2%. */
-  engagementRate: number;
-  /** Share of observed months with a new post. */
-  postingConsistency: number;
-  /** Engagement stability (0–1); null = not a criterion for this tier. */
-  engagementStability: number | null;
+type Threshold = number;
+interface TierRequirements {
+  verified_activity: Threshold; // connected platforms
+  longevity: Threshold; // verified months
+  reach: Threshold; // people
+  engagement_quality: Threshold; // ratio
+  consistency: Threshold; // ratio of months
+  engagement_stability: Threshold | null; // ratio; null = not required
+  authenticity: true; // no follower spike, no handle mismatch
 }
 
-export const STATUS_THRESHOLDS: Record<EarnedTier, Thresholds> = {
+export const TIER_REQUIREMENTS: Record<Exclude<CreatorStatusTier, "member">, TierRequirements> = {
   onyx: {
-    platforms: 1,
-    longevityMonths: 24,
-    audience: 25_000,
-    engagementRate: 0.02,
-    postingConsistency: 0.6,
-    engagementStability: null,
+    verified_activity: 1,
+    longevity: 24,
+    reach: 25_000,
+    engagement_quality: 0.02,
+    consistency: 0.6,
+    engagement_stability: null,
+    authenticity: true,
   },
   icon: {
-    platforms: 2,
-    longevityMonths: 48,
-    audience: 250_000,
-    engagementRate: 0.03,
-    postingConsistency: 0.75,
-    engagementStability: 0.7,
+    verified_activity: 2,
+    longevity: 48,
+    reach: 2_50_000,
+    engagement_quality: 0.03,
+    consistency: 0.75,
+    engagement_stability: 0.7,
+    authenticity: true,
   },
 };
 
-/** The slice of a Professional Graph signal the rules need. */
-export interface StatusSignal {
-  value: number | boolean | null;
-  source: string;
-}
-export type StatusSignals = Partial<Record<string, StatusSignal>>;
+export type CriterionState = "met" | "not_met" | "missing";
 
 export interface CriterionResult {
-  criterion: StatusCriterion;
-  met: boolean;
-  /** The signal value used (null when missing). Booleans for authenticity are reported as met/not met only. */
-  value: number | null;
-  /** The threshold it was compared with (null for authenticity). */
+  tier: Exclude<CreatorStatusTier, "member">;
+  key: StatusCriterion;
+  state: CriterionState;
+  /** The threshold for this tier (number), or null for pass/fail criteria. */
   threshold: number | null;
-}
-
-export interface TierChecklist {
-  tier: EarnedTier;
-  met: boolean;
-  criteria: CriterionResult[];
+  /** The creator's value, when there is one. */
+  value: number | null;
 }
 
 export interface StatusEvaluation {
-  rulesVersion: typeof CREATOR_STATUS_RULES_VERSION;
+  version: string;
   tier: CreatorStatusTier;
-  checklists: TierChecklist[];
+  criteria: CriterionResult[];
 }
 
-function numeric(signals: StatusSignals, key: string): number | null {
-  const v = signals[key]?.value;
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
+function atLeast(value: number | null, threshold: number): CriterionState {
+  if (value === null || !Number.isFinite(value)) return "missing";
+  return value >= threshold ? "met" : "not_met";
 }
 
-function atLeast(criterion: StatusCriterion, value: number | null, threshold: number): CriterionResult {
-  return { criterion, met: value !== null && value >= threshold, value, threshold };
-}
-
-function checklistFor(tier: EarnedTier, signals: StatusSignals): TierChecklist {
-  const t = STATUS_THRESHOLDS[tier];
-  // Longevity only counts when it is verified from connected accounts, never self-declared.
-  const longevity =
-    signals.professional_longevity_months?.source === "verified"
-      ? numeric(signals, "professional_longevity_months")
-      : null;
-  const spike = signals.follower_spike_detected?.value;
-  const mismatches = numeric(signals, "handle_mismatches");
-  const authentic = spike === false && mismatches === 0;
-
-  const criteria: CriterionResult[] = [
-    atLeast("verified_activity", numeric(signals, "connected_platforms"), t.platforms),
-    atLeast("verified_longevity", longevity, t.longevityMonths),
-    atLeast("reach", numeric(signals, "total_audience"), t.audience),
-    atLeast("engagement_quality", numeric(signals, "engagement_rate_3m"), t.engagementRate),
-    atLeast("posting_consistency", numeric(signals, "posting_consistency_12m"), t.postingConsistency),
+function evaluateTier(tier: "onyx" | "icon", s: StatusInputs): CriterionResult[] {
+  const r = TIER_REQUIREMENTS[tier];
+  const out: CriterionResult[] = [
+    {
+      tier,
+      key: "verified_activity",
+      state: s.connectedPlatforms >= r.verified_activity ? "met" : "not_met",
+      threshold: r.verified_activity,
+      value: s.connectedPlatforms,
+    },
+    {
+      tier,
+      key: "longevity",
+      state: atLeast(s.verifiedLongevityMonths, r.longevity),
+      threshold: r.longevity,
+      value: s.verifiedLongevityMonths,
+    },
+    { tier, key: "reach", state: atLeast(s.totalAudience, r.reach), threshold: r.reach, value: s.totalAudience },
+    {
+      tier,
+      key: "engagement_quality",
+      state: atLeast(s.engagementRate3m, r.engagement_quality),
+      threshold: r.engagement_quality,
+      value: s.engagementRate3m,
+    },
+    {
+      tier,
+      key: "consistency",
+      state: atLeast(s.postingConsistency12m, r.consistency),
+      threshold: r.consistency,
+      value: s.postingConsistency12m,
+    },
   ];
-  if (t.engagementStability !== null) {
-    criteria.push(atLeast("steady_engagement", numeric(signals, "engagement_stability"), t.engagementStability));
+  if (r.engagement_stability !== null) {
+    out.push({
+      tier,
+      key: "engagement_stability",
+      state: atLeast(s.engagementStability, r.engagement_stability),
+      threshold: r.engagement_stability,
+      value: s.engagementStability,
+    });
   }
-  criteria.push({ criterion: "authenticity", met: authentic, value: null, threshold: null });
-  return { tier, met: criteria.every((c) => c.met), criteria };
+  const authenticity: CriterionState =
+    s.followerSpikeDetected === null || s.handleMismatches === null
+      ? "missing"
+      : !s.followerSpikeDetected && s.handleMismatches === 0
+        ? "met"
+        : "not_met";
+  out.push({ tier, key: "authenticity", state: authenticity, threshold: null, value: null });
+  return out;
 }
 
-/** Calculates the tier and the full per-tier checklist from Professional Graph signals. */
-export function evaluateCreatorStatus(signals: StatusSignals): StatusEvaluation {
-  const onyx = checklistFor("onyx", signals);
-  const icon = checklistFor("icon", signals);
-  const tier: CreatorStatusTier = icon.met ? "icon" : onyx.met ? "onyx" : "member";
-  return { rulesVersion: CREATOR_STATUS_RULES_VERSION, tier, checklists: [onyx, icon] };
+/** The tier is the highest whose every criterion is met. */
+export function evaluateStatus(inputs: StatusInputs): StatusEvaluation {
+  const onyx = evaluateTier("onyx", inputs);
+  const icon = evaluateTier("icon", inputs);
+  const all = (cs: CriterionResult[]) => cs.every((c) => c.state === "met");
+  const tier: CreatorStatusTier = all(onyx) && all(icon) ? "icon" : all(onyx) ? "onyx" : "member";
+  return { version: STATUS_RULES_VERSION, tier, criteria: [...onyx, ...icon] };
+}
+
+/** The feature values Status reads, picked from a graph run's features. */
+export function statusInputsFromFeatures(
+  features: readonly { key: string; value: number | boolean | null; source: string }[],
+): StatusInputs {
+  const num = (key: string) => {
+    const f = features.find((x) => x.key === key);
+    return typeof f?.value === "number" ? f.value : null;
+  };
+  const longevity = features.find((x) => x.key === "professional_longevity_months");
+  const spike = features.find((x) => x.key === "follower_spike_detected");
+  return {
+    verifiedLongevityMonths:
+      longevity?.source === "verified" && typeof longevity.value === "number" ? longevity.value : null,
+    connectedPlatforms: num("connected_platforms") ?? 0,
+    totalAudience: num("total_audience"),
+    engagementRate3m: num("engagement_rate_3m"),
+    engagementStability: num("engagement_stability"),
+    postingConsistency12m: num("posting_consistency_12m"),
+    followerSpikeDetected: typeof spike?.value === "boolean" ? spike.value : null,
+    handleMismatches: num("handle_mismatches"),
+  };
 }

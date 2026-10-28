@@ -164,12 +164,12 @@ export const CONSENT_DEFINITION_SEEDS = [
     version: 1,
     title: "Brand opportunities",
     purpose:
-      "To consider your requests for Access opportunities — PR drops, programmes, experiences and events — using your Creator Professional Profile and Creator Status.",
+      "To consider your requests for brand opportunities in Access, using a summary of your Creator Professional Profile.",
     body: [
-      "When you request an Access opportunity, CreatorCo's partnerships team reviews it using a summary of your Creator Professional Profile: your display name, handle, category, city, Creator Status, connected platforms and the professional signals shown on your Passport, together with any note you add. They never see your financial information, eligibility checks or anything about credit.",
-      "In this preview the opportunities are samples from fictional brands. Nothing about you is shared with any brand, and nothing is delivered. A request holds the Creator Points it costs; they are spent if it is approved and returned if it is declined, expires or you cancel it. Creator Points are not money and can't be exchanged, transferred or withdrawn.",
-      "CreatorCo keeps a record of each request and its outcome. Our audit log keeps a minimal record of what happened (for example that a request was made or approved), without the opportunity or your note.",
-      "You can withdraw this consent at any time. Pending requests are then cancelled and their points returned, and your request history is erased. The minimal audit record stays. Sharing anything with a real brand would need a new version of this consent first.",
+      "When you request an opportunity in Access, CreatorCo's partnerships team reviews your request. To do that we use your display name, creator handles, categories, city, Creator Status and a summary of your connected accounts (platforms and total audience), plus any note you add.",
+      "During the preview every opportunity and brand is a sample: nothing is sent to any brand and nothing is fulfilled. Sharing your details with a real brand will need a new version of this consent, which we'll ask you for first.",
+      "This never includes your financial information, your eligibility checks or anything a partner lender sees. Creator Points used for a request are simulated membership points — not money.",
+      "You can withdraw this consent at any time: pending requests are cancelled, their points are returned, and your request history — including your notes — is erased. Points already spent on approved requests aren't returned. CreatorCo keeps a minimal security log of the actions (such as the points involved), without your notes or which opportunities you requested.",
     ].join("\n\n"),
     activeFrom: new Date("2026-10-03T00:00:00.000Z"),
   },

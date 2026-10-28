@@ -1,7 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { ListGroup, ListRow, MembershipCard, PageHeader, StatusBadge, VerificationMark } from "@/components/creatorco";
+import {
+  CreatorStatusBadge,
+  ListGroup,
+  ListRow,
+  MembershipCard,
+  PageHeader,
+  StatusBadge,
+  VerificationMark,
+} from "@/components/creatorco";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FEATURE_COPY, formatFeatureValue } from "@/modules/professional-graph/presentation";
@@ -67,6 +75,19 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
             memberSince={passport.memberSince}
             memberNumber={passport.memberNumber}
           />
+
+          <ListGroup id="status" label="Creator Status" footer="Professional standing — never a credit input.">
+            <ListRow
+              href="/passport/status"
+              label="Your Creator Status"
+              detail={
+                passport.status.basis === "no_signals"
+                  ? "Connect an account and turn on signals to be considered"
+                  : "See what each tier looks for"
+              }
+              accessory={<CreatorStatusBadge tier={passport.tier} />}
+            />
+          </ListGroup>
 
           <ListGroup id="verification" label="Verification">
             {passport.verifications.map((v) => (

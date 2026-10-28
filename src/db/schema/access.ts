@@ -2,14 +2,15 @@ import { sql } from "drizzle-orm";
 import { boolean, check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 import {
+  ACCESS_DECLINE_REASONS,
   ACCESS_REQUEST_STATUSES,
-  CANCEL_REASONS,
-  DECLINE_REASONS,
-  NOTE_MAX_LENGTH,
+  MAX_POINTS_COST,
+  MAX_SEATS,
   OPPORTUNITY_KINDS,
   OPPORTUNITY_STATUSES,
 } from "@/modules/access/domain";
 import { CREATOR_STATUS_TIERS } from "@/modules/creator-status/status";
+import { LEDGER_ENTRY_TYPES } from "@/modules/rewards/rules";
 
 import { createdAt, sqlInList, updatedAt } from "./_shared";
 import { consentReceipts } from "./consent";
@@ -17,56 +18,69 @@ import { creatorProfiles } from "./creator-profile";
 import { users } from "./identity";
 
 /**
- * Access opportunities (Stage 14). The preview carries sample opportunities
- * from fictional brands only (`is_preview` must be true): real brands need a
- * brand agreement and a new version of the Brand opportunities consent first.
+ * Access preview (Stage 14) — creator-professional domain. Brands and
+ * opportunities are samples (fictional brands) in Phase 1; requests are never
+ * sent to a brand. No financial data, ever.
  */
-export const accessOpportunities = pgTable(
-  "access_opportunities",
+export const brands = pgTable(
+  "brands",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    slug: text("slug").notNull(),
-    brandName: text("brand_name").notNull(),
-    title: text("title").notNull(),
-    kind: text("kind", { enum: OPPORTUNITY_KINDS }).notNull(),
+    name: text("name").notNull(),
     category: text("category").notNull(),
-    summary: text("summary").notNull(),
-    minTier: text("min_tier", { enum: CREATOR_STATUS_TIERS }).notNull(),
-    pointsCost: integer("points_cost").notNull(),
-    places: integer("places").notNull(),
-    opensAt: timestamp("opens_at", { withTimezone: true }).notNull(),
-    closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
-    status: text("status", { enum: OPPORTUNITY_STATUSES }).notNull().default("open"),
-    isPreview: boolean("is_preview").notNull().default(true),
-    createdBy: uuid("created_by").references(() => users.id, { onDelete: "restrict" }),
-    updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "restrict" }),
+    description: text("description"),
+    /** A fictional sample brand (all brands in the Phase 1 preview). */
+    isSample: boolean("is_sample").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
-    uniqueIndex("access_opportunities_slug_key").on(t.slug),
-    index("access_opportunities_listing_idx").on(t.status, t.closesAt),
-    check("access_opportunities_slug_format", sql`${t.slug} ~ '^[a-z0-9][a-z0-9-]{2,63}$'`),
+    uniqueIndex("brands_name_key").on(sql`lower(${t.name})`),
+    check("brands_name_length", sql`char_length(${t.name}) between 2 and 80`),
+  ],
+).enableRLS();
+
+export const accessOpportunities = pgTable(
+  "access_opportunities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    brandId: uuid("brand_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "restrict" }),
+    title: text("title").notNull(),
+    kind: text("kind", { enum: OPPORTUNITY_KINDS }).notNull(),
+    category: text("category").notNull(),
+    summary: text("summary").notNull(),
+    details: text("details").notNull(),
+    /** Lowest Creator Status that may request it. */
+    minTier: text("min_tier", { enum: CREATOR_STATUS_TIERS }).notNull().default("member"),
+    pointsCost: integer("points_cost").notNull(),
+    seats: integer("seats").notNull(),
+    opensAt: timestamp("opens_at", { withTimezone: true }).notNull(),
+    closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
+    status: text("status", { enum: OPPORTUNITY_STATUSES }).notNull().default("draft"),
+    isSample: boolean("is_sample").notNull().default(true),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("access_opportunities_status_idx").on(t.status, t.closesAt),
     check("access_opportunities_kind_valid", sql`${t.kind} in (${sqlInList(OPPORTUNITY_KINDS)})`),
     check("access_opportunities_status_valid", sql`${t.status} in (${sqlInList(OPPORTUNITY_STATUSES)})`),
     check("access_opportunities_min_tier_valid", sql`${t.minTier} in (${sqlInList(CREATOR_STATUS_TIERS)})`),
-    check("access_opportunities_points_cost_range", sql`${t.pointsCost} between 0 and 100000`),
-    check("access_opportunities_places_range", sql`${t.places} between 1 and 1000`),
-    check("access_opportunities_window_valid", sql`${t.closesAt} > ${t.opensAt}`),
-    check("access_opportunities_preview_only", sql`${t.isPreview}`),
-    check(
-      "access_opportunities_text_bounded",
-      sql`char_length(${t.brandName}) between 2 and 60 and char_length(${t.title}) between 3 and 80
-          and char_length(${t.category}) between 2 and 40 and char_length(${t.summary}) between 10 and 600`,
-    ),
+    check("access_opportunities_cost_range", sql`${t.pointsCost} between 0 and ${sql.raw(String(MAX_POINTS_COST))}`),
+    check("access_opportunities_seats_range", sql`${t.seats} between 1 and ${sql.raw(String(MAX_SEATS))}`),
+    check("access_opportunities_window", sql`${t.closesAt} > ${t.opensAt}`),
+    check("access_opportunities_title_length", sql`char_length(${t.title}) between 3 and 80`),
+    check("access_opportunities_summary_length", sql`char_length(${t.summary}) between 3 and 200`),
+    check("access_opportunities_details_length", sql`char_length(${t.details}) between 3 and 2000`),
   ],
 ).enableRLS();
 
 /**
- * A creator's request for an opportunity. Points are held while it is
- * `requested`; it then moves exactly once (guard trigger, migration 0032):
- * approved (points spent) or declined / cancelled / expired (points returned).
- * Rows are deleted only by erasure (Brand opportunities consent withdrawn).
+ * A creator's request for an opportunity. Tied to the `brand_opportunities`
+ * consent receipt it was made under; erased when that consent is withdrawn.
  */
 export const accessRequests = pgTable(
   "access_requests",
@@ -75,60 +89,97 @@ export const accessRequests = pgTable(
     opportunityId: uuid("opportunity_id")
       .notNull()
       .references(() => accessOpportunities.id, { onDelete: "restrict" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
     creatorId: uuid("creator_id")
       .notNull()
       .references(() => creatorProfiles.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
     status: text("status", { enum: ACCESS_REQUEST_STATUSES }).notNull().default("requested"),
-    /** Optional note from the creator to the partnerships team. */
-    note: text("note"),
     pointsHeld: integer("points_held").notNull(),
+    tierAtRequest: text("tier_at_request", { enum: CREATOR_STATUS_TIERS }).notNull(),
+    /** Optional short note from the creator to the brand team. */
+    note: text("note"),
     consentReceiptId: uuid("consent_receipt_id")
       .notNull()
       .references(() => consentReceipts.id, { onDelete: "restrict" }),
     requestedAt: timestamp("requested_at", { withTimezone: true }).notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "set null" }),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
-    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "restrict" }),
-    declineReason: text("decline_reason", { enum: DECLINE_REASONS }),
-    cancelReason: text("cancel_reason", { enum: CANCEL_REASONS }),
+    declineReason: text("decline_reason", { enum: ACCESS_DECLINE_REASONS }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
-    // One live request per creator and opportunity.
+    // One live request per creator per opportunity.
     uniqueIndex("access_requests_active_key")
-      .on(t.creatorId, t.opportunityId)
+      .on(t.opportunityId, t.creatorId)
       .where(sql`${t.status} in ('requested', 'approved')`),
     index("access_requests_queue_idx").on(t.status, t.requestedAt),
-    index("access_requests_opportunity_idx").on(t.opportunityId, t.status),
-    index("access_requests_creator_idx").on(t.creatorId, t.requestedAt.desc()),
-    index("access_requests_expiry_idx")
-      .on(t.expiresAt)
-      .where(sql`${t.status} = 'requested'`),
+    index("access_requests_user_idx").on(t.userId, t.requestedAt.desc()),
     check("access_requests_status_valid", sql`${t.status} in (${sqlInList(ACCESS_REQUEST_STATUSES)})`),
-    check("access_requests_points_held_range", sql`${t.pointsHeld} >= 0`),
-    check(
-      "access_requests_note_bounded",
-      sql`${t.note} is null or char_length(${t.note}) between 1 and ${sql.raw(String(NOTE_MAX_LENGTH))}`,
-    ),
-    check("access_requests_expiry_after_request", sql`${t.expiresAt} > ${t.requestedAt}`),
+    check("access_requests_tier_valid", sql`${t.tierAtRequest} in (${sqlInList(CREATOR_STATUS_TIERS)})`),
     check(
       "access_requests_decline_reason_valid",
-      sql`${t.declineReason} is null or ${t.declineReason} in (${sqlInList(DECLINE_REASONS)})`,
+      sql`${t.declineReason} is null or ${t.declineReason} in (${sqlInList(ACCESS_DECLINE_REASONS)})`,
     ),
+    check("access_requests_points_range", sql`${t.pointsHeld} between 0 and ${sql.raw(String(MAX_POINTS_COST))}`),
+    check("access_requests_note_length", sql`${t.note} is null or char_length(${t.note}) <= 280`),
     check(
-      "access_requests_cancel_reason_valid",
-      sql`${t.cancelReason} is null or ${t.cancelReason} in (${sqlInList(CANCEL_REASONS)})`,
+      "access_requests_decision_shape",
+      sql`(${t.status} in ('approved', 'declined')) = (${t.decidedAt} is not null)
+        and (${t.status} = 'declined') = (${t.declineReason} is not null)
+        and (${t.status} = 'requested') = (${t.closedAt} is null)`,
     ),
+  ],
+).enableRLS();
+
+/**
+ * Creator Points ledger — append-only (no updates, no deletes outside erasure
+ * cascades). Balance = sum(amount). A hold is a pending request's points; if
+ * the request is approved the hold stands as the spend, otherwise a release
+ * returns it. Simulated membership points: not money, never rupees.
+ */
+export const creatorPointsLedger = pgTable(
+  "creator_points_ledger",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creatorProfiles.id, { onDelete: "cascade" }),
+    entryType: text("entry_type", { enum: LEDGER_ENTRY_TYPES }).notNull(),
+    amount: integer("amount").notNull(),
+    /** earn: the rule code (e.g. `welcome`, `tier_onyx`). */
+    rule: text("rule"),
+    rulesVersion: text("rules_version"),
+    /** earn: idempotency key, unique per creator. */
+    earnKey: text("earn_key"),
+    /**
+     * hold/release: the request. Deliberately not a foreign key — the request row is erased when the
+     * creator withdraws the brand consent, but the hold/release pairing (an id, nothing personal) must
+     * survive so the balance history stays explainable.
+     */
+    requestId: uuid("request_id"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("creator_points_ledger_earn_key")
+      .on(t.creatorId, t.earnKey)
+      .where(sql`${t.earnKey} is not null`),
+    uniqueIndex("creator_points_ledger_request_entry_key")
+      .on(t.requestId, t.entryType)
+      .where(sql`${t.requestId} is not null`),
+    index("creator_points_ledger_creator_idx").on(t.creatorId, t.occurredAt.desc()),
+    check("creator_points_ledger_type_valid", sql`${t.entryType} in (${sqlInList(LEDGER_ENTRY_TYPES)})`),
     check(
-      "access_requests_outcome_shape",
-      sql`(${t.status} = 'requested') = (${t.decidedAt} is null)
-          and (${t.status} in ('approved', 'declined')) = (${t.decidedBy} is not null)
-          and (${t.status} = 'declined') = (${t.declineReason} is not null)
-          and (${t.status} = 'cancelled') = (${t.cancelReason} is not null)`,
+      "creator_points_ledger_shape",
+      sql`case ${t.entryType}
+        when 'earn' then ${t.amount} > 0 and ${t.rule} is not null and ${t.rulesVersion} is not null and ${t.earnKey} is not null
+        when 'hold' then ${t.amount} < 0 and ${t.rule} is null and ${t.earnKey} is null
+        when 'release' then ${t.amount} > 0 and ${t.rule} is null and ${t.earnKey} is null
+      end`,
     ),
   ],
 ).enableRLS();

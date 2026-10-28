@@ -15,11 +15,14 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDb } from "@/db";
-import { SAMPLE_OPPORTUNITIES } from "@/modules/access/sample-opportunities";
+import { listOpportunitiesForCreator } from "@/modules/access";
+import { OPPORTUNITY_KIND_LABELS } from "@/modules/access/presentation";
 import { getCreatorDashboard } from "@/modules/creator-profile/queries";
 import { getOpenApplication, listApplications } from "@/modules/financial-eligibility/application-service";
 import { getCreatorLenderView } from "@/modules/lending";
 import { FEATURE_COPY, formatFeatureValue } from "@/modules/professional-graph/presentation";
+import { getPointsSummary } from "@/modules/rewards/ledger-service";
+import { formatPoints } from "@/modules/rewards/rules";
 
 import { requireMember } from "../_lib/member";
 import { lenderBadge } from "../eligibility/_lib/lender-badge";
@@ -40,6 +43,13 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
   const sentBadge = sentCheck
     ? lenderBadge(await getCreatorLenderView(getDb(), { userId: user.userId, applicationId: sentCheck.id }))
     : null;
+  const [opportunities, points] = await Promise.all([
+    listOpportunitiesForCreator(getDb(), { userId: user.userId, creatorId: passport.creatorId }),
+    getPointsSummary(getDb(), passport.creatorId, 0),
+  ]);
+  // What the creator can act on first; tier-locked and full ones after.
+  const rank = (a: string) => (a === "open" || a === "requested" || a === "approved" ? 0 : 1);
+  const featured = [...opportunities].sort((a, b) => rank(a.availability) - rank(b.availability)).slice(0, 3);
   const { welcome } = await searchParams;
 
   const connected = passport.accounts.filter((a) => a.status === "connected").length;
@@ -135,10 +145,14 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
             </div>
             <CardDescription>Your professional standing in the network.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col items-start gap-4">
             <p className="text-subhead text-ink-muted">
-              Status reflects your creator career and participation. It never sets financial limits.
+              Built from verified activity, longevity, reach, engagement and consistency. It never affects financial
+              eligibility.
             </p>
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/passport/status">See how Status works</Link>
+            </Button>
           </CardContent>
         </Card>
 
@@ -184,21 +198,29 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
             See all
           </Link>
         </div>
-        <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
-          {SAMPLE_OPPORTUNITIES.map((o) => (
-            <li
-              key={o.id}
-              className="w-[72%] shrink-0 snap-start rounded-card bg-surface p-5 ring-1 ring-line ring-inset sm:w-auto"
-            >
-              <p className="text-footnote font-semibold tracking-[var(--tracking-eyebrow)] text-gold uppercase">
-                {o.kind}
-              </p>
-              <p className="mt-3 text-title-3 leading-tight font-semibold tracking-tight">{o.title}</p>
-              <p className="mt-1 text-subhead text-ink-muted">{o.category}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-footnote text-ink-subtle">Sample preview — not live opportunities.</p>
+        {opportunities.length ? (
+          <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+            {featured.map((o) => (
+              <li key={o.id} className="w-[72%] shrink-0 snap-start sm:w-auto">
+                <Link
+                  href={`/access/${o.id}`}
+                  className="block h-full rounded-card bg-surface p-5 ring-1 ring-line ring-inset"
+                >
+                  <p className="text-footnote font-semibold tracking-[var(--tracking-eyebrow)] text-gold uppercase">
+                    {OPPORTUNITY_KIND_LABELS[o.kind]}
+                  </p>
+                  <p className="mt-3 text-title-3 leading-tight font-semibold tracking-tight">{o.title}</p>
+                  <p className="mt-1 text-subhead text-ink-muted">{o.brand.name}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-subhead text-ink-muted">Nothing open right now.</p>
+        )}
+        <p className="mt-2 text-footnote text-ink-subtle">
+          {formatPoints(points.balance)} available · Preview with sample brands.
+        </p>
       </section>
     </CreatorShell>
   );

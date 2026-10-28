@@ -1,9 +1,8 @@
-import { eq, isNotNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
-import type { OpportunityInput } from "@/modules/access/access-service";
-import { grantDueMilestones } from "@/modules/rewards/points-service";
 import { hashPassword } from "@/modules/identity/auth/password";
 import { hashApiKey } from "@/modules/partners/credentials";
+import { syncMilestonePoints } from "@/modules/rewards/ledger-service";
 import { gstinCheckCharacter } from "@/modules/creator-profile/gstin";
 import { CONSENT_DEFINITION_SEEDS } from "@/modules/consent/definitions";
 import { SELF_DECLARED_PROVIDER } from "@/modules/social-data/domain";
@@ -12,7 +11,6 @@ import type { UserRole } from "@/modules/identity/domain";
 
 import type { Database } from "../create-db";
 import {
-  accessOpportunities,
   auditEvents,
   creatorAdditionalCategories,
   authIdentities,
@@ -25,6 +23,8 @@ import {
   providerConfigs,
   providerRuntime,
   users,
+  accessOpportunities,
+  brands,
 } from "../schema";
 
 /**
@@ -170,72 +170,9 @@ export const DEMO_STAFF: { n: number; email: string; role: UserRole }[] = [
   // Two ops admins so maker-checker approvals can be demonstrated.
   { n: 102, email: "ops.admin@staff.creatorco.test", role: "ops_admin" },
   { n: 103, email: "ops.approver@staff.creatorco.test", role: "ops_admin" },
-  // Stage 14: the partnerships desk (Access requests and opportunities).
+  // Brand partnerships desk (Stage 14): reviews Access requests and manages opportunities.
   { n: 105, email: "partnerships.admin@staff.creatorco.test", role: "partnerships_admin" },
 ];
-
-/**
- * Stage 14 sample opportunities. Every brand here is FICTIONAL; the preview
- * delivers nothing and shares nothing with anyone.
- */
-export const DEMO_OPPORTUNITIES: Omit<OpportunityInput, "opensAt" | "closesAt">[] = [
-  {
-    slug: "aurel-beauty-drop",
-    brandName: "Aurel Beauty",
-    title: "Luxury Beauty Drop",
-    kind: "pr_drop",
-    category: "Beauty",
-    summary: "A first look at Aurel Beauty's winter skincare edit, sent to creators who review beauty thoughtfully.",
-    minTier: "member",
-    pointsCost: 300,
-    places: 20,
-  },
-  {
-    slug: "northlight-camera-programme",
-    brandName: "Northlight Cameras",
-    title: "Camera Creator Programme",
-    kind: "programme",
-    category: "Photography & film",
-    summary: "A three-month loan of a Northlight mirrorless kit, with a workshop on shooting for short-form video.",
-    minTier: "onyx",
-    pointsCost: 800,
-    places: 10,
-  },
-  {
-    slug: "saffron-stay-weekend",
-    brandName: "Saffron Stay Hotels",
-    title: "Creator Hotel Weekend",
-    kind: "experience",
-    category: "Travel",
-    summary: "Two nights at a Saffron Stay heritage property for creators who tell travel stories with care.",
-    minTier: "onyx",
-    pointsCost: 1200,
-    places: 4,
-  },
-  {
-    slug: "atelier-nine-preview",
-    brandName: "Atelier Nine",
-    title: "Fashion Preview",
-    kind: "event",
-    category: "Fashion",
-    summary: "An early walk-through of Atelier Nine's festive collection, with the design team.",
-    minTier: "member",
-    pointsCost: 400,
-    places: 12,
-  },
-  {
-    slug: "soundfold-live-access",
-    brandName: "Soundfold Live",
-    title: "Music & Event Access",
-    kind: "event",
-    category: "Music",
-    summary: "Backstage access at a Soundfold Live showcase for creators covering independent music.",
-    minTier: "icon",
-    pointsCost: 1500,
-    places: 6,
-  },
-];
-const OPPORTUNITY_WINDOW = { opensAt: SEED_AT, closesAt: new Date("2027-06-30T18:29:59.000Z") };
 
 const uuid = (prefix: string, n: number) => `00000000-0000-4000-${prefix}-${String(n).padStart(12, "0")}`;
 export const demoIds = {
@@ -244,7 +181,8 @@ export const demoIds = {
   profile: (n: number) => uuid("8003", n),
   social: (n: number, i: number) => uuid("8004", n * 100 + i),
   receipt: (n: number) => uuid("8005", n),
-  opportunity: (n: number) => uuid("8008", n),
+  brand: (n: number) => uuid("8008", n),
+  opportunity: (n: number) => uuid("8009", n),
 };
 
 export async function seedDemoData(db: Database, password: string) {
@@ -374,27 +312,13 @@ export async function seedDemoData(db: Database, password: string) {
       }
     }
 
-    await seedSandboxPartner(tx);
+    // Membership milestone points for completed demo members (idempotent: each rule once per creator).
+    for (const c of DEMO_CREATORS.filter((d) => d.completed)) {
+      await syncMilestonePoints(tx, { userId: demoIds.user(c.n), now: SEED_AT });
+    }
 
-    // Stage 14: sample opportunities, and one-off milestone points for every completed profile
-    // (idempotent — the backfill for members who completed onboarding before Stage 14).
-    await tx
-      .insert(accessOpportunities)
-      .values(
-        DEMO_OPPORTUNITIES.map((o, i) => ({
-          id: demoIds.opportunity(i + 1),
-          ...o,
-          ...OPPORTUNITY_WINDOW,
-          createdAt: SEED_AT,
-          updatedAt: SEED_AT,
-        })),
-      )
-      .onConflictDoNothing();
-    const completedProfiles = await tx
-      .select({ id: creatorProfiles.id })
-      .from(creatorProfiles)
-      .where(isNotNull(creatorProfiles.completedAt));
-    for (const p of completedProfiles) await grantDueMilestones(tx, { creatorId: p.id });
+    await seedSandboxPartner(tx);
+    await seedAccessPreview(tx);
 
     if (createdProfiles > 0) {
       await tx.insert(auditEvents).values({
@@ -465,4 +389,127 @@ async function seedSandboxPartner(tx: Parameters<Parameters<Database["transactio
       updatedAt: SEED_AT,
     })
     .onConflictDoNothing();
+}
+
+/**
+ * Stage 14 Access preview: FICTIONAL sample brands and opportunities (names are
+ * invented; none is a real company). Fixed ids and dates; requests stay open
+ * until 30 Sep 2027.
+ */
+export const DEMO_BRANDS = [
+  { n: 1, name: "Aurel Beauty", category: "Beauty", description: "A fictional skincare and colour house." },
+  { n: 2, name: "Northlight Cameras", category: "Photography", description: "A fictional camera and lens maker." },
+  { n: 3, name: "Saffron Stay Hotels", category: "Travel", description: "A fictional boutique hotel group." },
+  { n: 4, name: "Atelier Nine", category: "Fashion", description: "A fictional ready-to-wear label." },
+  { n: 5, name: "Soundfold Live", category: "Music & events", description: "A fictional live-music promoter." },
+] as const;
+
+const ACCESS_OPENS = new Date("2026-09-15T04:30:00.000Z");
+const ACCESS_CLOSES = new Date("2027-09-30T18:29:00.000Z"); // 23:59 IST
+
+export const DEMO_OPPORTUNITIES = [
+  {
+    n: 1,
+    brand: 1,
+    title: "Luxury Beauty Drop",
+    kind: "pr_drop",
+    category: "Beauty",
+    summary: "A curated box from the new autumn skincare line, before launch.",
+    details:
+      "Receive the full autumn line two weeks before it reaches stores. No posting obligation — share it only if it fits your work.",
+    minTier: "member",
+    pointsCost: 300,
+    seats: 25,
+  },
+  {
+    n: 2,
+    brand: 2,
+    title: "Camera Creator Programme",
+    kind: "programme",
+    category: "Photography & film",
+    summary: "Three months with a mirrorless kit and a monthly craft session.",
+    details:
+      "A loan kit (body and two lenses) for three months, plus a monthly session with the brand's imaging team. For creators with an established practice.",
+    minTier: "onyx",
+    pointsCost: 800,
+    seats: 10,
+  },
+  {
+    n: 3,
+    brand: 3,
+    title: "Creator Hotel Weekend",
+    kind: "experience",
+    category: "Travel",
+    summary: "Two nights for two at a heritage property in Udaipur.",
+    details:
+      "A weekend stay for two with breakfast and a guided city walk. Dates are agreed with the hotel team; travel isn't included.",
+    minTier: "onyx",
+    pointsCost: 1500,
+    seats: 6,
+  },
+  {
+    n: 4,
+    brand: 4,
+    title: "Fashion Preview",
+    kind: "event",
+    category: "Fashion",
+    summary: "An invitation to the spring collection preview in Mumbai.",
+    details: "An evening preview of the spring collection with the design team. One guest per invitation.",
+    minTier: "member",
+    pointsCost: 0,
+    seats: 40,
+  },
+  {
+    n: 5,
+    brand: 5,
+    title: "Music & Event Access",
+    kind: "event",
+    category: "Music",
+    summary: "Backstage access at a winter festival weekend.",
+    details:
+      "Two festival passes with backstage access on one evening, and a short conversation with the production team.",
+    minTier: "icon",
+    pointsCost: 2000,
+    seats: 4,
+  },
+] as const;
+
+async function seedAccessPreview(tx: Parameters<Parameters<Database["transaction"]>[0]>[0]) {
+  for (const b of DEMO_BRANDS) {
+    await tx
+      .insert(brands)
+      .values({
+        id: demoIds.brand(b.n),
+        name: b.name,
+        category: b.category,
+        description: b.description,
+        isSample: true,
+        createdAt: SEED_AT,
+        updatedAt: SEED_AT,
+      })
+      .onConflictDoNothing();
+  }
+  for (const o of DEMO_OPPORTUNITIES) {
+    await tx
+      .insert(accessOpportunities)
+      .values({
+        id: demoIds.opportunity(o.n),
+        brandId: demoIds.brand(o.brand),
+        title: o.title,
+        kind: o.kind,
+        category: o.category,
+        summary: o.summary,
+        details: o.details,
+        minTier: o.minTier,
+        pointsCost: o.pointsCost,
+        seats: o.seats,
+        opensAt: ACCESS_OPENS,
+        closesAt: ACCESS_CLOSES,
+        status: "live",
+        isSample: true,
+        createdAt: SEED_AT,
+        updatedAt: SEED_AT,
+      })
+      .onConflictDoNothing();
+  }
 }

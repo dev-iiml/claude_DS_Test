@@ -28,6 +28,7 @@ export const PURPOSES: readonly PurposePolicy[] = [
     core: true,
     onWithdraw: [
       "Your membership is paused. Home, Passport and Access close until you give this consent again.",
+      "Pending Access requests are cancelled and their Creator Points returned.",
       "We stop processing your profile, connected accounts and signals.",
       "Your details are kept, so you can resume at any time. Closing your account is a separate request.",
     ],
@@ -104,12 +105,12 @@ export const PURPOSES: readonly PurposePolicy[] = [
   {
     key: CONSENT_KEYS.brandOpportunities,
     label: "Brand opportunities",
-    summary: "Reviewing your requests for Access opportunities using your Creator Professional Profile.",
+    summary: "Considering your requests for brand opportunities in Access.",
     core: false,
     onWithdraw: [
       "Pending Access requests are cancelled and their Creator Points returned.",
-      "Your Access request history is erased. Points already spent on approved requests stay spent.",
-      "You can still browse Access; you'll be asked for this consent again if you make a request.",
+      "Your Access request history, including any notes, is erased.",
+      "You can't request new opportunities until you give this consent again. Your Creator Points balance stays.",
     ],
     erasure: ["access_requests"],
   },

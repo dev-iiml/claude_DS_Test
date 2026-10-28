@@ -18,9 +18,10 @@ recommendations (Stage 10), the integration control plane (10b), the fraud layer
 ## Updating an existing local setup
 
 Pull the new files, then run `npm install && npm run db:migrate`. This applies any pending migrations (currently
-through 0028: lender proposals, partner API keys and webhooks) and publishes reference data (consent texts and,
+through 0032: offers, Creator Status, Access and Creator Points) and publishes reference data (consent texts and,
 outside production, a mock provider route per capability). To also reload the demo data — including the sandbox
-partner and its test key — run `npm run db:reset` (recommended).
+partner, the sample Access brands and opportunities and the partnerships admin — run `npm run db:reset`
+(recommended).
 
 `npm run dev` checks the database first and stops with a list of pending migrations if it is behind the code
 (`npm run db:check` runs the same check on its own).
@@ -50,17 +51,18 @@ run when `APP_ENV` is staging or production.
 
 The password for every demo account is `SEED_DEMO_PASSWORD`, which defaults to `CreatorCo-demo-2026`.
 
-| Email                                  | Role       | State                                   |
-| -------------------------------------- | ---------- | --------------------------------------- |
-| `aarohi.menon@creators.creatorco.test` | creator    | completed · beauty · not GST registered |
-| `kabir.sethi@creators.creatorco.test`  | creator    | completed · travel · GST registered     |
-| `ishita.rao@creators.creatorco.test`   | creator    | completed · food · GST unknown → review |
-| `dev.malhotra@creators.creatorco.test` | creator    | completed · tech · not GST registered   |
-| `naina.kapoor@creators.creatorco.test` | creator    | draft, resumes at Business status       |
-| `risk.admin@staff.creatorco.test`      | risk_admin | risk console (`/admin`)                 |
-| `risk.approver@staff.creatorco.test`   | risk_admin | second approver for lender policy       |
-| `ops.admin@staff.creatorco.test`       | ops_admin  | integration control plane (`/ops`)      |
-| `ops.approver@staff.creatorco.test`    | ops_admin  | second approver for `/ops` changes      |
+| Email                                     | Role               | State                                   |
+| ----------------------------------------- | ------------------ | --------------------------------------- |
+| `aarohi.menon@creators.creatorco.test`    | creator            | completed · beauty · not GST registered |
+| `kabir.sethi@creators.creatorco.test`     | creator            | completed · travel · GST registered     |
+| `ishita.rao@creators.creatorco.test`      | creator            | completed · food · GST unknown → review |
+| `dev.malhotra@creators.creatorco.test`    | creator            | completed · tech · not GST registered   |
+| `naina.kapoor@creators.creatorco.test`    | creator            | draft, resumes at Business status       |
+| `risk.admin@staff.creatorco.test`         | risk_admin         | risk console (`/admin`)                 |
+| `risk.approver@staff.creatorco.test`      | risk_admin         | second approver for lender policy       |
+| `ops.admin@staff.creatorco.test`          | ops_admin          | integration control plane (`/ops`)      |
+| `ops.approver@staff.creatorco.test`       | ops_admin          | second approver for `/ops` changes      |
+| `partnerships.admin@staff.creatorco.test` | partnerships_admin | Access requests (`/partnerships`)       |
 
 All seed identities are invented. Emails use the reserved `.test` TLD and handles end in `.demo`. The seeded GSTIN uses
 an impossible PAN holder-type character, so it cannot match a real registration.
@@ -295,6 +297,45 @@ src/
   5–7 fair · 8–9 strong. Third digit 9 adds a missed payment; the second digit (mod 4) sets recent enquiries.
   Example: `ABCPE1238F` → strong.
 - **Mock Account Aggregator:** see Stage 09b.
+
+### Stage 14: Creator Status, Access preview and Creator Points
+
+- **Creator Status** (Member / Onyx / Icon; `modules/creator-status`, rules `cs-0.1.0`):
+  - Evaluated after every Professional Graph run, from that run's signals only. Each tier is an explicit checklist:
+    verified activity, verified longevity, reach, engagement quality, posting consistency, steady engagement (Icon)
+    and authenticity (no follower spike or handle mismatch).
+  - A missing signal counts as not met, never guessed. Reach alone never earns a tier. Brand activity isn't a
+    criterion until it has a data source. The thresholds are product hypotheses to tune with real creators.
+  - Stored in `creator_status_runs` (append-only), tied to the graph run, so it is erased with the signals. Creators
+    see every criterion at `/passport/status`.
+  - **Never a credit input.** A unit test fails if underwriting, fraud, lending, financial eligibility or partners
+    import Status, Access or points.
+- **Creator Points** (`modules/rewards`, rules `pts-0.1.0`):
+  - Simulated membership points: not cash, not transferable, not withdrawable, never shown in rupees.
+  - Earned once each: welcome 500, verified mobile 100, reaching Onyx 1,000, reaching Icon 2,500. Nothing for
+    credit-related actions, consents or data sharing. Tier points aren't clawed back if Status drops.
+  - Ledger `creator_points_ledger` (append-only): balance = sum. A request holds its points; an approval leaves the
+    hold as the spend; decline, cancel, expiry or withdrawal releases it.
+- **Access** (`modules/access`):
+  - Sample opportunities from **fictional** brands (seeded; the partnerships desk can create, edit and close them).
+    Each has a lowest tier, a points cost, places and a request window.
+  - Requesting needs the new purpose-specific **"Brand opportunities"** consent (`brand_opportunities` v1), given
+    with the first request in the same transaction. In the preview nothing is sent to any brand; sharing with real
+    brands will need a v2.
+  - Creators can cancel a pending request. Pending requests expire when the opportunity closes (job
+    `expire_access_requests`, hourly) and are cancelled if membership is paused.
+  - Withdrawing the consent cancels pending requests, returns their points and erases the request history
+    (`access_requests`). Points spent on approved requests stay spent.
+- **Partnerships desk** (`/partnerships`, new role `partnerships_admin`; no risk, ops or financial access):
+  - A queue of pending requests (oldest first), each with only the creator-professional summary the consent covers.
+    Opening a request is audited.
+  - Approve, or decline with a reason (shown to the creator). Approvals never exceed places, and places can't be cut
+    below approvals already given.
+- **DB guards:** append-only status runs and ledger; an `access_requests` trigger allows only one move out of
+  `requested`, with deletes only in erasure. Withdrawal locks the consent receipts first, so a request in flight is
+  either cancelled by it or refused.
+- **API v1:** `GET /status`, `GET /access`, `GET /access/{id}`, `POST /access/{id}/request`,
+  `POST /access/requests/{id}/cancel`, `GET /points`.
 
 ### Stage 13: the creator's offer
 
@@ -630,6 +671,14 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   check); a held fraud-review check stays "Preparing to send" until staff act (set an SLA); the lender adapter
   must be idempotent on `proposalId` (a late success after a timeout can be retried); admin nav reuses existing
   icons (new icons would be a design-system release).
+- **Stage 14 open items:**
+  - The Status thresholds and point amounts are untested product hypotheses.
+  - Brand activity can't count towards Status until brand or campaign data exists.
+  - Sharing request details with real brands needs consent v2, a brand agreement and a review of the ASCI and §194R
+    PR workflow.
+  - Audit events keep a minimal record of Access actions (points, tier, decline reason — no notes and no opportunity)
+    after the history is erased. Confirm this with counsel.
+  - Creators aren't notified when a request is decided.
 - **Stage 13 open items:**
   - **Counsel / RE:**
     - Whether the 3-day cooling-off minimum and the KFS fields match the partner's obligations.

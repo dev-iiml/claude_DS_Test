@@ -331,7 +331,7 @@ describe("withdrawing the Creator Profile consent", () => {
       { db },
       { userId: m.userId, key: CONSENT_KEYS.creatorProfile, source: "settings" },
     );
-    expect(result.effects).toEqual({ membership_paused: true });
+    expect(result.effects).toEqual({ membership_paused: true, access_requests_cancelled: 0 });
 
     const [p] = await db.select().from(creatorProfiles).where(eq(creatorProfiles.id, m.creatorId));
     expect(p).toMatchObject({ profileStatus: "paused" });

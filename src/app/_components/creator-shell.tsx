@@ -35,9 +35,17 @@ export const OPS_NAV: NavItem[] = [
   { href: "/ops/jobs", label: "Jobs", icon: "jobs" },
 ];
 
-/** Super admins see both consoles; everyone else only their own. */
+export const PARTNERSHIPS_NAV: NavItem[] = [
+  { href: "/partnerships", label: "Requests", icon: "approvals" },
+  { href: "/partnerships/opportunities", label: "Opportunities", icon: "access" },
+];
+
+/** How other consoles link to the partnerships desk (super admins only). */
+const PARTNERSHIPS_LINK: NavItem = { href: "/partnerships", label: "Partnerships", icon: "access" };
+
+/** Super admins see every console; everyone else only their own. */
 export function AdminShell({ children, role }: { children: React.ReactNode; role?: UserRole }) {
-  const nav = role === "super_admin" ? [...ADMIN_NAV, OPS_NAV[0]!] : ADMIN_NAV;
+  const nav = role === "super_admin" ? [...ADMIN_NAV, OPS_NAV[0]!, PARTNERSHIPS_LINK] : ADMIN_NAV;
   return (
     <AppShell nav={nav} sidebarFooter={<SignOutForm />} topBarAction={<SignOutForm />}>
       {children}
@@ -46,7 +54,17 @@ export function AdminShell({ children, role }: { children: React.ReactNode; role
 }
 
 export function OpsShell({ children, role }: { children: React.ReactNode; role?: UserRole }) {
-  const nav = role === "super_admin" ? [...OPS_NAV, ADMIN_NAV[0]!] : OPS_NAV;
+  const nav = role === "super_admin" ? [...OPS_NAV, ADMIN_NAV[0]!, PARTNERSHIPS_LINK] : OPS_NAV;
+  return (
+    <AppShell nav={nav} sidebarFooter={<SignOutForm />} topBarAction={<SignOutForm />}>
+      {children}
+    </AppShell>
+  );
+}
+
+/** The brand partnerships desk (Access requests and opportunities). */
+export function PartnershipsShell({ children, role }: { children: React.ReactNode; role?: UserRole }) {
+  const nav = role === "super_admin" ? [...PARTNERSHIPS_NAV, ADMIN_NAV[0]!, OPS_NAV[0]!] : PARTNERSHIPS_NAV;
   return (
     <AppShell nav={nav} sidebarFooter={<SignOutForm />} topBarAction={<SignOutForm />}>
       {children}

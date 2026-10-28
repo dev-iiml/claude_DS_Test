@@ -14,7 +14,7 @@ export const ADMIN_ROLES = ["risk_admin", "super_admin"] as const satisfies read
 /** Integration control plane (`/ops`): providers, approvals, jobs. No access to risk data. */
 export const OPS_ROLES = ["ops_admin", "super_admin"] as const satisfies readonly UserRole[];
 
-/** Partnerships desk (`/partnerships`): Access requests and opportunities. No risk, financial or ops data. */
+/** Brand partnerships desk (`/partnerships`): Access opportunities and requests. No risk or financial data. */
 export const PARTNERSHIPS_ROLES = ["partnerships_admin", "super_admin"] as const satisfies readonly UserRole[];
 
 /** Session origin: browser cookie, or a bearer token held by a native app / API client. */

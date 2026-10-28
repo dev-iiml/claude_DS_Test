@@ -1,110 +1,228 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
+
+import { count, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { accessRequests, auditEvents, consentReceipts, creatorPointsLedger, creatorStatusRuns } from "@/db/schema";
+import {
+  accessRequests,
+  brands,
+  consentReceipts,
+  creatorPointsLedger,
+  creatorProfessionalFeatures,
+  creatorProfiles,
+  creatorStatusRuns,
+  professionalGraphRuns,
+  users,
+} from "@/db/schema";
 import {
   AccessError,
-  approveAccessRequest,
   cancelAccessRequest,
   closeOpportunity,
-  declineAccessRequest,
+  createOpportunity,
+  decideAccessRequest,
   expireAccessRequests,
   getOpportunityForCreator,
-  getRequestForDesk,
-  listAccessQueue,
+  getRequestForStaff,
   listOpportunitiesForCreator,
   requestAccess,
   updateOpportunity,
 } from "@/modules/access";
 import { CONSENT_KEYS, hasValidConsent } from "@/modules/consent";
-import { getCurrentCreatorStatus } from "@/modules/creator-status";
-import { withdrawPurpose } from "@/modules/privacy";
-import { getLatestProfessionalGraph } from "@/modules/professional-graph/graph-service";
-import { getPointsBalance, getPointsSummary } from "@/modules/rewards";
+import { CONSENT_DEFINITION_SEEDS } from "@/modules/consent/definitions";
+import {
+  completeOnboarding,
+  saveAboutStep,
+  saveBusinessStep,
+  saveInterestsStep,
+  saveProfileStep,
+} from "@/modules/creator-profile/onboarding-service";
+import { aboutStepSchema, businessStepSchema, profileStepSchema } from "@/modules/creator-profile/schemas";
+import { getCreatorStatus, refreshCreatorStatus } from "@/modules/creator-status/status-service";
+import { signUpCreator } from "@/modules/identity/auth/auth-service";
+import { grantPurpose, withdrawPurpose } from "@/modules/privacy";
+import { getPointsSummary, pointsBalance, syncMilestonePoints } from "@/modules/rewards/ledger-service";
 import { completeConnection, startConnection } from "@/modules/social-data/connection-service";
 import { MockSocialDataProvider, encodeMockCode } from "@/providers/social/mock-social-data-provider";
 
-import {
-  ICON_SIGNALS,
-  ONYX_SIGNALS,
-  accessMember,
-  brandConsentId,
-  def,
-  giveSignals,
-  opportunity,
-  partnershipsAdmin,
-} from "../support/access";
-import { connectTestDb } from "../support/db";
+import { authDepsFor, connectTestDb, testEmail } from "../support/db";
 
 const { db } = connectTestDb();
+const auth = authDepsFor(db);
+const def = (key: string) => CONSENT_DEFINITION_SEEDS.find((d) => d.key === key)!.id;
+const BRAND_CONSENT = def(CONSENT_KEYS.brandOpportunities);
+const DAY = 86_400_000;
 
-const request = (userId: string, opportunityId: string, extra: { note?: string; withConsent?: boolean } = {}) =>
-  requestAccess(db, {
+async function member(handle: string) {
+  const r = await signUpCreator(auth, { email: testEmail("access"), password: "a long enough passphrase" });
+  if (!r.ok) throw new Error("signup failed");
+  const userId = r.user.userId;
+  await saveAboutStep(
+    db,
     userId,
-    opportunityId,
-    note: extra.note,
-    consentDefinitionId: extra.withConsent === false ? null : brandConsentId(),
-    source: "settings",
+    aboutStepSchema.parse({
+      legalName: "Mira Iyer",
+      displayName: "Mira Makes",
+      city: "Chennai",
+      state: "Tamil Nadu",
+      languages: ["ta"],
+    }),
+  );
+  await saveProfileStep(
+    db,
+    userId,
+    profileStepSchema.parse({
+      primaryCreatorHandle: handle,
+      categories: ["beauty"],
+      primaryCategory: "beauty",
+      creatorSince: "2019-01",
+      platforms: ["instagram"],
+    }),
+  );
+  await saveBusinessStep(
+    db,
+    userId,
+    businessStepSchema.parse({ legalForm: "individual", gstStatus: "not_registered" }),
+  );
+  await saveInterestsStep(db, userId, {
+    prInterest: true,
+    preferredCategories: [],
+    brandInterests: [],
+    travelInterest: false,
+  });
+  await completeOnboarding(db, userId, { consentDefinitionId: def(CONSENT_KEYS.creatorProfile) });
+  const [p] = await db
+    .select({ id: creatorProfiles.id })
+    .from(creatorProfiles)
+    .where(eq(creatorProfiles.userId, userId));
+  return { userId, creatorId: p!.id };
+}
+
+async function staffUser() {
+  const r = await signUpCreator(auth, { email: testEmail("partnerships"), password: "a long enough passphrase" });
+  if (!r.ok) throw new Error("signup failed");
+  await db.update(users).set({ role: "partnerships_admin" }).where(eq(users.id, r.user.userId));
+  return r.user.userId;
+}
+
+let brandId: string | null = null;
+async function brand() {
+  if (brandId) return brandId;
+  const [b] = await db
+    .insert(brands)
+    .values({ name: `Test Brand ${randomBytes(4).toString("hex")}`, category: "Beauty" })
+    .returning({ id: brands.id });
+  brandId = b!.id;
+  return brandId;
+}
+
+async function opportunity(
+  staff: string,
+  overrides: Partial<{ minTier: "member" | "onyx" | "icon"; pointsCost: number; seats: number; closesAt: Date }> = {},
+) {
+  const now = Date.now();
+  return createOpportunity(db, {
+    staffUserId: staff,
+    values: {
+      brandId: await brand(),
+      title: "Test Drop",
+      kind: "pr_drop",
+      category: "Beauty",
+      summary: "A test opportunity.",
+      details: "Details of a test opportunity.",
+      minTier: overrides.minTier ?? "member",
+      pointsCost: overrides.pointsCost ?? 300,
+      seats: overrides.seats ?? 5,
+      opensAt: new Date(now - DAY),
+      closesAt: overrides.closesAt ?? new Date(now + 30 * DAY),
+      status: "live",
+    },
+  });
+}
+
+/** Stores a Professional Graph run with chosen signal values and evaluates Status from it. */
+async function setSignals(
+  creatorId: string,
+  v: { longevity: number; platforms: number; audience: number; engagement: number; stability: number; posting: number },
+) {
+  const now = new Date();
+  const [run] = await db
+    .insert(professionalGraphRuns)
+    .values({
+      creatorId,
+      engineVersion: "pg-test",
+      inputsHash: randomBytes(32).toString("hex"),
+      snapshotCount: 24,
+      trigger: "manual",
+      computedAt: now,
+    })
+    .returning({ id: professionalGraphRuns.id });
+  const f = (key: string, value: number | boolean, source = "verified") => ({
+    runId: run!.id,
+    creatorId,
+    featureKey: key,
+    featureVersion: "1",
+    valueNumeric: typeof value === "number" ? String(value) : null,
+    valueBoolean: typeof value === "boolean" ? value : null,
+    unit: "count",
+    source: source as "verified",
+    completeness: "1",
+    confidence: "high" as const,
+    computedAt: now,
+  });
+  await db
+    .insert(creatorProfessionalFeatures)
+    .values([
+      f("professional_longevity_months", v.longevity),
+      f("connected_platforms", v.platforms),
+      f("total_audience", v.audience),
+      f("engagement_rate_3m", v.engagement),
+      f("engagement_stability", v.stability, "derived"),
+      f("posting_consistency_12m", v.posting, "derived"),
+      f("follower_spike_detected", false, "derived"),
+      f("handle_mismatches", 0, "derived"),
+    ]);
+  return refreshCreatorStatus(db, { creatorId, graphRunId: run!.id, now });
+}
+
+const ONYX = { longevity: 30, platforms: 1, audience: 40_000, engagement: 0.025, stability: 0.5, posting: 0.8 };
+const ICON = { longevity: 60, platforms: 2, audience: 3_00_000, engagement: 0.035, stability: 0.8, posting: 0.9 };
+
+const requestOf = async (id: string) => (await db.select().from(accessRequests).where(eq(accessRequests.id, id)))[0]!;
+
+describe("Creator Points milestones", () => {
+  it("grants the welcome points on completing onboarding, once", async () => {
+    const m = await member("mira.welcome.test");
+    expect(await pointsBalance(db, m.creatorId)).toBe(500);
+    await syncMilestonePoints(db, { userId: m.userId });
+    await syncMilestonePoints(db, { userId: m.userId });
+    expect(await pointsBalance(db, m.creatorId)).toBe(500);
+    const summary = await getPointsSummary(db, m.creatorId);
+    expect(summary.history).toMatchObject([{ type: "earned", amount: 500, label: "Welcome to CreatorCo" }]);
+  });
+});
+
+describe("Creator Status", () => {
+  it("is Member until signals exist, then follows the rules — and grants tier points once", async () => {
+    const m = await member("mira.status.test");
+    expect(await getCreatorStatus(db, m.creatorId)).toMatchObject({ tier: "member", basis: "no_signals" });
+
+    expect(await setSignals(m.creatorId, ONYX)).toMatchObject({ ok: true, tier: "onyx", changed: true });
+    expect(await pointsBalance(db, m.creatorId)).toBe(500 + 1_000);
+
+    expect(await setSignals(m.creatorId, ICON)).toMatchObject({ ok: true, tier: "icon" });
+    expect(await pointsBalance(db, m.creatorId)).toBe(500 + 1_000 + 2_500);
+
+    // Dropping back to Member never claws points back; reaching Onyx again grants nothing new.
+    expect(await setSignals(m.creatorId, { ...ONYX, audience: 1_000 })).toMatchObject({ tier: "member" });
+    await setSignals(m.creatorId, ONYX);
+    expect(await pointsBalance(db, m.creatorId)).toBe(4_000);
+    const status = await getCreatorStatus(db, m.creatorId);
+    expect(status).toMatchObject({ tier: "onyx", basis: "signals", rulesVersion: "cs-0.1.0" });
+    expect(status.criteria.every((c) => c.tier === "onyx" || c.tier === "icon")).toBe(true);
   });
 
-const ledgerOf = (creatorId: string) =>
-  db.select().from(creatorPointsLedger).where(eq(creatorPointsLedger.creatorId, creatorId));
-
-describe("Creator Status (Stage 14)", () => {
-  it("starts at Member; Onyx and Icon follow the signals and grant one-off points", async () => {
-    const m = await accessMember(db, "status");
-    expect((await getCurrentCreatorStatus(db, m.creatorId)).tier).toBe("member");
-    expect(await getPointsBalance(db, m.creatorId)).toBe(500); // welcome only (no verified mobile)
-
-    const onyx = await giveSignals(db, m.creatorId, ONYX_SIGNALS);
-    expect(onyx.tier).toBe("onyx");
-    expect(await getPointsBalance(db, m.creatorId)).toBe(1_500);
-
-    // The same graph run is never recalculated into a second status.
-    const again = await refresh(m.creatorId, onyx.graphRunId);
-    expect(again).toMatchObject({ statusRunId: onyx.statusRunId, reused: true });
-
-    await giveSignals(db, m.creatorId, ICON_SIGNALS);
-    expect(await getPointsBalance(db, m.creatorId)).toBe(4_000);
-
-    // Dropping back takes nothing away, and the tier grants are never repeated.
-    await giveSignals(db, m.creatorId, { total_audience: 5_000_000 });
-    expect((await getCurrentCreatorStatus(db, m.creatorId)).tier).toBe("member");
-    await giveSignals(db, m.creatorId, ICON_SIGNALS);
-    expect(await getPointsBalance(db, m.creatorId)).toBe(4_000);
-    const milestones = (await ledgerOf(m.creatorId)).map((e) => e.milestone).sort();
-    expect(milestones).toEqual(["tier_icon", "tier_onyx", "welcome"]);
-  });
-
-  it("stores the full checklist, and is erased with the signals it came from", async () => {
-    const m = await accessMember(db, "status-erase");
-    await giveSignals(db, m.creatorId, ONYX_SIGNALS);
-    const current = await getCurrentCreatorStatus(db, m.creatorId);
-    expect(current).toMatchObject({ tier: "onyx", rulesVersion: "cs-0.1.0" });
-    expect(current.checklists.map((c) => c.tier)).toEqual(["onyx", "icon"]);
-    expect(current.checklists[1]!.criteria.find((c) => c.criterion === "reach")).toMatchObject({
-      met: false,
-      value: 60_000,
-      threshold: 250_000,
-    });
-
-    // Professional analytics was never granted here, but a withdrawal of social data / signals erases the graph.
-    await db.transaction(async (tx) => {
-      await tx.execute(sql`set local creatorco.erasure = 'on'`);
-      await tx.execute(sql`delete from professional_graph_runs where creator_id = ${m.creatorId}`);
-    });
-    const runs = await db
-      .select({ n: count() })
-      .from(creatorStatusRuns)
-      .where(eq(creatorStatusRuns.creatorId, m.creatorId));
-    expect(runs[0]!.n).toBe(0);
-    expect((await getCurrentCreatorStatus(db, m.creatorId)).tier).toBe("member");
-    // Points already granted stay.
-    expect(await getPointsBalance(db, m.creatorId)).toBe(1_500);
-  });
-
-  it("is calculated after every Professional Graph run (real connection through the mock provider)", async () => {
-    const m = await accessMember(db, "status-hook");
+  it("is evaluated after a real Professional Graph run, and erased with the signals", async () => {
+    const m = await member("mira.graph.test");
     const social = { db, social: new MockSocialDataProvider() };
     const { authorizationUrl } = await startConnection(social, {
       userId: m.userId,
@@ -117,292 +235,314 @@ describe("Creator Status (Stage 14)", () => {
     await completeConnection(social, {
       userId: m.userId,
       state,
-      code: encodeMockCode({ platform: "instagram", handle: "status.hook.demo", nonce: "n" }),
+      code: encodeMockCode({ platform: "instagram", handle: "mira.graph.test", nonce: "n" }),
     });
-    const graph = await getLatestProfessionalGraph(db, m.creatorId);
-    const [run] = await db.select().from(creatorStatusRuns).where(eq(creatorStatusRuns.graphRunId, graph!.runId));
-    expect(run).toMatchObject({ creatorId: m.creatorId, rulesVersion: "cs-0.1.0" });
-    expect((await getCurrentCreatorStatus(db, m.creatorId)).rulesVersion).toBe("cs-0.1.0");
+    const runs = await db.select().from(creatorStatusRuns).where(eq(creatorStatusRuns.creatorId, m.creatorId));
+    expect(runs).toHaveLength(1);
+    expect((await getCreatorStatus(db, m.creatorId)).basis).toBe("signals");
+
+    const before = await pointsBalance(db, m.creatorId);
+    await withdrawPurpose({ db }, { userId: m.userId, key: CONSENT_KEYS.professionalAnalytics, source: "settings" });
+    expect(await db.select().from(creatorStatusRuns).where(eq(creatorStatusRuns.creatorId, m.creatorId))).toEqual([]);
+    expect(await getCreatorStatus(db, m.creatorId)).toMatchObject({ tier: "member", basis: "no_signals" });
+    expect(await pointsBalance(db, m.creatorId)).toBe(before);
   });
 
-  it("keeps status runs and the ledger append-only", async () => {
-    const m = await accessMember(db, "status-guard");
-    await giveSignals(db, m.creatorId, ONYX_SIGNALS);
+  it("status runs are append-only", async () => {
+    const m = await member("mira.guard.test");
+    const r = await setSignals(m.creatorId, ONYX);
+    if (!r.ok) throw new Error("no status");
     await expect(
-      db.execute(sql`update creator_status_runs set tier = 'icon' where creator_id = ${m.creatorId}`),
-    ).rejects.toThrow();
-    await expect(db.execute(sql`delete from creator_status_runs where creator_id = ${m.creatorId}`)).rejects.toThrow();
-    await expect(
-      db.execute(sql`update creator_points_ledger set amount = 99999 where creator_id = ${m.creatorId}`),
-    ).rejects.toThrow();
-    await expect(
-      db.execute(sql`delete from creator_points_ledger where creator_id = ${m.creatorId}`),
-    ).rejects.toThrow();
-    // The database also refuses a hold with a positive amount.
-    await expect(
-      db.insert(creatorPointsLedger).values({
-        creatorId: m.creatorId,
-        entryType: "hold",
-        amount: 10,
-        accessRequestId: m.creatorId,
-        rulesVersion: "pts-0.1.0",
-      }),
+      db.update(creatorStatusRuns).set({ tier: "icon" }).where(eq(creatorStatusRuns.id, r.runId)),
     ).rejects.toThrow();
   });
 });
 
-async function refresh(creatorId: string, graphRunId: string) {
-  const { refreshCreatorStatus } = await import("@/modules/creator-status/status-service");
-  return refreshCreatorStatus(db, { creatorId, graphRunId });
-}
-
-describe("Access requests (Stage 14)", () => {
-  it("asks for the Brand opportunities consent at the first request and holds the points", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "req");
-    const opp = await opportunity(db, staff, { pointsCost: 300 });
-
-    expect(await request(m.userId, opp, { withConsent: false })).toEqual({ ok: false, reason: "consent_required" });
+describe("Access requests", () => {
+  it("requires the brand consent, granted with the request or not at all", async () => {
+    const staff = await staffUser();
+    const m = await member("mira.consent.test");
+    const id = await opportunity(staff);
+    await expect(
+      requestAccess(db, { userId: m.userId, opportunityId: id, note: null, source: "settings" }),
+    ).rejects.toMatchObject({ code: "consent_required" });
+    // A failed request (not enough points) never leaves the consent granted.
+    const pricey = await opportunity(staff, { pointsCost: 5_000 });
+    await expect(
+      requestAccess(db, {
+        userId: m.userId,
+        opportunityId: pricey,
+        note: null,
+        consentDefinitionId: BRAND_CONSENT,
+        source: "settings",
+      }),
+    ).rejects.toMatchObject({ code: "insufficient_points" });
     expect(await hasValidConsent(db, m.userId, CONSENT_KEYS.brandOpportunities)).toBe(false);
 
-    const r = await request(m.userId, opp, { note: "  I review skincare every week.  " });
-    expect(r).toMatchObject({ ok: true, pointsHeld: 300 });
+    const { requestId } = await requestAccess(db, {
+      userId: m.userId,
+      opportunityId: id,
+      note: "Autumn skincare fits my routine videos.",
+      consentDefinitionId: BRAND_CONSENT,
+      source: "settings",
+    });
     expect(await hasValidConsent(db, m.userId, CONSENT_KEYS.brandOpportunities)).toBe(true);
-    const [row] = await db
-      .select()
-      .from(accessRequests)
-      .where(eq(accessRequests.id, (r as { requestId: string }).requestId));
-    expect(row).toMatchObject({ status: "requested", note: "I review skincare every week.", pointsHeld: 300 });
+    const r = await requestOf(requestId);
+    expect(r).toMatchObject({ status: "requested", pointsHeld: 300, tierAtRequest: "member" });
+    const [receipt] = await db.select().from(consentReceipts).where(eq(consentReceipts.id, r.consentReceiptId));
+    expect(receipt!.metadata).toMatchObject({ surface: "access_request" });
+    expect(await getPointsSummary(db, m.creatorId)).toMatchObject({ balance: 200, onHold: 300 });
 
-    const summary = await getPointsSummary(db, m.creatorId);
-    expect(summary).toMatchObject({ balance: 200, held: 300 });
-    expect(summary.activity[0]).toMatchObject({ type: "hold", points: -300, label: "Held for an Access request" });
-
-    // Later requests reuse the consent; a second live request for the same opportunity is refused.
-    expect(await request(m.userId, opp, { withConsent: false })).toEqual({ ok: false, reason: "already_requested" });
-    const receipts = await db.select({ n: count() }).from(consentReceipts).where(eq(consentReceipts.userId, m.userId));
-    expect(receipts[0]!.n).toBe(2); // creator profile + brand opportunities
-
-    // The audit record is minimal: no opportunity, no note.
-    const [audit] = await db
-      .select()
-      .from(auditEvents)
-      .where(and(eq(auditEvents.eventType, "access.requested"), eq(auditEvents.entityId, row!.id)));
-    expect(audit!.metadata).toEqual({ points: 300 });
+    // One live request per opportunity.
+    await expect(
+      requestAccess(db, { userId: m.userId, opportunityId: id, note: null, source: "settings" }),
+    ).rejects.toMatchObject({ code: "wrong_state" });
+    const view = await getOpportunityForCreator(db, { userId: m.userId, creatorId: m.creatorId, opportunityId: id });
+    expect(view).toMatchObject({ availability: "requested", request: { status: "requested", pointsHeld: 300 } });
   });
 
-  it("refuses by tier, points and window — and a refusal changes nothing", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "refuse");
-    const onyxOnly = await opportunity(db, staff, { minTier: "onyx", pointsCost: 100 });
-    const pricey = await opportunity(db, staff, { pointsCost: 900 });
-    const later = await opportunity(db, staff, { opensAt: new Date("2029-01-01T00:00:00Z") });
+  it("gates by Creator Status and points, and free opportunities hold nothing", async () => {
+    const staff = await staffUser();
+    const m = await member("mira.gate.test");
+    const onyxOnly = await opportunity(staff, { minTier: "onyx", pointsCost: 800 });
+    const free = await opportunity(staff, { pointsCost: 0 });
+    const list = await listOpportunitiesForCreator(db, { userId: m.userId, creatorId: m.creatorId });
+    expect(list.find((o) => o.id === onyxOnly)?.availability).toBe("tier_locked");
+    await expect(
+      requestAccess(db, {
+        userId: m.userId,
+        opportunityId: onyxOnly,
+        note: null,
+        consentDefinitionId: BRAND_CONSENT,
+        source: "api",
+      }),
+    ).rejects.toMatchObject({ code: "tier_required" });
 
-    expect(await request(m.userId, onyxOnly)).toEqual({ ok: false, reason: "tier_required" });
-    expect(await request(m.userId, pricey)).toEqual({ ok: false, reason: "insufficient_points" });
-    expect(await request(m.userId, later)).toEqual({ ok: false, reason: "not_open" });
-    // The consent offered with a refused request isn't recorded either.
-    expect(await hasValidConsent(db, m.userId, CONSENT_KEYS.brandOpportunities)).toBe(false);
-    expect(await getPointsBalance(db, m.creatorId)).toBe(500);
+    await requestAccess(db, {
+      userId: m.userId,
+      opportunityId: free,
+      note: null,
+      consentDefinitionId: BRAND_CONSENT,
+      source: "api",
+    });
+    expect(await pointsBalance(db, m.creatorId)).toBe(500);
 
-    await giveSignals(db, m.creatorId, ONYX_SIGNALS);
-    expect(await request(m.userId, onyxOnly)).toMatchObject({ ok: true });
+    await setSignals(m.creatorId, ONYX); // +1,000 points
+    const { requestId } = await requestAccess(db, {
+      userId: m.userId,
+      opportunityId: onyxOnly,
+      note: null,
+      source: "api",
+    });
+    expect(await requestOf(requestId)).toMatchObject({ tierAtRequest: "onyx", pointsHeld: 800 });
+    expect(await getPointsSummary(db, m.creatorId)).toMatchObject({ balance: 700, onHold: 800 });
   });
 
-  it("approve spends, decline and cancel return; a declined opportunity can be requested again", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "decide");
-    await giveSignals(db, m.creatorId, ONYX_SIGNALS); // 1,500 points
-    const a = await opportunity(db, staff, { pointsCost: 400 });
-    const b = await opportunity(db, staff, { pointsCost: 300 });
-    const c = await opportunity(db, staff, { pointsCost: 200 });
+  it("approve spends the hold; decline and cancel return it; seats are enforced", async () => {
+    const staff = await staffUser();
+    const a = await member("mira.seat.a.test");
+    const b = await member("mira.seat.b.test");
+    const c = await member("mira.seat.c.test");
+    const id = await opportunity(staff, { seats: 1 });
+    const ask = (userId: string) =>
+      requestAccess(db, { userId, opportunityId: id, note: null, consentDefinitionId: BRAND_CONSENT, source: "api" });
+    const ra = await ask(a.userId);
+    const rb = await ask(b.userId);
+    const rc = await ask(c.userId);
 
-    const ra = (await request(m.userId, a)) as { requestId: string };
-    const rb = (await request(m.userId, b)) as { requestId: string };
-    const rc = (await request(m.userId, c)) as { requestId: string };
-    expect(await getPointsBalance(db, m.creatorId)).toBe(600);
+    await decideAccessRequest(db, { staffUserId: staff, requestId: ra.requestId, decision: { decision: "approve" } });
+    expect(await requestOf(ra.requestId)).toMatchObject({ status: "approved", decidedBy: staff });
+    expect(await getPointsSummary(db, a.creatorId)).toMatchObject({ balance: 200, onHold: 0 });
+    expect((await getPointsSummary(db, a.creatorId)).history[0]).toMatchObject({ type: "spent", amount: -300 });
 
-    await approveAccessRequest(db, { requestId: ra.requestId, staffUserId: staff });
-    await declineAccessRequest(db, { requestId: rb.requestId, staffUserId: staff, reason: "not_a_fit" });
-    expect(await cancelAccessRequest(db, { userId: m.userId, requestId: rc.requestId })).toEqual({
-      ok: true,
-      pointsReturned: 200,
-    });
-    expect(await getPointsSummary(db, m.creatorId)).toMatchObject({ balance: 1_100, held: 0 });
-
-    // Decisions are final.
     await expect(
-      declineAccessRequest(db, { requestId: ra.requestId, staffUserId: staff, reason: "other" }),
-    ).rejects.toThrow(AccessError);
-    expect(await cancelAccessRequest(db, { userId: m.userId, requestId: rb.requestId })).toEqual({
-      ok: false,
-      reason: "not_pending",
+      decideAccessRequest(db, { staffUserId: staff, requestId: rb.requestId, decision: { decision: "approve" } }),
+    ).rejects.toMatchObject({ code: "full" });
+    await decideAccessRequest(db, {
+      staffUserId: staff,
+      requestId: rb.requestId,
+      decision: { decision: "decline", reason: "no_seats" },
     });
-    // …and the database agrees.
+    expect(await requestOf(rb.requestId)).toMatchObject({ status: "declined", declineReason: "no_seats" });
+    expect(await getPointsSummary(db, b.creatorId)).toMatchObject({ balance: 500, onHold: 0 });
+
+    await cancelAccessRequest(db, { userId: c.userId, requestId: rc.requestId });
+    expect(await pointsBalance(db, c.creatorId)).toBe(500);
+    await expect(cancelAccessRequest(db, { userId: c.userId, requestId: rc.requestId })).rejects.toMatchObject({
+      code: "wrong_state",
+    });
+    // Someone else's request isn't visible.
+    await expect(cancelAccessRequest(db, { userId: a.userId, requestId: rb.requestId })).rejects.toMatchObject({
+      code: "not_found",
+    });
+    // A full opportunity is shown as full.
+    const view = await getOpportunityForCreator(db, { userId: c.userId, creatorId: c.creatorId, opportunityId: id });
+    expect(view).toMatchObject({ availability: "full", seatsLeft: 0 });
+    // Closed requests never change again (DB-enforced).
     await expect(
-      db.execute(
-        sql`update access_requests set status = 'declined', decline_reason = 'other' where id = ${ra.requestId}`,
-      ),
+      db.update(accessRequests).set({ status: "cancelled" }).where(eq(accessRequests.id, ra.requestId)),
     ).rejects.toThrow();
-    await expect(db.execute(sql`delete from access_requests where id = ${ra.requestId}`)).rejects.toThrow();
-
-    const view = await getOpportunityForCreator(db, { creatorId: m.creatorId, opportunityId: b });
-    expect(view!.myRequest).toMatchObject({ status: "declined", declineReason: "not_a_fit" });
-    expect(view!.canRequest).toEqual({ ok: true });
-    expect(await request(m.userId, b)).toMatchObject({ ok: true });
-
-    const activity = (await getPointsSummary(db, m.creatorId)).activity.map((x) => x.label);
-    expect(activity).toContain("Spent on an Access request");
-    expect(activity).toContain("Returned from an Access request");
-  });
-
-  it("enforces places, and places can't be cut below approvals", async () => {
-    const staff = await partnershipsAdmin(db);
-    const opp = await opportunity(db, staff, { pointsCost: 0, places: 1 });
-    const m1 = await accessMember(db, "places1");
-    const m2 = await accessMember(db, "places2");
-    const r1 = (await request(m1.userId, opp)) as { requestId: string };
-    const r2 = (await request(m2.userId, opp)) as { requestId: string };
-    await approveAccessRequest(db, { requestId: r1.requestId, staffUserId: staff });
-    await expect(approveAccessRequest(db, { requestId: r2.requestId, staffUserId: staff })).rejects.toMatchObject({
-      code: "full",
-    });
-    const m3 = await accessMember(db, "places3");
-    expect(await request(m3.userId, opp)).toEqual({ ok: false, reason: "full" });
-
-    const base = {
-      brandName: "Fictional Brand",
-      title: "Sample opportunity",
-      kind: "pr_drop" as const,
-      category: "Beauty",
-      summary: "A sample opportunity used only in tests.",
-      minTier: "member" as const,
-      pointsCost: 0,
-      opensAt: new Date("2026-01-01T00:00:00Z"),
-      closesAt: new Date("2030-01-01T00:00:00Z"),
-    };
-    await updateOpportunity(db, { staffUserId: staff, opportunityId: opp, values: { ...base, places: 3 } });
-    await approveAccessRequest(db, { requestId: r2.requestId, staffUserId: staff });
     await expect(
-      updateOpportunity(db, { staffUserId: staff, opportunityId: opp, values: { ...base, places: 1 } }),
-    ).rejects.toMatchObject({ code: "places_below_approved" });
+      db.delete(creatorPointsLedger).where(eq(creatorPointsLedger.creatorId, a.creatorId)),
+    ).rejects.toThrow();
   });
 
-  it("expires undecided requests at their deadline or when the opportunity closes, returning points", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "expiry");
-    const soon = await opportunity(db, staff, { pointsCost: 100 });
-    const closing = await opportunity(db, staff, { pointsCost: 150 });
-    const r1 = (await request(m.userId, soon)) as { requestId: string };
-    await request(m.userId, closing);
-    expect(await getPointsBalance(db, m.creatorId)).toBe(250);
-
-    await closeOpportunity(db, { staffUserId: staff, opportunityId: closing });
-    expect(await request(m.userId, closing)).toEqual({ ok: false, reason: "not_open" });
-    const first = await expireAccessRequests({ db });
-    expect(first.expired).toBeGreaterThanOrEqual(1);
-    expect(await getPointsBalance(db, m.creatorId)).toBe(400);
-
-    // Fourteen days later the other one expires too; a staff decision afterwards is refused.
-    const [row] = await db.select().from(accessRequests).where(eq(accessRequests.id, r1.requestId));
-    await expireAccessRequests({ db, now: new Date(row!.expiresAt.getTime() + 1) });
-    expect(await getPointsBalance(db, m.creatorId)).toBe(500);
-    const [after] = await db.select().from(accessRequests).where(eq(accessRequests.id, r1.requestId));
-    expect(after!.status).toBe("expired");
-    await expect(approveAccessRequest(db, { requestId: r1.requestId, staffUserId: staff })).rejects.toMatchObject({
-      code: "not_pending",
+  it("closing an opportunity, or its window ending, expires pending requests and returns points", async () => {
+    const staff = await staffUser();
+    const m = await member("mira.close.test");
+    const first = await opportunity(staff);
+    const second = await opportunity(staff, { pointsCost: 100, closesAt: new Date(Date.now() + DAY) });
+    const r1 = await requestAccess(db, {
+      userId: m.userId,
+      opportunityId: first,
+      note: null,
+      consentDefinitionId: BRAND_CONSENT,
+      source: "api",
     });
+    const r2 = await requestAccess(db, { userId: m.userId, opportunityId: second, note: null, source: "api" });
+    expect(await pointsBalance(db, m.creatorId)).toBe(100);
+
+    expect(await closeOpportunity(db, { staffUserId: staff, id: first })).toEqual({ expired: 1 });
+    expect(await requestOf(r1.requestId)).toMatchObject({ status: "expired" });
+    await expect(
+      updateOpportunity(db, {
+        staffUserId: staff,
+        id: first,
+        values: {
+          brandId: await brand(),
+          title: "Edited",
+          kind: "pr_drop",
+          category: "Beauty",
+          summary: "x".repeat(10),
+          details: "x".repeat(10),
+          minTier: "member",
+          pointsCost: 1,
+          seats: 1,
+          opensAt: new Date(),
+          closesAt: new Date(Date.now() + DAY),
+          status: "live",
+        },
+      }),
+    ).rejects.toBeInstanceOf(AccessError);
+
+    const swept = await expireAccessRequests({ db, now: new Date(Date.now() + 2 * DAY) });
+    expect(swept.expired).toBeGreaterThanOrEqual(1);
+    expect(await requestOf(r2.requestId)).toMatchObject({ status: "expired" });
+    expect(await pointsBalance(db, m.creatorId)).toBe(500);
+    await expect(
+      requestAccess(db, { userId: m.userId, opportunityId: first, note: null, source: "api" }),
+    ).rejects.toMatchObject({ code: "closed" });
   });
 
-  it("pausing membership cancels pending requests and returns their points", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "pause");
-    const opp = await opportunity(db, staff, { pointsCost: 250 });
-    await request(m.userId, opp);
-    const result = await withdrawPurpose(
+  it("pausing membership cancels pending requests; paused members can't request", async () => {
+    const staff = await staffUser();
+    const m = await member("mira.paused.test");
+    const id = await opportunity(staff);
+    const { requestId } = await requestAccess(db, {
+      userId: m.userId,
+      opportunityId: id,
+      note: null,
+      consentDefinitionId: BRAND_CONSENT,
+      source: "api",
+    });
+    const paused = await withdrawPurpose(
       { db },
       { userId: m.userId, key: CONSENT_KEYS.creatorProfile, source: "settings" },
     );
-    expect(result.effects).toMatchObject({ membership_paused: true, access_requests_cancelled: 1 });
-    expect(await getPointsBalance(db, m.creatorId)).toBe(500);
-    const [row] = await db.select().from(accessRequests).where(eq(accessRequests.creatorId, m.creatorId));
-    expect(row).toMatchObject({ status: "cancelled", cancelReason: "membership_paused" });
-    expect(await request(m.userId, opp)).toEqual({ ok: false, reason: "profile_inactive" });
+    expect(paused.effects).toEqual({ membership_paused: true, access_requests_cancelled: 1 });
+    expect(await requestOf(requestId)).toMatchObject({ status: "cancelled" });
+    expect(await pointsBalance(db, m.creatorId)).toBe(500);
+    await expect(
+      decideAccessRequest(db, { staffUserId: staff, requestId, decision: { decision: "approve" } }),
+    ).rejects.toMatchObject({ code: "wrong_state" });
+    const other = await opportunity(staff, { pointsCost: 0 });
+    await expect(
+      requestAccess(db, { userId: m.userId, opportunityId: other, note: null, source: "api" }),
+    ).rejects.toMatchObject({ code: "profile_inactive" });
+    const detail = await getRequestForStaff(db, { requestId, staffUserId: staff });
+    expect(detail?.creator).toMatchObject({ paused: true, displayName: "Mira Makes", category: "Beauty" });
+    await grantPurpose(
+      { db },
+      {
+        userId: m.userId,
+        key: CONSENT_KEYS.creatorProfile,
+        consentDefinitionId: def(CONSENT_KEYS.creatorProfile),
+        source: "settings",
+      },
+    );
+    const again = await requestAccess(db, { userId: m.userId, opportunityId: id, note: null, source: "api" });
+    expect(await requestOf(again.requestId)).toMatchObject({ status: "requested" });
   });
 
-  it("withdrawing Brand opportunities cancels, returns points and erases request history; the ledger stays", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "withdraw");
-    await giveSignals(db, m.creatorId, ONYX_SIGNALS); // 1,500
-    const a = await opportunity(db, staff, { pointsCost: 300 });
-    const b = await opportunity(db, staff, { pointsCost: 200 });
-    const ra = (await request(m.userId, a)) as { requestId: string };
-    await request(m.userId, b);
-    await approveAccessRequest(db, { requestId: ra.requestId, staffUserId: staff });
+  it("places can't be cut below the approvals already given", async () => {
+    const staff = await staffUser();
+    const id = await opportunity(staff, { pointsCost: 0, seats: 3 });
+    for (const handle of ["mira.places.a.test", "mira.places.b.test"]) {
+      const m = await member(handle);
+      const r = await requestAccess(db, {
+        userId: m.userId,
+        opportunityId: id,
+        note: null,
+        consentDefinitionId: BRAND_CONSENT,
+        source: "api",
+      });
+      await decideAccessRequest(db, { staffUserId: staff, requestId: r.requestId, decision: { decision: "approve" } });
+    }
+    const now = Date.now();
+    const values = {
+      brandId: await brand(),
+      title: "Test Drop",
+      kind: "pr_drop" as const,
+      category: "Beauty",
+      summary: "A test opportunity.",
+      details: "Details of a test opportunity.",
+      minTier: "member" as const,
+      pointsCost: 0,
+      opensAt: new Date(now - DAY),
+      closesAt: new Date(now + 30 * DAY),
+      status: "live" as const,
+    };
+    await expect(
+      updateOpportunity(db, { staffUserId: staff, id, values: { ...values, seats: 1 } }),
+    ).rejects.toMatchObject({ code: "invalid" });
+    await updateOpportunity(db, { staffUserId: staff, id, values: { ...values, seats: 2 } });
+  });
+
+  it("withdrawing the brand consent cancels pending requests, returns points and erases the history", async () => {
+    const staff = await staffUser();
+    const m = await member("mira.withdraw.test");
+    const approvedOpp = await opportunity(staff, { pointsCost: 200 });
+    const pendingOpp = await opportunity(staff, { pointsCost: 100 });
+    const a = await requestAccess(db, {
+      userId: m.userId,
+      opportunityId: approvedOpp,
+      note: "A note that must be erased.",
+      consentDefinitionId: BRAND_CONSENT,
+      source: "api",
+    });
+    await requestAccess(db, { userId: m.userId, opportunityId: pendingOpp, note: null, source: "api" });
+    await decideAccessRequest(db, { staffUserId: staff, requestId: a.requestId, decision: { decision: "approve" } });
+    expect(await getPointsSummary(db, m.creatorId)).toMatchObject({ balance: 200, onHold: 100 });
 
     const result = await withdrawPurpose(
       { db },
       { userId: m.userId, key: CONSENT_KEYS.brandOpportunities, source: "settings" },
     );
-    expect(result.effects).toMatchObject({ access_requests_cancelled: 1 });
+    expect(result.effects).toEqual({ access_requests_cancelled: 1 });
     expect(result.erasures).toEqual([{ scope: "access_requests", status: "completed", holdReasons: [] }]);
-    const left = await db.select({ n: count() }).from(accessRequests).where(eq(accessRequests.creatorId, m.creatorId));
-    expect(left[0]!.n).toBe(0);
-    // Spent stays spent, the pending hold came back.
-    expect(await getPointsSummary(db, m.creatorId)).toMatchObject({ balance: 1_200, held: 0 });
-    // The minimal audit trail remains.
-    const events = await db
-      .select({ type: auditEvents.eventType })
-      .from(auditEvents)
-      .where(eq(auditEvents.entityId, ra.requestId));
-    expect(events.map((e) => e.type)).toEqual(expect.arrayContaining(["access.requested", "access.approved"]));
-
-    // Browsing still works; requesting asks for the consent again.
-    expect((await listOpportunitiesForCreator(db, { creatorId: m.creatorId })).length).toBeGreaterThan(0);
-    expect(await request(m.userId, b, { withConsent: false })).toEqual({ ok: false, reason: "consent_required" });
-  });
-
-  it("the desk sees a creator-professional summary only, and viewing is audited", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "desk");
-    await giveSignals(db, m.creatorId, ONYX_SIGNALS);
-    const opp = await opportunity(db, staff);
-    const r = (await request(m.userId, opp, { note: "Would love to." })) as { requestId: string };
-
-    const queue = await listAccessQueue(db, { status: "requested" });
-    expect(queue.find((q) => q.requestId === r.requestId)).toMatchObject({ creatorDisplayName: "Meera Makes" });
-
-    const detail = await getRequestForDesk(db, { requestId: r.requestId, staffUserId: staff });
-    expect(detail!.creator).toMatchObject({ displayName: "Meera Makes", tier: "onyx", city: "Kochi" });
-    expect(Object.keys(detail!.creator).sort()).toEqual(
-      ["category", "city", "displayName", "handle", "platforms", "signals", "tier"].sort(),
-    );
-    expect(detail!.creator.signals.map((s) => s.key)).not.toContain("follower_spike_detected");
-    expect(JSON.stringify(detail)).not.toMatch(/legalName|pan|gstin|mobile|eligib|fraud/i);
-    const viewed = await db
-      .select()
-      .from(auditEvents)
-      .where(and(eq(auditEvents.eventType, "access.request_viewed"), eq(auditEvents.entityId, r.requestId)));
-    expect(viewed).toHaveLength(1);
-  });
-
-  it("keeps the ledger consistent: balance = earned − spent − held", async () => {
-    const staff = await partnershipsAdmin(db);
-    const m = await accessMember(db, "invariant");
-    await giveSignals(db, m.creatorId, ICON_SIGNALS); // 500 + 1,000 + 2,500
-    const ids = await Promise.all([100, 200, 300, 400].map((cost) => opportunity(db, staff, { pointsCost: cost })));
-    const reqs = [];
-    for (const id of ids) reqs.push((await request(m.userId, id)) as { requestId: string });
-    await approveAccessRequest(db, { requestId: reqs[0]!.requestId, staffUserId: staff });
-    await declineAccessRequest(db, { requestId: reqs[1]!.requestId, staffUserId: staff, reason: "places_filled" });
-    await cancelAccessRequest(db, { userId: m.userId, requestId: reqs[2]!.requestId });
-
-    const ledger = await ledgerOf(m.creatorId);
-    const earned = ledger.filter((e) => e.entryType === "earn").reduce((s, e) => s + e.amount, 0);
+    const [left] = await db.select({ n: count() }).from(accessRequests).where(eq(accessRequests.userId, m.userId));
+    expect(left!.n).toBe(0);
+    // The pending hold came back; the approved one stays spent (its request reference cleared).
     const summary = await getPointsSummary(db, m.creatorId);
-    expect(earned).toBe(4_000);
-    expect(summary.held).toBe(400);
-    expect(summary.balance).toBe(earned - 100 - 400);
-    expect(summary.balance).toBeGreaterThanOrEqual(0);
+    expect(summary).toMatchObject({ balance: 300, onHold: 0 });
+    expect(summary.history.find((e) => e.type === "spent")).toMatchObject({
+      amount: -200,
+      label: "Spent on an opportunity",
+    });
+    expect(summary.history.filter((e) => e.type === "returned")).toHaveLength(1);
+    // New requests need the consent again.
+    await expect(
+      requestAccess(db, { userId: m.userId, opportunityId: pendingOpp, note: null, source: "api" }),
+    ).rejects.toMatchObject({ code: "consent_required" });
   });
 });
