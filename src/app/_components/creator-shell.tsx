@@ -25,6 +25,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: "/admin/proposals", label: "Proposals", icon: "approvals" },
   // Reuses an existing icon: a dedicated one would be a design-system change (pinned v2.0.0).
   { href: "/admin/models", label: "Models & rules", icon: "underwriting" },
+  { href: "/insights", label: "Analytics", icon: "console" },
 ];
 
 export const OPS_NAV: NavItem[] = [
@@ -65,6 +66,22 @@ export function OpsShell({ children, role }: { children: React.ReactNode; role?:
 /** The brand partnerships desk (Access requests and opportunities). */
 export function PartnershipsShell({ children, role }: { children: React.ReactNode; role?: UserRole }) {
   const nav = role === "super_admin" ? [...PARTNERSHIPS_NAV, ADMIN_NAV[0]!, OPS_NAV[0]!] : PARTNERSHIPS_NAV;
+  return (
+    <AppShell nav={nav} sidebarFooter={<SignOutForm />} topBarAction={<SignOutForm />}>
+      {children}
+    </AppShell>
+  );
+}
+
+export const INSIGHTS_NAV: NavItem[] = [
+  { href: "/insights", label: "Funnel", icon: "console" },
+  // Reuses an existing icon: a dedicated one would be a design-system change (pinned v2.0.0).
+  { href: "/insights/models", label: "Models", icon: "underwriting" },
+];
+
+/** Aggregate analytics. Risk and super admins also get a way back to the risk console. */
+export function InsightsShell({ children, role }: { children: React.ReactNode; role?: UserRole }) {
+  const nav = role === "analyst" ? INSIGHTS_NAV : [...INSIGHTS_NAV, { ...ADMIN_NAV[0]!, label: "Risk console" }];
   return (
     <AppShell nav={nav} sidebarFooter={<SignOutForm />} topBarAction={<SignOutForm />}>
       {children}

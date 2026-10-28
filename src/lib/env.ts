@@ -32,6 +32,8 @@ const serverEnvSchema = z.object({
   FI_LIVE_LINE_ITEM_RETENTION: z.enum(["true", "false"]).default("false"),
   /** Root key from which partner webhook signing secrets are derived (none are stored). Required outside dev/test. */
   PARTNER_WEBHOOK_ROOT_KEY: z.string().min(32, "PARTNER_WEBHOOK_ROOT_KEY must be at least 32 characters").optional(),
+  /** Key for pseudonymous analytics subject ids (keyed hash of the user id). Required outside dev/test. */
+  ANALYTICS_PSEUDONYM_KEY: z.string().min(32, "ANALYTICS_PSEUDONYM_KEY must be at least 32 characters").optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -39,9 +41,9 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 /** Secrets that must exist once real data is involved (staging/production). */
 function requiredOutsideDev(env: ServerEnv): string[] {
   if (env.APP_ENV === "development" || env.APP_ENV === "test") return [];
-  return (["PAN_FINGERPRINT_SECRET", "FI_DATA_ENCRYPTION_KEY", "PARTNER_WEBHOOK_ROOT_KEY"] as const).filter(
-    (k) => !env[k],
-  );
+  return (
+    ["PAN_FINGERPRINT_SECRET", "FI_DATA_ENCRYPTION_KEY", "PARTNER_WEBHOOK_ROOT_KEY", "ANALYTICS_PSEUDONYM_KEY"] as const
+  ).filter((k) => !env[k]);
 }
 
 let cached: ServerEnv | undefined;

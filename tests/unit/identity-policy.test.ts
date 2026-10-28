@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   canAccessAdmin,
   canAccessCreatorArea,
+  canAccessInsights,
   canAccessOps,
   canAccessPartnerships,
   homePathFor,
@@ -16,6 +17,7 @@ const risk = { role: "risk_admin" as const, onboardingComplete: false };
 const superAdmin = { role: "super_admin" as const, onboardingComplete: false };
 const ops = { role: "ops_admin" as const, onboardingComplete: false };
 const partnerships = { role: "partnerships_admin" as const, onboardingComplete: false };
+const analyst = { role: "analyst" as const, onboardingComplete: false };
 
 describe("role access", () => {
   it("only staff roles reach admin", () => {
@@ -52,6 +54,21 @@ describe("role access", () => {
     expect(postSignInPath(risk, "/partnerships")).toBe("/admin");
     expect(postSignInPath(superAdmin, "/partnerships")).toBe("/partnerships");
     expect(safeNextPath("/partnershipsx", partnerships)).toBeNull();
+  });
+
+  it("insights: analysts (read-only) plus risk and super admins; analysts reach nothing else", () => {
+    for (const role of ["analyst", "risk_admin", "super_admin"] as const) expect(canAccessInsights(role)).toBe(true);
+    for (const role of ["creator", "ops_admin", "partnerships_admin"] as const)
+      expect(canAccessInsights(role)).toBe(false);
+    expect(canAccessAdmin("analyst")).toBe(false);
+    expect(canAccessOps("analyst")).toBe(false);
+    expect(canAccessPartnerships("analyst")).toBe(false);
+    expect(canAccessCreatorArea("analyst")).toBe(false);
+    expect(homePathFor(analyst)).toBe("/insights");
+    expect(postSignInPath(analyst, "/insights/models")).toBe("/insights/models");
+    expect(postSignInPath(analyst, "/admin")).toBe("/insights");
+    expect(postSignInPath(risk, "/insights")).toBe("/insights");
+    expect(postSignInPath(ops, "/insights")).toBe("/ops");
   });
 
   it("only creators reach creator areas", () => {

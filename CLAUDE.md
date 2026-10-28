@@ -9,7 +9,7 @@ loads it. Read it before any product, architecture, data, underwriting, regulato
 
 ## Build status
 
-Stages 00–14 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
+Stages 00–15 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
 self-managed auth and roles, Cohort A0 onboarding, Creator Passport, social connection (mock provider), the
 Professional Graph feature engine, the consent centre (receipts, withdrawal, hold-aware erasure, paused membership),
 financial eligibility (separate `fin` schema, Financial Capacity features), Underwriting Engine v0 (Traditional vs
@@ -22,8 +22,9 @@ a "Share with a partner lender" consent, the Models & rules page and a maker-che
 the partner API with hashed maker-checker API keys, thin HMAC-signed webhooks, a vendor-neutral `partner_api` lender
 adapter and confirm-or-query review of partner decisions (12b), the creator's offer screen with partner-provided terms
 and KFS, accept/decline with a purpose-specific handoff consent and per-check retention holds (13), Creator Status
-(`cs-0.1.0`), the Access preview with sample brands, Creator Points and the `/partnerships` desk (14), plus API v1 for
-future native apps.
+(`cs-0.1.0`), the Access preview with sample brands, Creator Points and the `/partnerships` desk (14), first-party
+pseudonymous analytics with the §26 funnel, an optional Product analytics consent, 24-month retention and the
+`/insights` dashboards for risk admins and a read-only `analyst` role (15), plus API v1 for future native apps.
 
 ## Implementation conventions (established in Stages 00–04)
 
@@ -100,4 +101,13 @@ future native apps.
   take `lockPointsAccount` (`FOR NO KEY UPDATE`). Access requests need `brand_opportunities`, granted inside
   `requestAccess`; consent withdrawal locks receipts before effects. Partnerships staff see creator-professional data
   only (`requirePartnershipsAdmin`).
+- Analytics (Stage 15, `modules/analytics`, schema `analytics`): record events only with `recordEvent(tx, …)` inside
+  the transaction that makes the change (page views: `recordAfterResponse` in `src/app/_lib/analytics.ts`). Every
+  event is declared in `events.ts` with a strict props schema — small enums/booleans only, never personal data,
+  amounts, terms, scores, grades or reasons; changing props bumps the event `version`. `essential` = pseudonymous
+  service measurement; `optional` = needs `product_analytics`. Events keep the India-time day only (no timestamp) and a
+  keyed pseudonym (`analyticsSubject`). Eligibility/offer steps are in `FINANCIAL_FUNNEL_EVENTS` and are erased with
+  the financial-eligibility consent. Analytics never imports or reads `fin`; risk/model aggregates are computed by the
+  owning module (`underwriting/model-analytics.ts`, `lending/decision-analytics.ts`) with small-cell suppression
+  (`MIN_CELL` = 5). Dashboards live under `/insights` (`requireInsightsViewer`).
 - Before handing off, run `npm run check`, then `npm run build && npm run test:e2e`.

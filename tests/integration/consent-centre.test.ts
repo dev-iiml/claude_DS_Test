@@ -135,6 +135,7 @@ describe("consent centre read model", () => {
       ["lender_sharing", "never"],
       ["lender_handoff", "never"],
       ["brand_opportunities", "never"],
+      ["product_analytics", "never"],
     ]);
     const profile = centre[0]!;
     expect(profile.current).toMatchObject({ version: 1 });

@@ -4,6 +4,7 @@ import { isUniqueViolation } from "@/db/errors";
 import { authIdentities, authLoginAttempts, authSessions, users } from "@/db/schema";
 import type { Database } from "@/db/create-db";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 
 import type { SessionClient, UserRole, UserStatus } from "../domain";
 import { getDummyHash, hashPassword, needsRehash, verifyPassword } from "./password";
@@ -85,6 +86,7 @@ export async function signUpCreator(
         entityId: created.id,
         metadata: { role: created.role },
       });
+      await recordEvent(tx, { event: "account_created", userId: created.id, props: { client: input.client ?? "web" } });
 
       return created;
     });

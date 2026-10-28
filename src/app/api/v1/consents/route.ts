@@ -1,5 +1,5 @@
 import { getDb } from "@/db";
-import { getConsentCentre } from "@/modules/privacy";
+import { SERVICE_MEASUREMENT_NOTE, getConsentCentre } from "@/modules/privacy";
 
 import { requireApiCreator } from "../_lib/auth";
 import { json, route } from "../_lib/http";
@@ -22,5 +22,7 @@ export const GET = route("consents.list", async (request) => {
       receipts: p.receipts,
       deferredErasures: p.deferredErasures,
     })),
+    /** Essential pseudonymous service measurement (a disclosure, not a consent). */
+    serviceMeasurement: SERVICE_MEASUREMENT_NOTE,
   });
 });

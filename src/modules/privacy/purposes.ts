@@ -76,8 +76,9 @@ export const PURPOSES: readonly PurposePolicy[] = [
     onWithdraw: [
       "Any open eligibility check is closed.",
       "Its financial inputs — bureau summary, bank cashflow totals and what you declared — and any recommendation and fraud-check results are erased.",
+      "Our pseudonymous measurement of your eligibility steps (for example, that a check was started or an offer shown) is erased too.",
     ],
-    erasure: ["financial_inputs"],
+    erasure: ["financial_inputs", "financial_funnel_events"],
   },
   {
     key: CONSENT_KEYS.lenderSharing,
@@ -114,6 +115,18 @@ export const PURPOSES: readonly PurposePolicy[] = [
     ],
     erasure: ["access_requests"],
   },
+  {
+    key: CONSENT_KEYS.productAnalytics,
+    label: "Product analytics",
+    summary: "Recording which screens you open, under a pseudonymous ID, to improve CreatorCo. Optional.",
+    core: false,
+    onWithdraw: [
+      "We stop recording which screens you open.",
+      "Screen views already recorded are erased. Daily totals with no IDs remain.",
+      "Service measurement of key steps (pseudonymous, no personal details) continues while you're a member.",
+    ],
+    erasure: ["product_analytics_events"],
+  },
 ];
 
 /** Shown wherever erasure is mentioned: credit records follow the partner lender's retention rules. */
@@ -130,3 +143,10 @@ export const WITHDRAWAL_REASON_LABELS = {
   too_much_data: "It asks for too much data",
   other: "Something else",
 } as const;
+
+/**
+ * Essential service measurement (Stage 15, user decision): shown in the consent centre and to be carried into the
+ * privacy notice (counsel item). Not a consent — a disclosure.
+ */
+export const SERVICE_MEASUREMENT_NOTE =
+  "To run and improve the service, CreatorCo counts key steps — such as completing your profile, connecting an account, starting an eligibility check or answering an offer — under a pseudonymous ID, recording only the day. These records never include your name, contact details, PAN, notes, terms, amounts, scores or reasons for a decision. Steps about eligibility checks and offers are erased if you withdraw your financial-eligibility consent; everything else is kept for at most 24 months.";

@@ -17,6 +17,7 @@ import { CREATOR_STATUS_LABELS } from "@/modules/creator-status/status";
 import { pointsBalance } from "@/modules/rewards/ledger-service";
 import { formatPoints } from "@/modules/rewards/rules";
 
+import { recordAfterResponse } from "../../_lib/analytics";
 import { requireMember } from "../../_lib/member";
 import { CreatorShell } from "../../_components/creator-shell";
 import { availabilityBadge, costLabel, fullDate } from "../_lib/present";
@@ -42,6 +43,8 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
     opportunityId: id,
   });
   if (!o) notFound();
+  // Optional screen-view measurement: recorded only with the Product analytics consent.
+  recordAfterResponse({ event: "access_opportunity_viewed", userId: user.userId, props: { kind: o.kind } });
   const [balance, consented] = await Promise.all([
     pointsBalance(db, passport.creatorId),
     hasValidConsent(db, user.userId, CONSENT_KEYS.brandOpportunities),

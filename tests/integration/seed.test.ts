@@ -34,6 +34,7 @@ describe("deterministic seed", () => {
       risk_admin: 2,
       ops_admin: 2,
       partnerships_admin: 1,
+      analyst: 1,
     });
 
     const profiles = await db

@@ -173,6 +173,21 @@ export const CONSENT_DEFINITION_SEEDS = [
     ].join("\n\n"),
     activeFrom: new Date("2026-10-03T00:00:00.000Z"),
   },
+  {
+    id: "00000000-0000-4000-8000-00000000c012",
+    key: CONSENT_KEYS.productAnalytics,
+    version: 1,
+    title: "Product analytics",
+    purpose:
+      "To understand which CreatorCo screens and features you open, so we can improve them. Optional and off unless you turn it on.",
+    body: [
+      "With this on, CreatorCo records when you open certain screens — for example an offer or an Access opportunity — under a pseudonymous ID (a coded value, not your name, email or phone number).",
+      "These records keep only the day, not the time, and never contain your name, contact details, PAN, handles, notes, bank or bureau information, or an offer's terms, amounts, scores or reasons. Opening an offer records only that you opened one. They stay with CreatorCo and aren't sold or shared with advertisers.",
+      "This is separate from the service measurement every member is part of: CreatorCo counts key steps (such as completing your profile or starting an eligibility check) under the same kind of pseudonymous ID to run and improve the service.",
+      "You can turn this off at any time in your consent centre: we stop recording screen views and erase the ones already recorded. Records about eligibility checks and offers are also erased if you withdraw your financial-eligibility consent. Raw analytics records are kept for at most 24 months; after that only daily totals (with no IDs) remain.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-28T00:00:00.000Z"),
+  },
 ] as const;
 
 /** The newest seeded version of a purpose (what a creator is asked to agree to now). */

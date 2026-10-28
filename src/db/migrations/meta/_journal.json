@@ -232,6 +232,20 @@
       "when": 1791035908406,
       "tag": "0032_stage14_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793211379050,
+      "tag": "0033_stage15_analytics",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793211381842,
+      "tag": "0034_stage15_guards",
+      "breakpoints": true
     }
   ]
 }

@@ -100,6 +100,15 @@ brands are fictional samples and nothing is sent to them. Points are simulated m
 | `POST /access/requests/{id}/cancel` | Cancels a pending request; points returned → `{ cancelled, points }`.                                                                                                                                                                                                                                          |
 | `GET /points`                       | `{ balance, onHold, history: [{ type: earned\|held\|spent\|returned, amount, label, occurredAt }], rulesVersion, earnRules, terms }`.                                                                                                                                                                          |
 
+### Analytics (Stage 15)
+
+| Endpoint        | Notes                                                                                                                                                                                                                                                      |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /events`  | A native app's screen view: `{ event: "offer_viewed" \| "access_opportunity_viewed", props }` (`{ simulated: boolean }` / `{ kind }`). Recorded only with the `product_analytics` consent → `202 { recorded }`. Other events and extra properties → `422`. |
+| `GET /consents` | Now also returns `serviceMeasurement`: the disclosure for essential, pseudonymous service measurement.                                                                                                                                                     |
+
+Funnel events are otherwise recorded on the server; apps don't send them.
+
 ## Partner API
 
 Partner lenders use a separate API, `/api/partner/v1`, with API keys only (no sessions or cookies). The endpoints,

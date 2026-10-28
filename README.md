@@ -18,7 +18,7 @@ recommendations (Stage 10), the integration control plane (10b), the fraud layer
 ## Updating an existing local setup
 
 Pull the new files, then run `npm install && npm run db:migrate`. This applies any pending migrations (currently
-through 0032: offers, Creator Status, Access and Creator Points) and publishes reference data (consent texts and,
+through 0034: Creator Status, Access, Creator Points and analytics) and publishes reference data (consent texts and,
 outside production, a mock provider route per capability). To also reload the demo data — including the sandbox
 partner, the sample Access brands and opportunities and the partnerships admin — run `npm run db:reset`
 (recommended).
@@ -297,6 +297,35 @@ src/
   5–7 fair · 8–9 strong. Third digit 9 adds a missed payment; the second digit (mod 4) sets recent enquiries.
   Example: `ABCPE1238F` → strong.
 - **Mock Account Aggregator:** see Stage 09b.
+
+### Stage 15: analytics and instrumentation
+
+- **First-party only** (user decision): events go to a separate `analytics` schema through `recordEvent`, inside the
+  transaction that makes the change. A failure is logged and dropped, never rolling back the action. No browser
+  trackers or third-party scripts. A vendor would later receive an export from this store, not live events.
+- **Event catalogue** (`modules/analytics/events.ts`, `ev-1`): every §26 funnel event plus `offer_accepted` and
+  `offer_declined`. Each has a strict property schema (small enums/booleans only) and a forbidden-key guard.
+- **Privacy:**
+  - Subjects are a keyed pseudonym (`ANALYTICS_PSEUDONYM_KEY`, versioned and rotatable).
+  - Only the India-time day is kept — no timestamp — so events can't be re-linked by time.
+  - Staff accounts are never recorded; `.test` accounts are flagged as internal.
+  - Landing and join-page views are anonymous (no ID, no cookie).
+- **Consent** (user decision: essential + optional):
+  - Funnel steps are essential, pseudonymous service measurement, disclosed in the consent centre ("Service
+    measurement").
+  - Screen views (`offer_viewed`, `access_opportunity_viewed`) need the new optional **Product analytics** consent
+    (`product_analytics` v1). Withdrawing it erases them.
+  - Eligibility and offer steps are erased when the financial-eligibility consent is withdrawn.
+- **Retention** (user decision: 24 months): the hourly `analytics_maintenance` job upserts daily counts (no IDs) under
+  an advisory lock, then rolls up and deletes raw events older than 24 months.
+- **Dashboards** (`/insights`; risk admins, super admins and the new read-only `analyst` role):
+  - **Funnel:** cohort by sign-up date, step conversion, weekly cohorts. Counts under 5 are hidden.
+  - **Models:** Traditional vs Creator-Enhanced eligibility rates, paired amount difference, eligible-only-with-signals,
+    feature missingness, model versions, fraud flag rate, and partner-lender approve / modify / decline rates (latest
+    revision) with offer acceptance. All computed by `underwriting` and `lending` from their own tables.
+  - Analysts see these as of the start of the day, with the amount difference rounded to ₹1,000.
+- **API v1:** `POST /api/v1/events` for native-app screen views (consent-gated). `GET /consents` returns
+  `serviceMeasurement`.
 
 ### Stage 14: Creator Status, Access preview and Creator Points
 
@@ -671,6 +700,17 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   check); a held fraud-review check stays "Preparing to send" until staff act (set an SLA); the lender adapter
   must be idempotent on `proposalId` (a late success after a timeout can be retried); admin nav reuses existing
   icons (new icons would be a design-system release).
+- **Stage 15 open items:**
+  - **Counsel:**
+    - Essential pseudonymous measurement without consent needs a lawful basis and privacy-notice wording (the consent
+      centre note is a stand-in).
+    - Whether eligibility and offer funnel steps may be kept at all.
+    - The 24-month retention period.
+  - Landing and join-page counts include bots and aren't rate-limited.
+  - The demo seed has no events, so `/insights` is empty until people use the app.
+  - Small-cell suppression is per cell; differences between adjacent cells can still narrow a group (no
+    complementary suppression yet).
+  - No vendor export yet.
 - **Stage 14 open items:**
   - The Status thresholds and point amounts are untested product hypotheses.
   - Brand activity can't count towards Status until brand or campaign data exists.

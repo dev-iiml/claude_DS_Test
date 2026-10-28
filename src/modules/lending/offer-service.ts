@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { CONSENT_KEYS, grantConsent, hasValidConsent } from "@/modules/consent";
 import type { ConsentSource } from "@/modules/consent/domain";
 import { recordPartnerEvent } from "@/modules/partners";
@@ -36,6 +37,7 @@ import { LendingError, termsHashOf } from "./proposal-service";
 interface OfferContext {
   proposalId: string;
   lender: string;
+  simulated: boolean;
   reviewId: string;
   terms: ReturnType<typeof offerTermsSchema.parse> | null;
   expiresAt: Date | null;
@@ -50,7 +52,7 @@ async function lockOffer(tx: DbExecutor, userId: string, applicationId: string):
     .where(and(eq(creditApplications.id, applicationId), eq(creditApplications.userId, userId)));
   if (!app) throw new LendingError("not_found");
   const [proposal] = await tx
-    .select({ id: creditProposals.id, lender: creditProposals.lender })
+    .select({ id: creditProposals.id, lender: creditProposals.lender, policyVersion: creditProposals.policyVersion })
     .from(creditProposals)
     .where(and(eq(creditProposals.applicationId, app.id), notInArray(creditProposals.status, ["withdrawn"])))
     .orderBy(desc(creditProposals.createdAt))
@@ -63,6 +65,7 @@ async function lockOffer(tx: DbExecutor, userId: string, applicationId: string):
   return {
     proposalId: proposal.id,
     lender: proposal.lender,
+    simulated: proposal.policyVersion !== null,
     reviewId: review.id,
     terms: parsed?.success ? parsed.data : null,
     expiresAt: review.finalOfferExpiresAt,
@@ -163,6 +166,11 @@ export async function acceptOffer(
       metadata: {},
     });
     await recordPartnerEvent(tx, { lenderKey: offer.lender, type: "offer.accepted", proposalId: offer.proposalId });
+    await recordEvent(tx, {
+      event: offer.simulated ? "simulated_offer_accepted" : "offer_accepted",
+      userId: input.userId,
+      now,
+    });
     return row!;
   });
 }
@@ -201,6 +209,12 @@ export async function declineOffer(
       metadata: reason ? { reason } : {},
     });
     await recordPartnerEvent(tx, { lenderKey: offer.lender, type: "offer.declined", proposalId: offer.proposalId });
+    await recordEvent(tx, {
+      event: "offer_declined",
+      userId: input.userId,
+      props: { simulated: offer.simulated },
+      now,
+    });
     return row!;
   });
 }

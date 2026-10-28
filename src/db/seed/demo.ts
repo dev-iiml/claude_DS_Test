@@ -172,6 +172,8 @@ export const DEMO_STAFF: { n: number; email: string; role: UserRole }[] = [
   { n: 103, email: "ops.approver@staff.creatorco.test", role: "ops_admin" },
   // Brand partnerships desk (Stage 14): reviews Access requests and manages opportunities.
   { n: 105, email: "partnerships.admin@staff.creatorco.test", role: "partnerships_admin" },
+  // Read-only aggregate analytics (Stage 15): /insights only.
+  { n: 106, email: "analyst@staff.creatorco.test", role: "analyst" },
 ];
 
 const uuid = (prefix: string, n: number) => `00000000-0000-4000-${prefix}-${String(n).padStart(12, "0")}`;

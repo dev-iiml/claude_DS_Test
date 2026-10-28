@@ -8,7 +8,14 @@ import { getServerEnv } from "@/lib/env";
 import { isOnboardingComplete } from "@/modules/creator-profile/queries";
 
 import { resolveSession, type AuthDeps, type SessionUser } from "./auth/auth-service";
-import { canAccessAdmin, canAccessCreatorArea, canAccessOps, canAccessPartnerships, homePathFor } from "./policy";
+import {
+  canAccessAdmin,
+  canAccessCreatorArea,
+  canAccessInsights,
+  canAccessOps,
+  canAccessPartnerships,
+  homePathFor,
+} from "./policy";
 import { readSessionToken } from "./session-cookie";
 
 /**
@@ -58,6 +65,13 @@ export async function requireOpsAdmin(): Promise<SessionUser> {
 export async function requirePartnershipsAdmin(): Promise<SessionUser> {
   const user = await requireUser();
   if (!canAccessPartnerships(user.role)) notFound();
+  return user;
+}
+
+/** Aggregate analytics (`/insights`): analysts, risk admins and super admins; 404 for everyone else. */
+export async function requireInsightsViewer(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!canAccessInsights(user.role)) notFound();
   return user;
 }
 

@@ -11,6 +11,7 @@ import {
 import type { Database } from "@/db/create-db";
 import type { DbExecutor } from "@/db/types";
 import { callProvider, recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { syncMilestonePoints } from "@/modules/rewards/ledger-service";
 import { CONSENT_KEYS, grantConsent, hasValidConsent } from "@/modules/consent";
 import { getIdentityPrefill, namesMatch } from "@/modules/identity/identity-prefill";
@@ -452,6 +453,12 @@ export async function completeOnboarding(
       entityType: "creator_profile",
       entityId: profile.id,
       metadata: { category: completed.creatorCategory, gst_status: completed.gstStatus },
+    });
+    await recordEvent(tx, {
+      event: "creator_profile_completed",
+      userId,
+      props: { category: completed.creatorCategory ?? null },
+      now,
     });
     // Membership milestones (welcome, verified mobile) — simulated Creator Points.
     await syncMilestonePoints(tx, { userId, now });

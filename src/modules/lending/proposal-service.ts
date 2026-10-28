@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { CONSENT_KEYS, findValidReceipt, getActiveDefinition, hasValidConsent } from "@/modules/consent";
 import { getFinancialCapacity } from "@/modules/financial-eligibility/application-service";
 import { recordPartnerEvent } from "@/modules/partners";
@@ -758,6 +759,20 @@ export async function reviewDecision(db: Database, input: ReviewInput) {
     });
     if (input.action === "confirm")
       await recordPartnerEvent(tx, { lenderKey: proposal.lender, type: "decision.confirmed", proposalId: proposal.id });
+    if (finalExpiresAt) {
+      // The creator now sees an offer (funnel measurement only — no terms or amounts).
+      const [app] = await tx
+        .select({ userId: creditApplications.userId })
+        .from(creditApplications)
+        .where(eq(creditApplications.id, proposal.applicationId));
+      if (app)
+        await recordEvent(tx, {
+          event: "offer_generated",
+          userId: app.userId,
+          props: { simulated: isSimulated(proposal) },
+          now: reviewedAt,
+        });
+    }
     return review!;
   });
 }

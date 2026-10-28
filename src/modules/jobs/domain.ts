@@ -10,6 +10,7 @@ export const JOB_TYPES = [
   "process_lender_proposals",
   "deliver_partner_webhooks",
   "expire_access_requests",
+  "analytics_maintenance",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -65,6 +66,13 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
     type: "expire_access_requests",
     label: "Expire Access requests",
     description: "Closes pending Access requests whose opportunity has closed and returns their Creator Points.",
+    everyMinutes: 60,
+  },
+  {
+    type: "analytics_maintenance",
+    label: "Analytics rollups and retention",
+    description:
+      "Rolls up daily event counts (no identifiers) and deletes raw analytics events older than 24 months once their day is rolled up.",
     everyMinutes: 60,
   },
   {

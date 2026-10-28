@@ -6,6 +6,7 @@ import { creatorProfessionalFeatures, creatorProfiles, creatorStatusRuns, profes
 import type { Database } from "@/db/create-db";
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { earnPoints } from "@/modules/rewards/ledger-service";
 
 import {
@@ -72,7 +73,7 @@ async function evaluateInTx(
   const now = input.now ?? new Date();
   // Serialises evaluations for one creator (and orders them with points holds).
   const [profile] = await db
-    .select({ status: creatorProfiles.profileStatus })
+    .select({ status: creatorProfiles.profileStatus, userId: creatorProfiles.userId })
     .from(creatorProfiles)
     .where(eq(creatorProfiles.id, input.creatorId))
     .for("no key update");
@@ -115,6 +116,12 @@ async function evaluateInTx(
     entityType: "creator_profile",
     entityId: input.creatorId,
     metadata: { tier: evaluation.tier, rules_version: STATUS_RULES_VERSION, changed },
+  });
+  await recordEvent(db, {
+    event: "status_generated",
+    userId: profile.userId,
+    props: { tier: evaluation.tier, changed },
+    now,
   });
   // One-off membership points for reaching a tier (never clawed back if Status later drops).
   if (meetsTier(evaluation.tier, "onyx")) await earnPoints(db, { creatorId: input.creatorId, rule: "tier_onyx", now });

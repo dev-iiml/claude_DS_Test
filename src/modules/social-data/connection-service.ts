@@ -12,6 +12,7 @@ import {
   socialPlatforms,
 } from "@/db/schema";
 import { callProvider, recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { CONSENT_KEYS, ConsentError, grantConsent, hasValidConsent } from "@/modules/consent";
 import { sha256Hex } from "@/modules/identity/auth/tokens";
 import { MAX_ACCOUNTS_PER_PLATFORM, SELF_DECLARED_PROVIDER } from "@/modules/social-data/domain";
@@ -149,6 +150,12 @@ export async function startConnection(
     additional,
     expiresAt: new Date(now.getTime() + CONNECTION_TTL_MINUTES * 60_000),
     createdAt: now,
+  });
+  await recordEvent(deps.db, {
+    event: "social_connection_started",
+    userId: input.userId,
+    props: { platform: input.platform },
+    now,
   });
 
   return callProvider(
@@ -298,6 +305,13 @@ export async function completeConnection(
         entityId: id,
         metadata: { platform: identity.platform, provider, upgraded_declared: target?.connectionStatus === "declared" },
       });
+      await recordEvent(tx, {
+        event: "social_connection_completed",
+        userId: input.userId,
+        props: { platform: identity.platform },
+      });
+      // The Passport is verified by the creator's first connected account (recorded once).
+      await recordEvent(tx, { event: "passport_generated", userId: input.userId });
       return id;
     });
   } catch (error) {

@@ -5,6 +5,7 @@ import { isUniqueViolation } from "@/db/errors";
 import { accessOpportunities, accessRequests, brands, consentReceipts, creatorProfiles } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { CONSENT_KEYS, findValidReceipt, grantConsent, hasValidConsent } from "@/modules/consent";
 import type { ConsentSource } from "@/modules/consent/domain";
 import { currentTier } from "@/modules/creator-status/status-service";
@@ -130,6 +131,12 @@ export async function requestAccess(
         })
         .returning({ id: accessRequests.id });
       await holdPoints(tx, { creatorId: account.id, requestId: request!.id, amount: o.pointsCost, now });
+      await recordEvent(tx, {
+        event: "access_requested",
+        userId: input.userId,
+        props: { kind: o.kind, min_tier: o.minTier },
+        now,
+      });
       await recordAuditEvent(tx, {
         actorType: "user",
         actorId: input.userId,

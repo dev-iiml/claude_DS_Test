@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { BackLink, ListGroup, ListRow, PageHeader } from "@/components/creatorco";
 import { getDb } from "@/db";
-import { getConsentCentre } from "@/modules/privacy";
+import { SERVICE_MEASUREMENT_NOTE, getConsentCentre } from "@/modules/privacy";
 
 import { requireConsentCentreAccess } from "@/app/_lib/member";
 
@@ -46,10 +46,9 @@ export default async function ConsentCentrePage() {
             />
           ))}
         </ListGroup>
-        <p className="px-1 text-[13px] leading-snug text-ink-subtle">
-          Financial eligibility and sharing with a partner lender will each have their own consent when they arrive.
-          Sharing anything with a partner lender will always need its own consent.
-        </p>
+        <ListGroup id="measurement" label="Service measurement">
+          <ListRow label="How we measure the service" detail={SERVICE_MEASUREMENT_NOTE} />
+        </ListGroup>
       </div>
     </ConsentFrame>
   );

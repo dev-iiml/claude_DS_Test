@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { CONSENT_KEYS, hasValidConsent } from "@/modules/consent";
 import { getFinancialCapacity } from "@/modules/financial-eligibility/application-service";
 import {
@@ -134,6 +135,8 @@ export async function runUnderwriting(
       )
       .limit(1);
     if (existing) return { runId: existing.id, reused: true, ...result };
+    // Funnel measurement only: no scores, grades, amounts or outcomes leave the regulated domain.
+    await recordEvent(tx, { event: "underwriting_started", userId: input.userId, now });
 
     const [run] = await tx
       .insert(underwritingRuns)
@@ -210,6 +213,12 @@ export async function runUnderwriting(
         fraud_outcome: result.fraud.outcome,
         fraud_flags: result.fraud.flags.length,
       },
+    });
+    await recordEvent(tx, {
+      event: "underwriting_completed",
+      userId: input.userId,
+      props: { model_version: UNDERWRITING_MODEL_VERSION },
+      now,
     });
     return { runId: run!.id, reused: false, ...result };
   });

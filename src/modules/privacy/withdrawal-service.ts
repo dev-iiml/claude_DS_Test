@@ -15,6 +15,7 @@ import type { ConsentKey, ConsentSource, ErasureScope, WithdrawalReason } from "
 import { pauseMembership, resumeMembership } from "@/modules/creator-profile/membership";
 import { closeOpenApplications } from "@/modules/financial-eligibility/application-service";
 import { cancelPendingAccessRequests, eraseAccessRequests } from "@/modules/access";
+import { eraseFinancialFunnelEvents, eraseOptionalEvents } from "@/modules/analytics/recorder";
 import { eraseFinancialInputs } from "@/modules/financial-eligibility/erasure";
 import { eraseUnderwritingRuns } from "@/modules/underwriting/erasure";
 import { withdrawUnsentProposals } from "@/modules/lending/proposal-service";
@@ -98,6 +99,10 @@ async function erase(
       return eraseFinancialInputs(tx, { userId: ids.userId, before, now: new Date(), releasedSubmitted: released });
     case "access_requests":
       return eraseAccessRequests(tx, { userId: ids.userId, before });
+    case "product_analytics_events":
+      return eraseOptionalEvents(tx, { userId: ids.userId, before });
+    case "financial_funnel_events":
+      return eraseFinancialFunnelEvents(tx, { userId: ids.userId, before });
   }
 }
 

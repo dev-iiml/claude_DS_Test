@@ -21,13 +21,14 @@ const handlers = (override: Partial<JobHandlers> = {}): JobHandlers => ({
   process_lender_proposals: ok,
   deliver_partner_webhooks: ok,
   expire_access_requests: ok,
+  analytics_maintenance: ok,
   ...override,
 });
 
 describe("Job runner", () => {
   it("enqueues each schedule once per window and runs them", async () => {
     const first = await tick({ db, now: at(0), handlers: handlers() });
-    expect(first).toMatchObject({ enqueued: 7, succeeded: 7, dead: 0 });
+    expect(first).toMatchObject({ enqueued: 8, succeeded: 8, dead: 0 });
     const again = await tick({ db, now: at(30_000), handlers: handlers() });
     expect(again.enqueued).toBe(0);
     // The 1-minute webhook window rolls over first…
