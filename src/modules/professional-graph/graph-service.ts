@@ -11,6 +11,8 @@ import {
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
 import { CONSENT_KEYS, hasValidConsent } from "@/modules/consent";
+import { refreshCreatorStatus } from "@/modules/creator-status/status-service";
+import { describeError, logger } from "@/lib/logger";
 
 import type { GraphRunTrigger } from "./domain";
 import { ENGINE_VERSION, computeFeatures, type EngineInput, type FeatureKey, type FeatureResult } from "./engine";
@@ -100,7 +102,7 @@ export async function runProfessionalGraph(
   const features = computeFeatures(engineInput);
   const snapshotCount = engineInput.accounts.reduce((n, a) => n + a.snapshots.length, 0);
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [existing] = await tx
       .select({ id: professionalGraphRuns.id })
       .from(professionalGraphRuns)
@@ -158,6 +160,14 @@ export async function runProfessionalGraph(
     });
     return { ok: true as const, runId: run.id, reused: false, features };
   });
+
+  // Creator Status follows every graph run, in its own transaction: a failure there never fails the run.
+  try {
+    await refreshCreatorStatus(db, { creatorId: input.creatorId, graphRunId: result.runId, now });
+  } catch (error) {
+    logger.warn("creator_status.refresh_failed", { error: describeError(error) });
+  }
+  return result;
 }
 
 export interface StoredFeature {

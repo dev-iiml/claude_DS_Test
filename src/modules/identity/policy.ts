@@ -1,4 +1,4 @@
-import { ADMIN_ROLES, OPS_ROLES, type UserRole } from "./domain";
+import { ADMIN_ROLES, OPS_ROLES, PARTNERSHIPS_ROLES, type UserRole } from "./domain";
 
 /**
  * Pure authorisation and routing policy. Kept free of framework and database
@@ -14,6 +14,10 @@ export function canAccessAdmin(role: UserRole): boolean {
 
 export function canAccessOps(role: UserRole): boolean {
   return (OPS_ROLES as readonly UserRole[]).includes(role);
+}
+
+export function canAccessPartnerships(role: UserRole): boolean {
+  return (PARTNERSHIPS_ROLES as readonly UserRole[]).includes(role);
 }
 
 /** Staff never use creator areas. */
@@ -46,6 +50,7 @@ export const MEMBER_AREAS = [
 export function homePathFor(subject: RoutingSubject): string {
   if (isAdminRole(subject.role)) return "/admin";
   if (canAccessOps(subject.role)) return "/ops";
+  if (canAccessPartnerships(subject.role)) return "/partnerships";
   return subject.onboardingComplete ? "/dashboard" : "/onboarding";
 }
 
@@ -62,6 +67,9 @@ export function safeNextPath(next: string | null | undefined, subject: RoutingSu
   if (path === "/login" || path === "/signup") return null;
   if (path === "/admin" || path.startsWith("/admin/")) return canAccessAdmin(subject.role) ? next : null;
   if (path === "/ops" || path.startsWith("/ops/")) return canAccessOps(subject.role) ? next : null;
+  if (path === "/partnerships" || path.startsWith("/partnerships/")) {
+    return canAccessPartnerships(subject.role) ? next : null;
+  }
   if (path.startsWith("/onboarding")) return canAccessCreatorArea(subject.role) ? next : null;
   if (MEMBER_AREAS.some((area) => path === area || path.startsWith(`${area}/`))) {
     if (!canAccessCreatorArea(subject.role)) return null;

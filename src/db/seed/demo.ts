@@ -1,5 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 
+import type { OpportunityInput } from "@/modules/access/access-service";
+import { grantDueMilestones } from "@/modules/rewards/points-service";
 import { hashPassword } from "@/modules/identity/auth/password";
 import { hashApiKey } from "@/modules/partners/credentials";
 import { gstinCheckCharacter } from "@/modules/creator-profile/gstin";
@@ -10,6 +12,7 @@ import type { UserRole } from "@/modules/identity/domain";
 
 import type { Database } from "../create-db";
 import {
+  accessOpportunities,
   auditEvents,
   creatorAdditionalCategories,
   authIdentities,
@@ -167,7 +170,72 @@ export const DEMO_STAFF: { n: number; email: string; role: UserRole }[] = [
   // Two ops admins so maker-checker approvals can be demonstrated.
   { n: 102, email: "ops.admin@staff.creatorco.test", role: "ops_admin" },
   { n: 103, email: "ops.approver@staff.creatorco.test", role: "ops_admin" },
+  // Stage 14: the partnerships desk (Access requests and opportunities).
+  { n: 105, email: "partnerships.admin@staff.creatorco.test", role: "partnerships_admin" },
 ];
+
+/**
+ * Stage 14 sample opportunities. Every brand here is FICTIONAL; the preview
+ * delivers nothing and shares nothing with anyone.
+ */
+export const DEMO_OPPORTUNITIES: Omit<OpportunityInput, "opensAt" | "closesAt">[] = [
+  {
+    slug: "aurel-beauty-drop",
+    brandName: "Aurel Beauty",
+    title: "Luxury Beauty Drop",
+    kind: "pr_drop",
+    category: "Beauty",
+    summary: "A first look at Aurel Beauty's winter skincare edit, sent to creators who review beauty thoughtfully.",
+    minTier: "member",
+    pointsCost: 300,
+    places: 20,
+  },
+  {
+    slug: "northlight-camera-programme",
+    brandName: "Northlight Cameras",
+    title: "Camera Creator Programme",
+    kind: "programme",
+    category: "Photography & film",
+    summary: "A three-month loan of a Northlight mirrorless kit, with a workshop on shooting for short-form video.",
+    minTier: "onyx",
+    pointsCost: 800,
+    places: 10,
+  },
+  {
+    slug: "saffron-stay-weekend",
+    brandName: "Saffron Stay Hotels",
+    title: "Creator Hotel Weekend",
+    kind: "experience",
+    category: "Travel",
+    summary: "Two nights at a Saffron Stay heritage property for creators who tell travel stories with care.",
+    minTier: "onyx",
+    pointsCost: 1200,
+    places: 4,
+  },
+  {
+    slug: "atelier-nine-preview",
+    brandName: "Atelier Nine",
+    title: "Fashion Preview",
+    kind: "event",
+    category: "Fashion",
+    summary: "An early walk-through of Atelier Nine's festive collection, with the design team.",
+    minTier: "member",
+    pointsCost: 400,
+    places: 12,
+  },
+  {
+    slug: "soundfold-live-access",
+    brandName: "Soundfold Live",
+    title: "Music & Event Access",
+    kind: "event",
+    category: "Music",
+    summary: "Backstage access at a Soundfold Live showcase for creators covering independent music.",
+    minTier: "icon",
+    pointsCost: 1500,
+    places: 6,
+  },
+];
+const OPPORTUNITY_WINDOW = { opensAt: SEED_AT, closesAt: new Date("2027-06-30T18:29:59.000Z") };
 
 const uuid = (prefix: string, n: number) => `00000000-0000-4000-${prefix}-${String(n).padStart(12, "0")}`;
 export const demoIds = {
@@ -176,6 +244,7 @@ export const demoIds = {
   profile: (n: number) => uuid("8003", n),
   social: (n: number, i: number) => uuid("8004", n * 100 + i),
   receipt: (n: number) => uuid("8005", n),
+  opportunity: (n: number) => uuid("8008", n),
 };
 
 export async function seedDemoData(db: Database, password: string) {
@@ -306,6 +375,26 @@ export async function seedDemoData(db: Database, password: string) {
     }
 
     await seedSandboxPartner(tx);
+
+    // Stage 14: sample opportunities, and one-off milestone points for every completed profile
+    // (idempotent — the backfill for members who completed onboarding before Stage 14).
+    await tx
+      .insert(accessOpportunities)
+      .values(
+        DEMO_OPPORTUNITIES.map((o, i) => ({
+          id: demoIds.opportunity(i + 1),
+          ...o,
+          ...OPPORTUNITY_WINDOW,
+          createdAt: SEED_AT,
+          updatedAt: SEED_AT,
+        })),
+      )
+      .onConflictDoNothing();
+    const completedProfiles = await tx
+      .select({ id: creatorProfiles.id })
+      .from(creatorProfiles)
+      .where(isNotNull(creatorProfiles.completedAt));
+    for (const p of completedProfiles) await grantDueMilestones(tx, { creatorId: p.id });
 
     if (createdProfiles > 0) {
       await tx.insert(auditEvents).values({

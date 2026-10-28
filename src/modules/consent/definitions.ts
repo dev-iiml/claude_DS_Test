@@ -158,6 +158,21 @@ export const CONSENT_DEFINITION_SEEDS = [
     ].join("\n\n"),
     activeFrom: new Date("2026-10-03T00:00:00.000Z"),
   },
+  {
+    id: "00000000-0000-4000-8000-00000000c011",
+    key: CONSENT_KEYS.brandOpportunities,
+    version: 1,
+    title: "Brand opportunities",
+    purpose:
+      "To consider your requests for Access opportunities — PR drops, programmes, experiences and events — using your Creator Professional Profile and Creator Status.",
+    body: [
+      "When you request an Access opportunity, CreatorCo's partnerships team reviews it using a summary of your Creator Professional Profile: your display name, handle, category, city, Creator Status, connected platforms and the professional signals shown on your Passport, together with any note you add. They never see your financial information, eligibility checks or anything about credit.",
+      "In this preview the opportunities are samples from fictional brands. Nothing about you is shared with any brand, and nothing is delivered. A request holds the Creator Points it costs; they are spent if it is approved and returned if it is declined, expires or you cancel it. Creator Points are not money and can't be exchanged, transferred or withdrawn.",
+      "CreatorCo keeps a record of each request and its outcome. Our audit log keeps a minimal record of what happened (for example that a request was made or approved), without the opportunity or your note.",
+      "You can withdraw this consent at any time. Pending requests are then cancelled and their points returned, and your request history is erased. The minimal audit record stays. Sharing anything with a real brand would need a new version of this consent first.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-03T00:00:00.000Z"),
+  },
 ] as const;
 
 /** The newest seeded version of a purpose (what a creator is asked to agree to now). */

@@ -9,6 +9,7 @@ export const JOB_TYPES = [
   "purge_expired_fi_data",
   "process_lender_proposals",
   "deliver_partner_webhooks",
+  "expire_access_requests",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -59,6 +60,13 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
     description:
       "Sends signed, thin event webhooks to partner lenders (ids only), retrying with backoff; partners can also read the event feed.",
     everyMinutes: 1,
+  },
+  {
+    type: "expire_access_requests",
+    label: "Expire Access requests",
+    description:
+      "Expires undecided Access requests past their deadline or whose opportunity closed, and returns their points.",
+    everyMinutes: 60,
   },
   {
     type: "provider_health_check",

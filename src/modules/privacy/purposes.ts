@@ -101,6 +101,18 @@ export const PURPOSES: readonly PurposePolicy[] = [
     ],
     erasure: [],
   },
+  {
+    key: CONSENT_KEYS.brandOpportunities,
+    label: "Brand opportunities",
+    summary: "Reviewing your requests for Access opportunities using your Creator Professional Profile.",
+    core: false,
+    onWithdraw: [
+      "Pending Access requests are cancelled and their Creator Points returned.",
+      "Your Access request history is erased. Points already spent on approved requests stay spent.",
+      "You can still browse Access; you'll be asked for this consent again if you make a request.",
+    ],
+    erasure: ["access_requests"],
+  },
 ];
 
 /** Shown wherever erasure is mentioned: credit records follow the partner lender's retention rules. */

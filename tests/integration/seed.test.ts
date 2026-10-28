@@ -1,8 +1,9 @@
 import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
-import { creatorProfiles, users } from "@/db/schema";
-import { DEMO_CREATORS, seedDemoData } from "@/db/seed/demo";
+import { accessOpportunities, creatorProfiles, users } from "@/db/schema";
+import { DEMO_CREATORS, DEMO_OPPORTUNITIES, demoIds, seedDemoData } from "@/db/seed/demo";
+import { getPointsBalance } from "@/modules/rewards";
 import { publishReferenceData } from "@/db/seed/reference";
 import { isValidGstin } from "@/modules/creator-profile/gstin";
 import { hasValidConsent } from "@/modules/consent";
@@ -29,7 +30,21 @@ describe("deterministic seed", () => {
       .from(users)
       .where(seededEmails)
       .groupBy(users.role);
-    expect(Object.fromEntries(roles.map((r) => [r.role, r.n]))).toEqual({ creator: 5, risk_admin: 2, ops_admin: 2 });
+    expect(Object.fromEntries(roles.map((r) => [r.role, r.n]))).toEqual({
+      creator: 5,
+      risk_admin: 2,
+      ops_admin: 2,
+      partnerships_admin: 1,
+    });
+
+    // Stage 14: five sample opportunities from fictional brands; welcome points granted once, even on reseed.
+    const opportunities = await db.select().from(accessOpportunities);
+    expect(opportunities.filter((o) => DEMO_OPPORTUNITIES.some((d) => d.slug === o.slug))).toHaveLength(5);
+    expect(opportunities.every((o) => o.isPreview)).toBe(true);
+    const aarohi = demoIds.profile(1);
+    expect(await getPointsBalance(db, aarohi)).toBe(500);
+    const draft = demoIds.profile(DEMO_CREATORS.find((c) => !c.completed)!.n);
+    expect(await getPointsBalance(db, draft)).toBe(0);
 
     const profiles = await db
       .select()

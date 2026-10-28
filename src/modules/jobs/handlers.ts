@@ -1,3 +1,4 @@
+import { expireAccessRequests } from "@/modules/access/access-service";
 import { expireStaleApplications } from "@/modules/financial-eligibility/application-service";
 import { resolveProvider, resolveProviderByKey } from "@/modules/integrations/router";
 import { processLenderProposals } from "@/modules/lending";
@@ -32,6 +33,7 @@ export const JOB_HANDLERS: JobHandlers = {
   },
   // Real time per send (signatures carry it), never the tick's start time.
   deliver_partner_webhooks: async ({ db }) => deliverPartnerWebhooks({ db }),
+  expire_access_requests: async ({ db, now }) => expireAccessRequests({ db, now }),
   provider_health_check: async ({ db, now }) => {
     const health = await runHealthChecks({ db, now, production: process.env.APP_ENV === "production" });
     return { ...health, expired_changes: await expireStaleChanges({ db, now }) };

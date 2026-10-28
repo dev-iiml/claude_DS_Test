@@ -9,6 +9,7 @@ import {
   dataErasureRequests,
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
+import { cancelPendingAccessRequests, eraseAccessRequests } from "@/modules/access/access-service";
 import { recordAuditEvent } from "@/modules/audit";
 import { CONSENT_KEYS, grantConsent, hasValidConsent, withdrawConsent } from "@/modules/consent";
 import type { ConsentKey, ConsentSource, ErasureScope, WithdrawalReason } from "@/modules/consent/domain";
@@ -95,6 +96,8 @@ async function erase(
     }
     case "financial_inputs":
       return eraseFinancialInputs(tx, { userId: ids.userId, before, now: new Date(), releasedSubmitted: released });
+    case "access_requests":
+      return ids.creatorId ? eraseAccessRequests(tx, { creatorId: ids.creatorId, before }) : {};
   }
 }
 
@@ -133,13 +136,30 @@ export async function withdrawPurpose(
           eq(consentReceipts.status, "granted"),
         ),
       )
-      .orderBy(desc(consentDefinitions.version));
+      .orderBy(desc(consentDefinitions.version))
+      // Lock the receipts before any effect: a concurrent request that relies on this consent waits or loses.
+      .for("update", { of: consentReceipts });
     if (!granted.length) throw new PrivacyError("not_granted");
 
     const profile = await profileFor(tx, input.userId);
     const effects: Record<string, string | number | boolean> = {};
 
-    // 1. Stop processing immediately.
+    // 1. Stop processing immediately. (Access requests before pausing: request rows lock before the profile.)
+    if (policy.core && profile) {
+      const cancelled = await cancelPendingAccessRequests(tx, {
+        creatorId: profile.id,
+        reason: "membership_paused",
+        now,
+      });
+      if (cancelled) effects.access_requests_cancelled = cancelled;
+    }
+    if (policy.key === CONSENT_KEYS.brandOpportunities && profile) {
+      effects.access_requests_cancelled = await cancelPendingAccessRequests(tx, {
+        creatorId: profile.id,
+        reason: "consent_withdrawn",
+        now,
+      });
+    }
     if (policy.core) effects.membership_paused = await pauseMembership(tx, { userId: input.userId, now });
     if (policy.key === CONSENT_KEYS.socialAccountConnection && profile) {
       effects.accounts_disconnected = await disconnectAllAccounts(tx, { creatorId: profile.id, now });

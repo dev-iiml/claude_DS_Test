@@ -15,6 +15,7 @@ import { CONSENT_KEYS, grantConsent, hasValidConsent } from "@/modules/consent";
 import { getIdentityPrefill, namesMatch } from "@/modules/identity/identity-prefill";
 import { SELF_DECLARED_PROVIDER } from "@/modules/social-data/domain";
 import { resolveProvider } from "@/modules/integrations/router";
+import { grantDueMilestones } from "@/modules/rewards/points-service";
 import type { TaxRegistrationProvider } from "@/providers/tax-registration/types";
 
 import type { OnboardingStep } from "./domain";
@@ -452,6 +453,8 @@ export async function completeOnboarding(
       entityId: profile.id,
       metadata: { category: completed.creatorCategory, gst_status: completed.gstStatus },
     });
+    // Welcome (and verified-mobile) Creator Points — one-off, never credit-related.
+    await grantDueMilestones(tx, { creatorId: profile.id });
     return completed;
   });
 }
