@@ -37,7 +37,8 @@ export default defineConfig({
     { name: "mobile", use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, grep: /@mobile/ },
   ],
   webServer: {
-    command: `npx tsx e2e/prepare-db.ts && ${E2E_APP_DATABASE_URL ? `DATABASE_URL='${E2E_APP_DATABASE_URL}' ` : ""}npx next start -p ${PORT}`,
+    // The standalone server, exactly as the container runs it (Stage 17).
+    command: `npx tsx e2e/prepare-db.ts && ${E2E_APP_DATABASE_URL ? `DATABASE_URL='${E2E_APP_DATABASE_URL}' ` : ""}PORT=${PORT} node scripts/start-standalone.mjs`,
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: 120_000,

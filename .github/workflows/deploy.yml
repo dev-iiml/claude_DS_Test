@@ -1,0 +1,170 @@
+# Deploy (Stage 17) to Google Cloud Run in Mumbai.
+#
+# - CI passes on a push to main → staging: migrate (+ fictional demo seed), build ONE image of that commit, deploy it.
+# - Manual run from main with environment=production → promote the image staging is SERVING: check its commit is on
+#   main and passed CI, migrate production from that same commit, deploy that exact image. Production never gets demo
+#   data and never builds its own image.
+#
+# Authentication is keyless (Workload Identity Federation); GitHub holds no cloud keys or database URLs. Database
+# URLs are read from Secret Manager at run time and masked. Repository variables come from infra/gcp/setup.sh.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy (run from main)
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+
+env:
+  ENV_NAME: ${{ inputs.environment || 'staging' }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+  REGION: ${{ vars.GCP_REGION || 'asia-south1' }}
+  REGISTRY: ${{ vars.GCP_REGION || 'asia-south1' }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/creatorco
+  ANALYTICS_CAMPAIGNS: ${{ vars.ANALYTICS_CAMPAIGNS }}
+  GH_TOKEN: ${{ github.token }}
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ inputs.environment || 'staging' }}
+    # Automatic deploys only for a successful CI run of a PUSH to this repository's main — never for pull requests
+    # (a fork's branch can also be called "main"). Manual runs must start from main (checked below).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    steps:
+      - name: Manual deploys run from main
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run this workflow from the main branch."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: creatorco-${{ env.ENV_NAME }}-deploy@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Choose the commit (staging)
+        if: env.ENV_NAME == 'staging'
+        env:
+          RUN_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: echo "COMMIT=$RUN_SHA" >> "$GITHUB_ENV"
+
+      - name: Choose the image staging is serving (production)
+        if: env.ENV_NAME == 'production'
+        run: |
+          revision="$(gcloud run services describe creatorco-staging --region "$REGION" --project "$PROJECT_ID" \
+            --format='value(status.latestReadyRevisionName)')"
+          image="$(gcloud run revisions describe "$revision" --region "$REGION" --project "$PROJECT_ID" \
+            --format='value(spec.containers[0].image)')"
+          commit="$(gcloud run revisions describe "$revision" --region "$REGION" --project "$PROJECT_ID" \
+            --format='value(metadata.labels.commit)')"
+          [[ "$image" =~ ^${REGISTRY}/web@sha256:[0-9a-f]{64}$ ]] || { echo "::error::Unexpected staging image: $image"; exit 1; }
+          [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Staging revision $revision has no commit label"; exit 1; }
+          echo "IMAGE=$image" >> "$GITHUB_ENV"
+          echo "COMMIT=$commit" >> "$GITHUB_ENV"
+          echo "Promoting $image (commit $commit, staging revision $revision)"
+
+      - name: The commit is on main and passed CI
+        run: |
+          git merge-base --is-ancestor "$COMMIT" origin/main || { echo "::error::$COMMIT is not on main"; exit 1; }
+          passed="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${COMMIT}&status=success" \
+            --jq '.total_count')"
+          [[ "$passed" -gt 0 ]] || { echo "::error::CI has not passed for $COMMIT"; exit 1; }
+          [[ "$ANALYTICS_CAMPAIGNS" != *"|"* ]] || { echo "::error::ANALYTICS_CAMPAIGNS must not contain |"; exit 1; }
+
+      - name: Check out that commit
+        run: git checkout --quiet "$COMMIT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: Load migration settings (masked)
+        run: |
+          file="$RUNNER_TEMP/migration.env"
+          gcloud secrets versions access latest --secret="creatorco-${ENV_NAME}-migration-url" --project "$PROJECT_ID" > "$file"
+          chmod 600 "$file"
+          while IFS='=' read -r _ value; do [ -n "$value" ] && echo "::add-mask::${value//\"/}"; done < "$file"
+          echo "MIGRATION_ENV_FILE=$file" >> "$GITHUB_ENV"
+
+      - name: Migrate database
+        run: npx tsx --env-file="$MIGRATION_ENV_FILE" src/db/scripts/migrate.ts
+        env:
+          APP_ENV: ${{ env.ENV_NAME }}
+
+      - name: Fictional demo data (staging only)
+        if: env.ENV_NAME == 'staging'
+        run: npx tsx --env-file="$MIGRATION_ENV_FILE" src/db/scripts/seed.ts --staging-demo
+        env:
+          APP_ENV: staging
+
+      - name: Remove migration settings
+        if: always()
+        run: rm -f "${MIGRATION_ENV_FILE:-/nonexistent}"
+
+      - name: Build and push the image (staging)
+        if: env.ENV_NAME == 'staging'
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          image="${REGISTRY}/web:${COMMIT}"
+          docker build --pull --build-arg DEPLOYMENT_VERSION="${COMMIT}" -t "$image" .
+          docker push "$image"
+          echo "IMAGE=$(docker inspect --format='{{index .RepoDigests 0}}' "$image")" >> "$GITHUB_ENV"
+
+      - name: Deploy to Cloud Run
+        run: |
+          service="creatorco-${ENV_NAME}"
+          url="https://${service}-${PROJECT_NUMBER}.${REGION}.run.app"
+          gcloud run deploy "$service" --image "$IMAGE" --region "$REGION" --project "$PROJECT_ID" --quiet \
+            --service-account "creatorco-${ENV_NAME}-run@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --port 8080 --cpu 1 --memory 1Gi --min-instances 0 --max-instances 2 --concurrency 40 --timeout 120 \
+            --cpu-throttling --cpu-boost --execution-environment gen2 \
+            --set-secrets "/secrets/app.env=creatorco-${ENV_NAME}-app-env:latest" \
+            --set-env-vars "^|^APP_ENV=${ENV_NAME}|APP_URL=${url}|DATABASE_POOL_MAX=3|DATABASE_PREPARE=false|CLIENT_IP_TRUSTED_HOPS=1|ANALYTICS_CAMPAIGNS=${ANALYTICS_CAMPAIGNS}" \
+            --labels "app=creatorco,env=${ENV_NAME},commit=${COMMIT}"
+          # A manual traffic rollback pins an old revision; a new release always takes all traffic again.
+          gcloud run services update-traffic "$service" --to-latest --region "$REGION" --project "$PROJECT_ID" --quiet
+          echo "SERVICE_URL=$url" >> "$GITHUB_ENV"
+
+      - name: Mark the production image (kept by the registry cleanup policy)
+        if: env.ENV_NAME == 'production'
+        run: gcloud artifacts docker tags add "$IMAGE" "${REGISTRY}/web:production" --quiet
+
+      - name: Smoke test
+        run: |
+          code="$(curl -s -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 5 "${SERVICE_URL}/api/v1/health")"
+          case "$code" in
+            200) echo "✓ ${SERVICE_URL} is healthy" ;;
+            403) echo "::warning::Deployed but not public yet — run: infra/gcp/setup.sh publish ${ENV_NAME}" ;;
+            *) echo "::error::Health check returned $code"; exit 1 ;;
+          esac

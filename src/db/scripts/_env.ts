@@ -25,3 +25,8 @@ export function describeUrl(url: string): string {
     return "(unparseable url)";
   }
 }
+
+/** Staging is public (Stage 17): its demo accounts must not share the well-known local password. */
+export function strongStagingPassword(password: string): boolean {
+  return password.length >= 20 && !/creatorco-demo/i.test(password);
+}

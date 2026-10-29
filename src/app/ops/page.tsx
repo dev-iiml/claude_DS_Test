@@ -12,6 +12,7 @@ import { countPendingChanges, getIntegrationsOverview } from "@/modules/integrat
 import { countJobsByStatus } from "@/modules/jobs";
 
 import { OpsShell } from "../_components/creator-shell";
+import { clientIp } from "../_lib/rate-limit";
 
 import { runHealthChecksAction } from "./actions";
 import { kindStatus } from "./_lib/present";
@@ -29,6 +30,9 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
     countJobsByStatus(db),
   ]);
   const degraded = kinds.filter((k) => kindStatus(k).tone !== "success").length;
+  // Deployment check (Stage 17): the address rate limits count for THIS request (the viewer's own), so ops can
+  // confirm CLIENT_IP_HEADER / CLIENT_IP_TRUSTED_HOPS match the hosting edge.
+  const seenIp = await clientIp();
 
   return (
     <OpsShell role={user.role}>
@@ -99,6 +103,15 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
             />
           );
         })}
+      </ListGroup>
+
+      <ListGroup
+        id="request-diagnostics"
+        label="Rate-limit client address"
+        className="mt-8"
+        footer={`Should match your own public IP address (IPv6 is shown per /64). If it shows the hosting edge's address or "not found", fix CLIENT_IP_HEADER / CLIENT_IP_TRUSTED_HOPS (currently ${env.CLIENT_IP_HEADER}, ${env.CLIENT_IP_TRUSTED_HOPS} hops) — see docs/DEPLOYMENT.md.`}
+      >
+        <ListRow label="Your address, as the rate limiter sees it" value={seenIp ?? "not found"} />
       </ListGroup>
     </OpsShell>
   );

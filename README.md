@@ -306,6 +306,26 @@ src/
   Example: `ABCPE1238F` → strong.
 - **Mock Account Aggregator:** see Stage 09b.
 
+### Stage 17: deployment (Google Cloud Run + Supabase, Mumbai)
+
+Runbook: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). User decisions: free tiers for the POC (upgrade path documented),
+staging + production, free scheduler and monitoring.
+
+- **Hosting:** one container image (`Dockerfile`, Next.js standalone output, non-root, no env files) on Cloud Run in
+  `asia-south1`; Supabase Postgres in `ap-south-1`. Vercel's free plan was ruled out (non-commercial use only; daily
+  cron). The app stays Vercel-compatible.
+- **Environments:** staging (fictional demo seed with a generated password, mock providers) and production (no demo
+  data; mocks refused). One image per commit, built for staging and promoted unchanged to production.
+- **CI/CD:** `.github/workflows/ci.yml` (audit, checks, build, Playwright as the app role) and `deploy.yml` (keyless
+  Workload Identity Federation; migrate → seed staging → build/push → deploy → smoke test; production only from `main`).
+- **Secrets:** Secret Manager in Mumbai, one runtime dotenv per environment mounted at `/secrets/app.env` (read with
+  `node --env-file-if-exists`) and a separate migration secret for the deployer. Nothing secret in GitHub or the image.
+- **Infra scripts:** `infra/gcp/setup.sh bootstrap|publish <env>` (APIs, registry + cleanup, service accounts, WIF,
+  secrets, budget alert, scheduler, uptime check, error-log alert) and `infra/gcp/app-env.sh <env>` (generates keys);
+  `infra/supabase/app-role.sql` (app login role).
+- **Ops:** `npm run staff:create` creates the first staff accounts (password from the environment); logs carry Cloud
+  Logging `severity`; `/ops` shows the client address the rate limiter sees, to confirm the edge settings.
+
 ### Stage 16: QA and security pass
 
 Full report for partner diligence: [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md). Data inventory and
@@ -712,7 +732,7 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   reveals whether an email is registered.
 - Identity, GST and SMS providers are **mocks**. Choosing vendors and the data-rights and DPDP review of "mobile → PAN"
   lookups are open items for counsel.
-- Rate limits trust the edge proxy's client-IP header (see `CLIENT_IP_TRUSTED_HOPS`); never expose `next start`
+- Rate limits trust the edge proxy's client-IP header (see `CLIENT_IP_TRUSTED_HOPS`); never expose the Node server
   directly.
 - Staff accounts have no second factor yet (deferred; see docs/SECURITY_REVIEW.md).
 - Consent withdrawal exists as an audited service primitive only. The creator-facing journey is Stage 08.

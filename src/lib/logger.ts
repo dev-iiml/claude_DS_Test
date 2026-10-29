@@ -7,18 +7,48 @@ import { isSensitiveKey } from "./sensitive-keys";
  * Known-sensitive keys are redacted defensively.
  */
 type Level = "debug" | "info" | "warn" | "error";
+const SEVERITY: Record<Level, string> = { debug: "DEBUG", info: "INFO", warn: "WARNING", error: "ERROR" };
 
 function redact(context: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(context).map(([k, v]) => [k, isSensitiveKey(k) ? "[redacted]" : v]));
+  return Object.fromEntries(
+    Object.entries(context).map(([k, v]) => [
+      k,
+      isSensitiveKey(k) ? "[redacted]" : typeof v === "string" ? redactLogText(v) : v,
+    ]),
+  );
+}
+
+/**
+ * Writes one line straight to stdout/stderr. Not through `console`: the console
+ * redaction installed for framework output (instrumentation.ts) would treat the
+ * JSON's own quoted values as data and blank them out — our lines are already
+ * redacted field by field above.
+ */
+function write(level: Level, line: string) {
+  const io = typeof process === "undefined" ? undefined : process;
+  const stream = level === "error" || level === "warn" ? io?.stderr : io?.stdout;
+  if (typeof stream?.write === "function") {
+    stream.write(`${line}\n`);
+    return;
+  }
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  // eslint-disable-next-line no-console -- fallback where process streams don't exist
+  else console.log(line);
 }
 
 function emit(level: Level, event: string, context: Record<string, unknown> = {}) {
   if (process.env.APP_ENV === "test" && level !== "error") return;
-  const line = JSON.stringify({ level, event, ts: new Date().toISOString(), ...redact(context) });
-  if (level === "error") console.error(line);
-  else if (level === "warn") console.warn(line);
-  // eslint-disable-next-line no-console -- the logger is the one sanctioned console sink
-  else console.log(line);
+  // `severity` and `message` are what Cloud Logging reads from JSON lines (Stage 17); set last so context can't override.
+  const line = JSON.stringify({
+    level,
+    event,
+    ts: new Date().toISOString(),
+    ...redact(context),
+    severity: SEVERITY[level],
+    message: event,
+  });
+  write(level, line);
 }
 
 export const logger = {

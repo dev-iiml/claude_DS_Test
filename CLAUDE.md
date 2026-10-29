@@ -9,7 +9,7 @@ loads it. Read it before any product, architecture, data, underwriting, regulato
 
 ## Build status
 
-Stages 00–16 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
+Stages 00–17 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
 self-managed auth and roles, Cohort A0 onboarding, Creator Passport, social connection (mock provider), the
 Professional Graph feature engine, the consent centre (receipts, withdrawal, hold-aware erasure, paused membership),
 financial eligibility (separate `fin` schema, Financial Capacity features), Underwriting Engine v0 (Traditional vs
@@ -26,7 +26,8 @@ and KFS, accept/decline with a purpose-specific handoff consent and per-check re
 pseudonymous analytics with the §26 funnel, an optional Product analytics consent, 24-month retention and the
 `/insights` dashboards for risk admins and a read-only `analyst` role (15), the QA/security pass — route-guard
 inventory, Postgres rate limits, strict nonce CSP, log redaction, a least-privilege `creatorco_app` DB role, security
-record purges, the data inventory and first-party sign-up attribution (16), plus API v1 for future native apps.
+record purges, the data inventory and first-party sign-up attribution (16), deployment to Google Cloud Run + Supabase
+in Mumbai with staging and production, CI/CD and infra scripts (17), plus API v1 for future native apps.
 
 ## Implementation conventions (established in Stages 00–04)
 
@@ -120,4 +121,9 @@ record purges, the data inventory and first-party sign-up attribution (16), plus
   New tables need an entry in `modules/privacy/data-inventory.ts` (then `npx tsx scripts/render-data-inventory.ts`);
   `db:migrate` grants the `creatorco_app` role automatically. Dev-only conveniences check `isDevOrTest()`
   (`lib/app-env.ts`), which fails closed when APP_ENV is unset in a production build.
+- Deployment (Stage 17, docs/DEPLOYMENT.md): the app must keep building as a standalone container with no env files
+  (`next build` with nothing set) — read configuration from the environment only. New secrets go into the
+  environment's `creatorco-<env>-app-env` (via `getServerEnv`, required outside dev/test), never into the image,
+  GitHub or the DB. New scheduled work is a job type (the 5-minute tick runs it), not a new scheduler. Staging may hold
+  fictional demo data only; production never.
 - Before handing off, run `npm run check`, then `npm run build && npm run test:e2e`.

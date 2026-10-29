@@ -1,0 +1,16 @@
+# Never in the image: secrets, local state, tests and tooling output.
+.env
+.env.*
+!.env.example
+.git
+.github
+node_modules
+.next
+test-results
+playwright-report
+coverage
+.ds-screens
+Claude outputs
+tsconfig.tsbuildinfo
+*.log
+# design-system/ IS needed: the build checks the pinned release (npm run ds:check).

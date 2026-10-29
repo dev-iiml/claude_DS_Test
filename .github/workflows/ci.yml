@@ -1,0 +1,67 @@
+# CI (Stage 17): every pull request and every push to main runs the full check suite, a production build and the
+# Playwright suite — with the server connected as the least-privilege app role, as in staging/production.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: creatorco
+          POSTGRES_PASSWORD: creatorco
+          POSTGRES_DB: creatorco_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U creatorco" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgres://creatorco:creatorco@localhost:5432/creatorco_dev
+      DATABASE_URL_TEST: postgres://creatorco:creatorco@localhost:5432/creatorco_test
+      DATABASE_URL_E2E_APP: postgres://creatorco_web:creatorco_web@localhost:5432/creatorco_e2e
+      SEED_DEMO_PASSWORD: CreatorCo-demo-2026
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: App login role (member of creatorco_app, as in hosted environments)
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE creatorco_app NOLOGIN NOINHERIT;
+          CREATE ROLE creatorco_web LOGIN PASSWORD 'creatorco_web' IN ROLE creatorco_app;
+          SQL
+      - run: npm run db:migrate
+      - run: npm run check
+      - run: npm run build
+      - name: Playwright browser
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

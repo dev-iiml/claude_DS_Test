@@ -23,6 +23,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Stage 17: a self-contained server for the container image (Cloud Run). Ignored by Vercel.
+  output: "standalone",
+  // Version-skew protection across rolling deploys: set to the git SHA at build time.
+  deploymentId: process.env.DEPLOYMENT_VERSION || undefined,
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

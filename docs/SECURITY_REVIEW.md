@@ -45,7 +45,7 @@ for shared networks) were fixed before hand-off.
 | Item                                   | Risk                                                                                                                                                                          | Plan                                                                                          |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | Staff MFA                              | Staff (risk, ops, partnerships, analyst) sign in with a password only. They can read creator data and approve routing/key changes (four-eyes reduces, not removes, the risk). | Deferred (decision). Before live data: SSO with MFA at the identity provider, or TOTP in-app. |
-| Client IP trust                        | Network rate limits trust the edge's `x-forwarded-for`. Behind a proxy that appends, `CLIENT_IP_TRUSTED_HOPS` must be set; `next start` must never be exposed directly.       | Deployment checklist (Stage 17).                                                              |
+| Client IP trust                        | Network rate limits trust the edge's `x-forwarded-for`. Behind a proxy that appends, `CLIENT_IP_TRUSTED_HOPS` must be set; the Node server must never be exposed directly.    | Deployment checklist (Stage 17).                                                              |
 | Rate-limit fail-open                   | If the counter table is unavailable, requests are allowed.                                                                                                                    | Monitor `rate_limit.failed`; per-account lockout and OTP/bureau limits still apply.           |
 | Account enumeration                    | Sign-up says when an email is already registered; OTP says when a number is verified elsewhere.                                                                               | Rate limited; email verification and generic messages come with the notification provider.    |
 | No email verification / password reset | Account recovery and email ownership aren't proven.                                                                                                                           | With the notification vendor.                                                                 |
@@ -57,14 +57,32 @@ for shared networks) were fixed before hand-off.
 | Dev tooling                            | `drizzle-kit` (dev only) pulls an old esbuild with a moderate dev-server advisory; not shipped or run in production.                                                          | Track the drizzle-kit release.                                                                |
 | Formal testing                         | This is an internal review.                                                                                                                                                   | External penetration test before a live pilot.                                                |
 
-## 4. Deployment requirements (for Stage 17)
+## 4. Hosting (Stage 17)
+
+How the requirements above are met in the hosted environments (runbook: docs/DEPLOYMENT.md):
+
+| Control               | Implementation                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data residency        | App on Cloud Run `asia-south1` (Mumbai); Postgres on Supabase `ap-south-1` (Mumbai); secrets replicated only in `asia-south1`; image registry in Mumbai.                                                                                                                                                                                                                |
+| Environment isolation | Separate Supabase projects, Cloud Run services, runtime service accounts and secrets for staging and production. Staging holds fictional demo data only; production never.                                                                                                                                                                                              |
+| Secrets               | Secret Manager, generated by script, mounted read-only as a dotenv file; no secrets in the image, GitHub or the database. Each runtime account reads only its own environment's secret; each deployer only its own migration secret.                                                                                                                                    |
+| Deployment identity   | GitHub Actions authenticate with Workload Identity Federation (no long-lived keys). Each environment's deployer can change only its own Cloud Run service; production impersonation is bound to the `main` branch, and production only promotes the image staging is serving after checking its commit is on `main` and passed CI. Pull requests never trigger deploys. |
+| Database access       | App connects as `creatorco_web` (member of `creatorco_app`: rows only) through Supabase's pooler over TLS; migrations use the owner through a separate secret. Supabase's Data API is turned off.                                                                                                                                                                       |
+| Supply chain          | CI runs `npm audit --omit=dev`, all checks and Playwright on every change; only pushes to `main` whose CI passed deploy to staging; one image per commit, promoted unchanged to production.                                                                                                                                                                             |
+| Container             | Non-root user, read-only app files, no env files, `node` as PID 1 for graceful shutdown.                                                                                                                                                                                                                                                                                |
+| Monitoring            | Structured, redacted JSON logs in Cloud Logging (30 days), error-log e-mail alerts, uptime checks, budget alerts.                                                                                                                                                                                                                                                       |
+
+Gaps of the free-tier setup (no backups on Supabase Free, no WAF or custom domain, no environment approvals on GitHub
+Free, password-only staff sign-in) are listed with their upgrades in docs/DEPLOYMENT.md §9–10.
+
+## 5. Deployment requirements
 
 - `APP_ENV=staging|production`; all keys set: `PAN_FINGERPRINT_SECRET`, `FI_DATA_ENCRYPTION_KEY`,
   `PARTNER_WEBHOOK_ROOT_KEY`, `ANALYTICS_PSEUDONYM_KEY`, `RATE_LIMIT_KEY`, `CRON_SECRET`.
 - Two database credentials: the schema owner as `DATABASE_MIGRATION_URL` (migrations, `db:check`), and the app as a
   login user that is a member of `creatorco_app` (`DATABASE_URL`). The migration user needs `CREATEROLE` once to create
   `creatorco_app`, or create the role beforehand.
-- Behind an edge that sets `x-forwarded-for` (Vercel) or with `CLIENT_IP_TRUSTED_HOPS` set to the number of appending
-  proxies. HTTPS only.
+- Behind an edge that sets `x-forwarded-for`, with `CLIENT_IP_TRUSTED_HOPS` matching it (Cloud Run `*.run.app`: 1;
+  Vercel: 0), verified on `/ops`. HTTPS only.
 - Scheduled `GET /api/internal/cron/tick` (jobs include `rate_limit_purge` and `purge_auth_records`).
 - `FI_LIVE_LINE_ITEM_RETENTION=false` until counsel and the partner lender sign off.
