@@ -44,7 +44,7 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
   });
   if (!o) notFound();
   // Optional screen-view measurement: recorded only with the Product analytics consent.
-  recordAfterResponse({ event: "access_opportunity_viewed", userId: user.userId, props: { kind: o.kind } });
+  await recordAfterResponse({ event: "access_opportunity_viewed", userId: user.userId, props: { kind: o.kind } });
   const [balance, consented] = await Promise.all([
     pointsBalance(db, passport.creatorId),
     hasValidConsent(db, user.userId, CONSENT_KEYS.brandOpportunities),

@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import type { DbExecutor } from "@/db/types";
 
 import { FUNNEL_STEPS, type AnalyticsEvent } from "./events";
-import { suppress, type Suppressed } from "./suppression";
+import { MIN_CELL, suppress, type Suppressed } from "./suppression";
 
 /**
  * Funnel and cohort queries over raw events (Stage 15). Aggregates only —
@@ -132,4 +132,47 @@ export async function getWeeklyCohorts(
     }
     return { week, size, reached };
   });
+}
+
+export interface AcquisitionRow {
+  /** The slug or referrer kind; "(none)" when untagged, "other (each under 5)" for folded small values. */
+  value: string;
+  creators: Suppressed;
+}
+
+export interface AcquisitionView {
+  source: AcquisitionRow[];
+  medium: AcquisitionRow[];
+  campaign: AcquisitionRow[];
+  referrer: AcquisitionRow[];
+}
+
+const ACQUISITION_DIMENSIONS = ["utm_source", "utm_medium", "utm_campaign", "referrer"] as const;
+export const FOLDED_LABEL = "other (each under 5)";
+
+/**
+ * Where the cohort's sign-ups came from (Stage 16): campaign tags and referrer
+ * kind on `account_created`. Values with fewer than MIN_CELL creators are
+ * folded together, so a small campaign can't point at an individual.
+ */
+export async function getAcquisition(
+  db: DbExecutor,
+  input: { fromDay: string; toDay: string; includeInternal: boolean },
+): Promise<AcquisitionView> {
+  const internal = input.includeInternal ? sql`true` : sql`internal = false`;
+  const view = {} as Record<(typeof ACQUISITION_DIMENSIONS)[number], AcquisitionRow[]>;
+  for (const dim of ACQUISITION_DIMENSIONS) {
+    const rows = await db.execute<{ value: string; n: number }>(sql`
+      select coalesce(props ->> ${dim}, '(none)') as value, count(distinct subject)::int as n
+      from analytics.events
+      where event = 'account_created' and day between ${input.fromDay}::date and ${input.toDay}::date and ${internal}
+      group by 1 order by 2 desc, 1`);
+    const shown = [...rows].filter((r) => r.n >= MIN_CELL);
+    const folded = [...rows].filter((r) => r.n < MIN_CELL).reduce((s, r) => s + r.n, 0);
+    view[dim] = [
+      ...shown.map((r) => ({ value: r.value, creators: suppress(r.n) })),
+      ...(folded ? [{ value: FOLDED_LABEL, creators: suppress(folded) }] : []),
+    ];
+  }
+  return { source: view.utm_source, medium: view.utm_medium, campaign: view.utm_campaign, referrer: view.referrer };
 }

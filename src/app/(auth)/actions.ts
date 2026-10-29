@@ -1,8 +1,10 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { fieldErrorsFromZod, formError, readText, type FormState } from "@/lib/forms";
+import { ATTRIBUTION_COOKIE, decodeAttribution, parseCampaigns } from "@/modules/analytics/attribution";
 import { authDeps } from "@/modules/identity";
 import { signIn, signOut, signUpCreator, LOGIN_WINDOW_MINUTES } from "@/modules/identity/auth/auth-service";
 import { signInSchema, signUpSchema } from "@/modules/identity/auth/schemas";
@@ -10,6 +12,8 @@ import { getDb } from "@/db";
 import { isOnboardingComplete } from "@/modules/creator-profile/queries";
 import { postSignInPath } from "@/modules/identity/policy";
 import { clearSessionCookie, readSessionToken, writeSessionCookie } from "@/modules/identity/session-cookie";
+
+import { RATE_LIMITED_MESSAGE, clientIp, rateLimit } from "../_lib/rate-limit";
 
 export async function signUpAction(_prev: FormState, form: FormData): Promise<FormState> {
   const parsed = signUpSchema.safeParse({
@@ -21,8 +25,15 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
   if (!parsed.success) {
     return formError("Please check the highlighted fields.", { fieldErrors: fieldErrorsFromZod(parsed.error), values });
   }
+  // Counted once the form is valid, so typos don't use up a shared network's allowance.
+  if (!(await rateLimit("auth.sign_up", await clientIp())).ok) return formError(RATE_LIMITED_MESSAGE, { values });
 
-  const result = await signUpCreator(authDeps(), parsed.data);
+  const store = await cookies();
+  const attribution = decodeAttribution(
+    store.get(ATTRIBUTION_COOKIE)?.value,
+    parseCampaigns(process.env.ANALYTICS_CAMPAIGNS),
+  );
+  const result = await signUpCreator(authDeps(), { ...parsed.data, attribution });
   if (!result.ok) {
     return formError("An account with this email already exists. Sign in instead.", {
       fieldErrors: { email: ["An account with this email already exists."] },
@@ -30,6 +41,7 @@ export async function signUpAction(_prev: FormState, form: FormData): Promise<Fo
     });
   }
 
+  store.delete(ATTRIBUTION_COOKIE);
   await writeSessionCookie(result.session.token, result.session.expiresAt);
   redirect("/onboarding");
 }
@@ -40,6 +52,8 @@ export async function signInAction(_prev: FormState, form: FormData): Promise<Fo
   if (!parsed.success) {
     return formError("Please check the highlighted fields.", { fieldErrors: fieldErrorsFromZod(parsed.error), values });
   }
+  // Counted once the form is valid, so typos don't use up a shared network's allowance.
+  if (!(await rateLimit("auth.sign_in", await clientIp())).ok) return formError(RATE_LIMITED_MESSAGE, { values });
 
   const result = await signIn(authDeps(), parsed.data);
   if (!result.ok) {

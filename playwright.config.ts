@@ -9,6 +9,9 @@ const E2E_DATABASE_URL = process.env.DATABASE_URL_E2E ?? process.env.DATABASE_UR
 if (!E2E_DATABASE_URL) throw new Error("Set DATABASE_URL_E2E (or DATABASE_URL_TEST) for E2E tests");
 // Exposed to specs that verify persisted state directly.
 process.env.E2E_DATABASE_URL = E2E_DATABASE_URL;
+// Optional (Stage 16): run the server as the least-privilege app user (member of creatorco_app) while the
+// database is prepared as the owner — proves the app needs no DDL rights.
+const E2E_APP_DATABASE_URL = process.env.DATABASE_URL_E2E_APP;
 
 /**
  * E2E runs against a production build (`npm run build` first) and a dedicated
@@ -34,7 +37,7 @@ export default defineConfig({
     { name: "mobile", use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, grep: /@mobile/ },
   ],
   webServer: {
-    command: `npx tsx e2e/prepare-db.ts && npx next start -p ${PORT}`,
+    command: `npx tsx e2e/prepare-db.ts && ${E2E_APP_DATABASE_URL ? `DATABASE_URL='${E2E_APP_DATABASE_URL}' ` : ""}npx next start -p ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: false,
     timeout: 120_000,
@@ -43,6 +46,9 @@ export default defineConfig({
       APP_URL: BASE_URL,
       DATABASE_URL: E2E_DATABASE_URL,
       SEED_DEMO_PASSWORD: process.env.SEED_DEMO_PASSWORD ?? "CreatorCo-demo-2026",
+      // Every E2E request comes from one address; loosen the per-network limits (dev/test only).
+      RATE_LIMIT_MULTIPLIER: "50",
+      ANALYTICS_CAMPAIGNS: "e2e_launch",
     },
   },
 });

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getDb } from "@/db";
 import { getServerEnv } from "@/lib/env";
 import { analyticsDay } from "@/modules/analytics";
-import { COHORT_MILESTONES, getFunnel, getWeeklyCohorts } from "@/modules/analytics/funnel";
+import { COHORT_MILESTONES, getAcquisition, getFunnel, getWeeklyCohorts } from "@/modules/analytics/funnel";
 import { MIN_CELL, formatPct, formatSuppressed } from "@/modules/analytics/suppression";
 import { requireInsightsViewer } from "@/modules/identity";
 
@@ -27,9 +27,10 @@ export default async function FunnelPage({ searchParams }: PageProps<"/insights"
   const toDay = analyticsDay(now);
   const fromDay = analyticsDay(new Date(now.getTime() - (days - 1) * 86_400_000));
   const db = getDb();
-  const [funnel, cohorts] = await Promise.all([
+  const [funnel, cohorts, acquisition] = await Promise.all([
     getFunnel(db, { fromDay, toDay, includeInternal }),
     getWeeklyCohorts(db, { weeks: 8, today: toDay, includeInternal }),
+    getAcquisition(db, { fromDay, toDay, includeInternal }),
   ]);
   const link = (patch: Record<string, string | null>) => {
     const p = new URLSearchParams();
@@ -137,6 +138,41 @@ export default async function FunnelPage({ searchParams }: PageProps<"/insights"
           <ListRow label="No sign-ups yet" detail="Cohorts appear once accounts are created." />
         )}
       </ListGroup>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        {(
+          [
+            { id: "source", label: "Sign-ups by source", rows: acquisition.source, none: "Untagged" },
+            { id: "medium", label: "Sign-ups by medium", rows: acquisition.medium, none: "Untagged" },
+            { id: "campaign", label: "Sign-ups by campaign", rows: acquisition.campaign, none: "Untagged" },
+            {
+              id: "referrer",
+              label: "Sign-ups by referring site",
+              rows: acquisition.referrer,
+              none: "Direct or unknown",
+            },
+          ] as const
+        ).map((d) => (
+          <ListGroup key={d.id} id={`acquisition-${d.id}`} label={d.label}>
+            {d.rows.length ? (
+              d.rows.map((r) => (
+                <ListRow
+                  key={r.value}
+                  label={r.value === "(none)" ? d.none : r.value}
+                  value={<span className="tabular-nums">{formatSuppressed(r.creators)}</span>}
+                />
+              ))
+            ) : (
+              <ListRow label="No sign-ups in this period" />
+            )}
+          </ListGroup>
+        ))}
+      </div>
+      <p className="mt-3 max-w-prose text-footnote text-ink-subtle">
+        From the campaign tags on the link a creator arrived from (utm_source / utm_medium / utm_campaign) and the kind
+        of site that referred them — search, social or other, never the address. Values with fewer than {MIN_CELL}{" "}
+        sign-ups are grouped together.
+      </p>
 
       <p className="mt-6 max-w-prose text-footnote text-ink-subtle">
         Funnel steps are essential, pseudonymous service measurement; screen views (offer and opportunity views) are

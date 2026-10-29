@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { rateLimit } from "@/app/_lib/rate-limit";
 import { getDb } from "@/db";
 import {
   getApplication,
@@ -9,7 +10,7 @@ import {
 } from "@/modules/financial-eligibility/application-service";
 
 import { requireApiCreator } from "../_lib/auth";
-import { json, readJson, route } from "../_lib/http";
+import { json, rateLimited, readJson, route } from "../_lib/http";
 import { toEligibilityApiError } from "./_errors";
 import { applicationJson } from "./_view";
 
@@ -32,6 +33,8 @@ export const POST = route("eligibility.start", async (request) => {
     request,
     z.object({ consentDefinitionId: z.uuid(), agree: z.literal(true) }),
   );
+  const limited = await rateLimit("eligibility.start", user.userId);
+  if (!limited.ok) throw rateLimited(limited.retryAfterSeconds);
   try {
     const db = getDb();
     const app = await startApplication({ db }, { userId: user.userId, consentDefinitionId, source: "api" });

@@ -31,7 +31,8 @@ async function appliedUpTo(url: string): Promise<number | null> {
 
 // pathToFileURL percent-encodes the path (e.g. spaces), matching import.meta.url.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const url = requireDatabaseUrl();
+  // Reads the migration history, which only the schema owner can see (Stage 16 app role).
+  const url = process.env.DATABASE_MIGRATION_URL || requireDatabaseUrl();
   const journal = (
     JSON.parse(readFileSync("src/db/migrations/meta/_journal.json", "utf8")) as { entries: JournalEntry[] }
   ).entries;

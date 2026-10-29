@@ -3,6 +3,7 @@ import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import type { Database } from "@/db/create-db";
 import { analyticsEvents, consentReceipts, users } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
+import { isDevOrTest } from "@/lib/app-env";
 import { describeError, logger } from "@/lib/logger";
 import { CONSENT_KEYS, findValidReceipt, hasValidConsent } from "@/modules/consent";
 
@@ -54,7 +55,7 @@ function internalSuffixes(): string[] {
     .filter(Boolean);
 }
 
-const strict = () => ["development", "test"].includes(process.env.APP_ENV ?? "development");
+const strict = () => isDevOrTest();
 
 class Skip extends Error {
   constructor(readonly outcome: RecordOutcome) {

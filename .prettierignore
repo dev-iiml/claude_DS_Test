@@ -21,3 +21,5 @@ design-system.lock.json
 docs/PROJECT_KNOWLEDGE.md
 design-system-prompt.md
 Claude outputs
+# generated inventory table (scripts/render-data-inventory.ts); a test keeps it in sync
+docs/DATA_CLASSIFICATION.md

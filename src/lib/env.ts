@@ -2,13 +2,16 @@ import "server-only";
 
 import { z } from "zod";
 
+import { appEnvOf } from "./app-env";
+
 const booleanString = z
   .enum(["true", "false"])
   .default("true")
   .transform((v) => v === "true");
 
 const serverEnvSchema = z.object({
-  APP_ENV: z.enum(["development", "test", "staging", "production"]).default("development"),
+  // Unset → development locally, but production for a production build (fail closed; see lib/app-env.ts).
+  APP_ENV: z.enum(["development", "test", "staging", "production"]),
   APP_URL: z.url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(5),
@@ -34,6 +37,22 @@ const serverEnvSchema = z.object({
   PARTNER_WEBHOOK_ROOT_KEY: z.string().min(32, "PARTNER_WEBHOOK_ROOT_KEY must be at least 32 characters").optional(),
   /** Key for pseudonymous analytics subject ids (keyed hash of the user id). Required outside dev/test. */
   ANALYTICS_PSEUDONYM_KEY: z.string().min(32, "ANALYTICS_PSEUDONYM_KEY must be at least 32 characters").optional(),
+  /** Key for hashed rate-limit subjects (IP / user / partner). Required outside dev/test. */
+  RATE_LIMIT_KEY: z.string().min(32, "RATE_LIMIT_KEY must be at least 32 characters").optional(),
+  /** Loosens rate limits in development/test only (e.g. 50 for E2E runs). Ignored elsewhere. */
+  RATE_LIMIT_MULTIPLIER: z.coerce.number().positive().max(1000).default(1),
+  /**
+   * Request header carrying the client IP, set by the platform's edge proxy (e.g. `x-forwarded-for` on Vercel, which
+   * overwrites any client-supplied value). Only the first address is used.
+   */
+  /** Registered sign-up campaign slugs (comma-separated); other utm_campaign values are recorded as "other". */
+  ANALYTICS_CAMPAIGNS: z.string().max(2000).optional(),
+  CLIENT_IP_HEADER: z
+    .string()
+    .regex(/^[a-z0-9-]{1,40}$/)
+    .default("x-forwarded-for"),
+  /** 0: the edge overwrites CLIENT_IP_HEADER (Vercel). n: n of our proxies append to it — use the n-th from the right. */
+  CLIENT_IP_TRUSTED_HOPS: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -42,7 +61,13 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 function requiredOutsideDev(env: ServerEnv): string[] {
   if (env.APP_ENV === "development" || env.APP_ENV === "test") return [];
   return (
-    ["PAN_FINGERPRINT_SECRET", "FI_DATA_ENCRYPTION_KEY", "PARTNER_WEBHOOK_ROOT_KEY", "ANALYTICS_PSEUDONYM_KEY"] as const
+    [
+      "PAN_FINGERPRINT_SECRET",
+      "FI_DATA_ENCRYPTION_KEY",
+      "PARTNER_WEBHOOK_ROOT_KEY",
+      "ANALYTICS_PSEUDONYM_KEY",
+      "RATE_LIMIT_KEY",
+    ] as const
   ).filter((k) => !env[k]);
 }
 
@@ -51,7 +76,7 @@ let cached: ServerEnv | undefined;
 /** Validated server environment. Throws with field names (never values) when invalid. */
 export function getServerEnv(): ServerEnv {
   if (cached) return cached;
-  const parsed = serverEnvSchema.safeParse(process.env);
+  const parsed = serverEnvSchema.safeParse({ ...process.env, APP_ENV: appEnvOf() });
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");
     throw new Error(`Invalid server environment: ${fields}`);

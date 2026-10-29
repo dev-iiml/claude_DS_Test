@@ -1,11 +1,12 @@
 import { z } from "zod";
 
+import { rateLimit } from "@/app/_lib/rate-limit";
 import { getDb } from "@/db";
 import { getOpportunityForCreator, requestAccess } from "@/modules/access";
 import { requestNoteSchema } from "@/modules/access/schemas";
 
 import { toApiError } from "../../../_lib/errors";
-import { ApiError, json, readJson, route } from "../../../_lib/http";
+import { ApiError, json, rateLimited, readJson, route } from "../../../_lib/http";
 import { requireApiMember } from "../../_member";
 
 /**
@@ -29,6 +30,8 @@ export const POST = route<RouteContext<"/api/v1/access/[id]/request">>("access.r
         message: "Send agree: true with the consent definition.",
       }),
   );
+  const limited = await rateLimit("access.request", user.userId);
+  if (!limited.ok) throw rateLimited(limited.retryAfterSeconds);
   try {
     const db = getDb();
     await requestAccess(db, {

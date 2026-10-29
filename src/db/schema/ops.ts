@@ -294,3 +294,28 @@ export const simulatedLenderPolicies = ops
     ],
   )
   .enableRLS();
+
+/**
+ * Rate-limit counters (Stage 16): one row per bucket, subject key and fixed
+ * window. `subject_key` is a keyed hash (`rl1:<hex>`) of an IP, user id or
+ * partner id — never the raw value. Rows older than 48 hours are deleted by
+ * the `rate_limit_purge` job.
+ */
+export const rateLimitCounters = ops
+  .table(
+    "rate_limit_counters",
+    {
+      bucket: text("bucket").notNull(),
+      subjectKey: text("subject_key").notNull(),
+      windowStart: ts("window_start").notNull(),
+      count: integer("count").notNull().default(1),
+    },
+    (t) => [
+      primaryKey({ columns: [t.bucket, t.subjectKey, t.windowStart] }),
+      index("rate_limit_counters_window_idx").on(t.windowStart),
+      check("rate_limit_counters_bucket_format", sql`${t.bucket} ~ '^[a-z_]+\\.[a-z_]+$'`),
+      check("rate_limit_counters_subject_format", sql`${t.subjectKey} ~ '^rl[0-9]+:[0-9a-f]{32}$'`),
+      check("rate_limit_counters_count_positive", sql`${t.count} > 0`),
+    ],
+  )
+  .enableRLS();

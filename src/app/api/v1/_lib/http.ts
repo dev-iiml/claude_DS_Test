@@ -19,6 +19,7 @@ export class ApiError extends Error {
     readonly code: string,
     message: string,
     readonly fields?: Record<string, string[]>,
+    readonly headers?: Record<string, string>,
   ) {
     super(message);
     this.name = "ApiError";
@@ -38,11 +39,41 @@ export function noContent(): NextResponse {
 function problem(error: ApiError): NextResponse {
   return NextResponse.json(
     { error: { code: error.code, message: error.message, ...(error.fields ? { fields: error.fields } : {}) } },
-    { status: error.status, headers: NO_STORE },
+    { status: error.status, headers: { ...NO_STORE, ...error.headers } },
   );
 }
 
+/** 429 with Retry-After (Stage 16 rate limits). */
+export function rateLimited(retryAfterSeconds: number): ApiError {
+  return new ApiError(429, "rate_limited", "Too many requests. Please wait and try again.", undefined, {
+    "Retry-After": String(retryAfterSeconds),
+  });
+}
+
 export const MAX_BODY_BYTES = 16 * 1024;
+
+const tooLarge = () => new ApiError(413, "payload_too_large", "Request body is too large.");
+
+/** Reads the body as text, stopping as soon as it exceeds `max` bytes (never buffers an oversized body). */
+async function readCappedText(request: NextRequest, max: number): Promise<string> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > max) throw tooLarge();
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel();
+      throw tooLarge();
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
 
 /** Parses and validates a JSON body against a Zod schema (422 with field errors on failure). */
 export async function readJson<S extends z.ZodType>(request: NextRequest, schema: S): Promise<z.output<S>> {
@@ -50,8 +81,7 @@ export async function readJson<S extends z.ZodType>(request: NextRequest, schema
   if (!type.toLowerCase().startsWith("application/json")) {
     throw new ApiError(415, "unsupported_media_type", "Send a JSON body (Content-Type: application/json).");
   }
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) throw new ApiError(413, "payload_too_large", "Request body is too large.");
+  const text = await readCappedText(request, MAX_BODY_BYTES);
   let body: unknown;
   try {
     body = text ? JSON.parse(text) : {};

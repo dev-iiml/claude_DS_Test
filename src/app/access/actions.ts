@@ -10,6 +10,8 @@ import { AccessError, cancelAccessRequest, requestAccess } from "@/modules/acces
 import { requestNoteSchema } from "@/modules/access/schemas";
 import { requireCreator } from "@/modules/identity";
 
+import { RATE_LIMITED_MESSAGE, rateLimit } from "../_lib/rate-limit";
+
 const idSchema = z.uuid();
 
 /** Request an opportunity (Stage 14). Agreeing to the brand opportunities consent happens on the same screen. */
@@ -33,6 +35,7 @@ export async function requestAccessAction(_prev: FormState, form: FormData): Pro
       });
     consentDefinitionId = parsed.data;
   }
+  if (!(await rateLimit("access.request", user.userId)).ok) return formError(RATE_LIMITED_MESSAGE, { values });
   try {
     await requestAccess(getDb(), {
       userId: user.userId,

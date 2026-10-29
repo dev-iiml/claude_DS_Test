@@ -15,7 +15,7 @@ import { CONSENT_KEYS, grantConsent, hasValidConsent } from "@/modules/consent";
 import { getIdentityPrefill } from "@/modules/identity/identity-prefill";
 import type { CreditBureauProvider } from "@/providers/bureau/types";
 
-import { APPLICATION_TTL_DAYS, BUREAU_CHECKS_PER_30_DAYS, OPEN_APPLICATION_STATUSES } from "./domain";
+import { APPLICATION_TTL_DAYS, OPEN_APPLICATION_STATUSES, bureauChecksPer30Days } from "./domain";
 import { eraseFinancialInputs } from "./erasure";
 import {
   FIN_ENGINE_VERSION,
@@ -174,7 +174,7 @@ export async function runBureauCheck(
     operation: BUREAU_OPERATION,
     since: new Date(now.getTime() - 30 * 86_400_000),
   });
-  if (recent >= BUREAU_CHECKS_PER_30_DAYS) {
+  if (recent >= bureauChecksPer30Days(process.env)) {
     throw new FinancialEligibilityError(
       "bureau_limit",
       "You've reached the limit of credit checks for now. Please try again later.",

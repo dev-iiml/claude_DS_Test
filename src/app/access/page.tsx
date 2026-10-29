@@ -40,7 +40,6 @@ export default async function AccessPage() {
         <Link
           href="/access/points"
           className="flex items-center justify-between gap-4 rounded-card bg-surface p-5 ring-1 ring-line ring-inset"
-          aria-label={`Creator Points: ${formatPoints(points.balance)} available. See your points`}
         >
           <span>
             <span className="block text-footnote text-ink-muted">Creator Points</span>
@@ -58,7 +57,6 @@ export default async function AccessPage() {
         <Link
           href="/passport/status"
           className="flex items-center justify-between gap-4 rounded-card bg-surface p-5 ring-1 ring-line ring-inset"
-          aria-label="Creator Status: see how it works"
         >
           <span>
             <span className="block text-footnote text-ink-muted">Creator Status</span>

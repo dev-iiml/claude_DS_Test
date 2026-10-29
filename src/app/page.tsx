@@ -23,8 +23,8 @@ const PILLARS = [
 export default async function LandingPage() {
   const user = await getCurrentUser();
   const home = user ? await homePathForUser(user) : null;
-  // Anonymous funnel count for signed-out visitors: no identifier, no cookie.
-  if (!user) recordAfterResponse({ event: "landing_viewed" });
+  // Anonymous funnel count for signed-out visitors (no identifier). Campaign tags, if any: see proxy.ts.
+  if (!user) await recordAfterResponse({ event: "landing_viewed" });
 
   return (
     <div className="flex min-h-dvh flex-col pt-safe pb-safe">

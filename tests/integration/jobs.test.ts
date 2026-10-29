@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { auditEvents, jobs, users } from "@/db/schema";
 import { signUpCreator } from "@/modules/identity/auth/auth-service";
 import { enqueueJob, retryJob, runDueJobs, tick, type JobHandlers } from "@/modules/jobs";
+import { JOB_SCHEDULES } from "@/modules/jobs/domain";
 import { JOB_HANDLERS } from "@/modules/jobs/handlers";
 
 import { authDepsFor, connectTestDb, testEmail } from "../support/db";
@@ -22,13 +23,15 @@ const handlers = (override: Partial<JobHandlers> = {}): JobHandlers => ({
   deliver_partner_webhooks: ok,
   expire_access_requests: ok,
   analytics_maintenance: ok,
+  rate_limit_purge: ok,
+  purge_auth_records: ok,
   ...override,
 });
 
 describe("Job runner", () => {
   it("enqueues each schedule once per window and runs them", async () => {
     const first = await tick({ db, now: at(0), handlers: handlers() });
-    expect(first).toMatchObject({ enqueued: 8, succeeded: 8, dead: 0 });
+    expect(first).toMatchObject({ enqueued: JOB_SCHEDULES.length, succeeded: JOB_SCHEDULES.length, dead: 0 });
     const again = await tick({ db, now: at(30_000), handlers: handlers() });
     expect(again.enqueued).toBe(0);
     // The 1-minute webhook window rolls over first…

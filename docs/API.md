@@ -20,12 +20,20 @@ routes are thin (authenticate → validate with the module's Zod schema → call
 | 409    | state conflict: `step_locked`, `profile_incomplete`, `membership_paused`, `consent_outdated`, `provider_changed`… |
 | 415    | body is not JSON                                                                                                  |
 | 422    | `validation_failed` (with `fields`) or a domain rule                                                              |
-| 429    | `locked` — too many sign-in attempts                                                                              |
+| 413    | `payload_too_large` — body over 16 KB (refused before it is read)                                                 |
+| 429    | `locked` — too many sign-in attempts for this account · `rate_limited` — too many requests (see `Retry-After`)    |
 | 503    | `service_unavailable` — a provider capability is paused (kill switch) or has no healthy route; retry later        |
 
 `provider_changed` means ops switched the provider while a social or Account Aggregator flow was in progress: start
 that flow again. Staff consoles (`/admin`, `/ops`) have no API; the only non-v1 route is the scheduler tick
 `GET /api/internal/cron/tick` (`Authorization: Bearer $CRON_SECRET`, disabled when unset), which returns job counts.
+
+Rate limits (Stage 16, `modules/rate-limit/rules.ts`): sign-up 30/hour and sign-in 60/10 min per network; eligibility
+start 10/day, Access requests 20/day and `POST /events` 300/hour per account. A `429 rate_limited` carries
+`Retry-After` (seconds).
+
+`POST /auth/sign-up` accepts optional `attribution: { utm_source?, utm_medium?, utm_campaign? }` from the app's install
+or deep link. Values are reduced to an allow-list (unknown → `other`; campaigns must be registered).
 
 ## Endpoints
 

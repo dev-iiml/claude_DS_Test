@@ -33,6 +33,7 @@ import { BANK_CALLBACK_PATH } from "./_lib/constants";
 import { stepPath } from "./_lib/steps";
 import { underwriteIfReady } from "./_lib/underwrite";
 import { lendingDeps } from "../_lib/lending";
+import { RATE_LIMITED_MESSAGE, rateLimit } from "../_lib/rate-limit";
 
 /**
  * Thin eligibility actions. Amounts, the PAN, mobile numbers and the purpose
@@ -66,6 +67,7 @@ export async function startEligibilityAction(_prev: FormState, form: FormData): 
       fieldErrors: { agree: ["Tick the box to give this consent."] },
     });
   }
+  if (!(await rateLimit("eligibility.start", user.userId)).ok) return formError(RATE_LIMITED_MESSAGE);
   let next: string;
   try {
     const app = await startApplication(

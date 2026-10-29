@@ -94,6 +94,10 @@ export function SignUpForm() {
       <SubmitButton size="lg" className="mt-2 w-full" pendingLabel="Creating your account…">
         Create account
       </SubmitButton>
+      <p className="text-footnote text-ink-subtle">
+        When you join, CreatorCo notes which campaign link or kind of site (search, social or other) brought you here —
+        never your browsing or contact details. See Service measurement in your consent centre.
+      </p>
       <p className="text-sm text-ink-muted">
         Already a member?{" "}
         <Link href="/login" className="font-medium text-foreground underline underline-offset-4">

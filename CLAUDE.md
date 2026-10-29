@@ -9,7 +9,7 @@ loads it. Read it before any product, architecture, data, underwriting, regulato
 
 ## Build status
 
-Stages 00–15 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
+Stages 00–16 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
 self-managed auth and roles, Cohort A0 onboarding, Creator Passport, social connection (mock provider), the
 Professional Graph feature engine, the consent centre (receipts, withdrawal, hold-aware erasure, paused membership),
 financial eligibility (separate `fin` schema, Financial Capacity features), Underwriting Engine v0 (Traditional vs
@@ -24,7 +24,9 @@ adapter and confirm-or-query review of partner decisions (12b), the creator's of
 and KFS, accept/decline with a purpose-specific handoff consent and per-check retention holds (13), Creator Status
 (`cs-0.1.0`), the Access preview with sample brands, Creator Points and the `/partnerships` desk (14), first-party
 pseudonymous analytics with the §26 funnel, an optional Product analytics consent, 24-month retention and the
-`/insights` dashboards for risk admins and a read-only `analyst` role (15), plus API v1 for future native apps.
+`/insights` dashboards for risk admins and a read-only `analyst` role (15), the QA/security pass — route-guard
+inventory, Postgres rate limits, strict nonce CSP, log redaction, a least-privilege `creatorco_app` DB role, security
+record purges, the data inventory and first-party sign-up attribution (16), plus API v1 for future native apps.
 
 ## Implementation conventions (established in Stages 00–04)
 
@@ -110,4 +112,12 @@ pseudonymous analytics with the §26 funnel, an optional Product analytics conse
   the financial-eligibility consent. Analytics never imports or reads `fin`; risk/model aggregates are computed by the
   owning module (`underwriting/model-analytics.ts`, `lending/decision-analytics.ts`) with small-cell suppression
   (`MIN_CELL` = 5). Dashboards live under `/insights` (`requireInsightsViewer`).
+- Security (Stage 16): every page, route handler and server action calls a guard (`require*`, or a guarded helper) —
+  the route-guard test fails otherwise; a genuinely public entry point is added to its `PUBLIC` list with a reason.
+  Abuse-prone actions take `rateLimit(bucket, subject)` (`src/app/_lib/rate-limit.ts`; rules in
+  `modules/rate-limit/rules.ts`, counted after validation, IP buckets via `clientIp()`). No inline scripts or
+  third-party origins (strict nonce CSP in `src/proxy.ts`/`src/lib/csp.ts`). Use `describeError` for logged errors.
+  New tables need an entry in `modules/privacy/data-inventory.ts` (then `npx tsx scripts/render-data-inventory.ts`);
+  `db:migrate` grants the `creatorco_app` role automatically. Dev-only conveniences check `isDevOrTest()`
+  (`lib/app-env.ts`), which fails closed when APP_ENV is unset in a production build.
 - Before handing off, run `npm run check`, then `npm run build && npm run test:e2e`.

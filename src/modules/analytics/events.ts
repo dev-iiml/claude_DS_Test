@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ATTRIBUTION_OTHER, ATTRIBUTION_SLUG, KNOWN_MEDIUMS, KNOWN_SOURCES, REFERRER_KINDS } from "./attribution";
+
 /**
  * Analytics event catalogue (Stage 15) — pure, versioned, typed.
  *
@@ -21,7 +23,7 @@ import { z } from "zod";
  *
  * Changing an event's properties bumps its `version`.
  */
-export const ANALYTICS_CATALOGUE_VERSION = "ev-1";
+export const ANALYTICS_CATALOGUE_VERSION = "ev-2";
 
 const client = z.enum(["web", "ios", "android", "api"]);
 const platform = z.string().regex(/^[a-z0-9_]{1,24}$/);
@@ -29,6 +31,7 @@ const tier = z.enum(["member", "onyx", "icon"]);
 const kind = z.enum(["pr_drop", "programme", "experience", "event"]);
 const category = z.string().regex(/^[a-z0-9_]{1,40}$/);
 const modelVersion = z.string().regex(/^[a-z0-9.-]{1,24}$/);
+const slug = z.string().regex(ATTRIBUTION_SLUG);
 
 interface EventDefinition<S extends z.ZodType = z.ZodType> {
   version: number;
@@ -60,12 +63,28 @@ export const ANALYTICS_EVENTS = {
     description: "The join / sign-up page was opened by a signed-out visitor (no identifier).",
   }),
   account_created: define({
-    version: 1,
+    version: 2,
     tier: "essential",
     subject: "user",
     once: true,
-    props: z.object({ client }).strict(),
-    description: "A creator account was created.",
+    // v2 (Stage 16): where the sign-up came from — allow-listed source/medium, a registered campaign (or
+    // "other") and the referrer kind only (see attribution.ts).
+    props: z
+      .object({
+        client,
+        utm_source: z
+          .enum([...KNOWN_SOURCES, ATTRIBUTION_OTHER])
+          .nullable()
+          .default(null),
+        utm_medium: z
+          .enum([...KNOWN_MEDIUMS, ATTRIBUTION_OTHER])
+          .nullable()
+          .default(null),
+        utm_campaign: slug.nullable().default(null),
+        referrer: z.enum(REFERRER_KINDS).nullable().default(null),
+      })
+      .strict(),
+    description: "A creator account was created (with campaign tags and referrer kind, when known).",
   }),
   creator_profile_completed: define({
     version: 1,

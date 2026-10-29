@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
+import postgres from "postgres";
 
-import { E2E_PASSWORD, signIn, uniqueEmail } from "./helpers";
+import { E2E_PASSWORD, signIn, signUp, uniqueEmail } from "./helpers";
 
 test.describe("analytics (Stage 15)", () => {
   test("analysts see aggregate dashboards only; risk admins reach them from the risk console", async ({ page }) => {
@@ -54,5 +55,32 @@ test.describe("analytics (Stage 15)", () => {
     ).toBe(422);
     const consents = await (await request.get("/api/v1/consents", { headers })).json();
     expect(consents.serviceMeasurement).toMatch(/pseudonymous ID/);
+  });
+
+  test("sign-ups remember the campaign they came from (reviewed values only, no identifiers)", async ({ page }) => {
+    const sql = postgres(process.env.E2E_DATABASE_URL!, { max: 1 });
+    const count = async () =>
+      (
+        await sql`select count(*)::int as n from analytics.events
+          where event = 'account_created' and props @> ${sql.json({
+            utm_source: "instagram",
+            utm_medium: "other",
+            utm_campaign: "e2e_launch",
+            referrer: null,
+          })}`
+      )[0]!.n as number;
+    try {
+      const before = await count();
+      // "e2e_launch" is registered (playwright.config.ts); a free-text medium is reduced to "other".
+      await page.goto("/?utm_source=Instagram&utm_medium=Aarohi+Menon&utm_campaign=e2e_launch&utm_content=x");
+      const cookie = (await page.context().cookies()).find((c) => c.name === "cc_attr");
+      expect(cookie).toMatchObject({ httpOnly: true, sameSite: "Lax" });
+      expect(decodeURIComponent(cookie!.value)).toBe("utm_source=instagram&utm_medium=other&utm_campaign=e2e_launch");
+      await signUp(page, uniqueEmail("utm"));
+      expect((await page.context().cookies()).some((c) => c.name === "cc_attr")).toBe(false);
+      expect(await count()).toBe(before + 1);
+    } finally {
+      await sql.end();
+    }
   });
 });

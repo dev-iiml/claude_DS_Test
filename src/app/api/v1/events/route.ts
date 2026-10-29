@@ -1,11 +1,12 @@
 import { z } from "zod";
 
+import { rateLimit } from "@/app/_lib/rate-limit";
 import { getDb } from "@/db";
 import { recordEvent } from "@/modules/analytics";
 import { ANALYTICS_EVENTS, CLIENT_EVENTS, type AnalyticsEvent } from "@/modules/analytics/events";
 
 import { requireApiCreator } from "../_lib/auth";
-import { ApiError, json, readJson, route } from "../_lib/http";
+import { ApiError, json, rateLimited, readJson, route } from "../_lib/http";
 
 /** Screen-view events a native app may send for the signed-in creator (Stage 15). */
 const USER_CLIENT_EVENTS = CLIENT_EVENTS.filter((e) => ANALYTICS_EVENTS[e].subject === "user") as [
@@ -21,6 +22,8 @@ const USER_CLIENT_EVENTS = CLIENT_EVENTS.filter((e) => ANALYTICS_EVENTS[e].subje
  */
 export const POST = route("events.record", async (request) => {
   const user = await requireApiCreator(request);
+  const limited = await rateLimit("analytics.client_event", user.userId);
+  if (!limited.ok) throw rateLimited(limited.retryAfterSeconds);
   const body = await readJson(
     request,
     z.object({ event: z.enum(USER_CLIENT_EVENTS), props: z.record(z.string(), z.unknown()).default({}) }).strict(),

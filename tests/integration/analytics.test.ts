@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { analyticsDailyCounts, analyticsEvents, creatorProfiles, users } from "@/db/schema";
 import { analyticsSubject, recordEvent } from "@/modules/analytics";
-import { getFunnel, getWeeklyCohorts } from "@/modules/analytics/funnel";
+import { FOLDED_LABEL, getAcquisition, getFunnel, getWeeklyCohorts } from "@/modules/analytics/funnel";
 import { maintainAnalytics } from "@/modules/analytics/maintenance";
 import { analyticsDay } from "@/modules/analytics/recorder";
 import { CONSENT_KEYS } from "@/modules/consent";
@@ -114,7 +114,13 @@ describe("analytics recording", () => {
     expect(count("social_connection_completed")).toBe(2);
     expect(count("passport_generated")).toBe(1); // once per creator
     expect(count("status_generated")).toBeGreaterThanOrEqual(1);
-    expect(events.find((e) => e.event === "account_created")?.props).toEqual({ client: "ios" });
+    expect(events.find((e) => e.event === "account_created")?.props).toEqual({
+      client: "ios",
+      utm_source: null,
+      utm_medium: null,
+      utm_campaign: null,
+      referrer: null,
+    });
     expect(events.find((e) => e.event === "creator_profile_completed")?.props).toEqual({ category: "tech" });
     expect(events.every((e) => e.tier === "essential" && e.internal)).toBe(true); // .test accounts are flagged
     const text = JSON.stringify(events);
@@ -319,5 +325,25 @@ describe("model analytics", () => {
     const d = await decisionAnalytics(db);
     expect(d.map((x) => x.lender)).toEqual(["simulated", "partner"]);
     expect(JSON.stringify({ m, d })).not.toMatch(/applicationId|userId|creatorId/);
+  });
+});
+
+describe("sign-up attribution (Stage 16)", () => {
+  it("records reviewed campaign tags on account_created and folds small values on the dashboard", async () => {
+    const tag = Math.random().toString(36).slice(2, 8);
+    const sign = (campaign: string) =>
+      signUpCreator(auth, {
+        email: testEmail("attr"),
+        password: "a long enough passphrase",
+        attribution: { utm_source: "instagram", utm_medium: "bio", utm_campaign: campaign, referrer: "social" },
+      });
+    for (let i = 0; i < 5; i++) await sign(`alpha_${tag}`);
+    for (let i = 0; i < 2; i++) await sign(`beta_${tag}`);
+    const today = analyticsDay(new Date());
+    const view = await getAcquisition(db, { fromDay: today, toDay: today, includeInternal: true });
+    expect(view.campaign).toContainEqual({ value: `alpha_${tag}`, creators: { value: 5, suppressed: false } });
+    expect(view.campaign.some((r) => r.value === `beta_${tag}`)).toBe(false);
+    expect(view.campaign.some((r) => r.value === FOLDED_LABEL)).toBe(true);
+    expect(view.referrer.find((r) => r.value === "social")?.creators.value).toBeGreaterThanOrEqual(7);
   });
 });

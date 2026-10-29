@@ -98,22 +98,30 @@ For E2E tests, the database role needs `CREATEDB`. If your Playwright browsers d
 
 ## Environment variables
 
-| Variable                      | Required   | Notes                                                                                                                 |
-| ----------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
-| `APP_ENV`                     | –          | `development` (default) · `test` · `staging` · `production`                                                           |
-| `APP_URL`                     | –          | Public base URL                                                                                                       |
-| `DATABASE_URL`                | ✓          | PostgreSQL connection string                                                                                          |
-| `DATABASE_URL_TEST`           | tests      | Separate DB, **dropped** on every integration run                                                                     |
-| `DATABASE_URL_E2E`            | –          | Defaults to `DATABASE_URL_TEST` with an `_e2e` suffix                                                                 |
-| `DATABASE_POOL_MAX`           | –          | Default 5                                                                                                             |
-| `DATABASE_PREPARE`            | –          | `false` behind transaction poolers (Supabase pooler :6543, PgBouncer)                                                 |
-| `SESSION_TTL_HOURS`           | –          | Absolute session lifetime, default 168 (7 days)                                                                       |
-| `SEED_DEMO_PASSWORD`          | seed       | Password for fictional demo accounts                                                                                  |
-| `PAN_FINGERPRINT_SECRET`      | prod       | ≥ 32 chars. Key for PAN fingerprints (duplicate checks). Dev/test use a built-in key                                  |
-| `FI_DATA_ENCRYPTION_KEY`      | prod       | 32 bytes, base64 (`openssl rand -base64 32`). Encrypts AA line items. Dev/test key built in                           |
-| `FI_LIVE_LINE_ITEM_RETENTION` | –          | `false` (default). Store **live** AA line items; mock/sandbox are always stored. Keep off until counsel + RE sign off |
-| `CRON_SECRET`                 | prod       | ≥ 32 chars. Enables `GET /api/internal/cron/tick` (Bearer). Unset → 404                                               |
-| `INTEGRATION_*`               | per vendor | Vendor credentials, referenced by name from `/ops`; never in the DB                                                   |
+| Variable                             | Required   | Notes                                                                                                                 |
+| ------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `APP_ENV`                            | prod       | `development` · `test` · `staging` · `production`. Unset → `development`, but `production` for a production build     |
+| `APP_URL`                            | –          | Public base URL                                                                                                       |
+| `DATABASE_URL`                       | ✓          | PostgreSQL connection string                                                                                          |
+| `DATABASE_URL_TEST`                  | tests      | Separate DB, **dropped** on every integration run                                                                     |
+| `DATABASE_URL_E2E`                   | –          | Defaults to `DATABASE_URL_TEST` with an `_e2e` suffix                                                                 |
+| `DATABASE_POOL_MAX`                  | –          | Default 5                                                                                                             |
+| `DATABASE_PREPARE`                   | –          | `false` behind transaction poolers (Supabase pooler :6543, PgBouncer)                                                 |
+| `SESSION_TTL_HOURS`                  | –          | Absolute session lifetime, default 168 (7 days)                                                                       |
+| `SEED_DEMO_PASSWORD`                 | seed       | Password for fictional demo accounts                                                                                  |
+| `PAN_FINGERPRINT_SECRET`             | prod       | ≥ 32 chars. Key for PAN fingerprints (duplicate checks). Dev/test use a built-in key                                  |
+| `FI_DATA_ENCRYPTION_KEY`             | prod       | 32 bytes, base64 (`openssl rand -base64 32`). Encrypts AA line items. Dev/test key built in                           |
+| `FI_LIVE_LINE_ITEM_RETENTION`        | –          | `false` (default). Store **live** AA line items; mock/sandbox are always stored. Keep off until counsel + RE sign off |
+| `CRON_SECRET`                        | prod       | ≥ 32 chars. Enables `GET /api/internal/cron/tick` (Bearer). Unset → 404                                               |
+| `DATABASE_MIGRATION_URL`             | prod       | Schema owner for `db:migrate`/`db:check`; `DATABASE_URL` is then a least-privilege `creatorco_app` member (Stage 16)  |
+| `PARTNER_WEBHOOK_ROOT_KEY`           | prod       | ≥ 32 chars. Root of partner webhook signing secrets (derived, never stored)                                           |
+| `ANALYTICS_PSEUDONYM_KEY`            | prod       | ≥ 32 chars. Key for pseudonymous analytics ids (versioned: `_KEY_VERSION`, `_PREVIOUS_KEYS`)                          |
+| `ANALYTICS_CAMPAIGNS`                | –          | Registered sign-up campaign slugs (comma-separated); other `utm_campaign` values are recorded as `other`              |
+| `RATE_LIMIT_KEY`                     | prod       | ≥ 32 chars. Key for hashed rate-limit subjects (IP / user / partner)                                                  |
+| `CLIENT_IP_HEADER` / `_TRUSTED_HOPS` | –          | Where the client IP comes from: `x-forwarded-for`, hops 0 (Vercel overwrites it) or n appending proxies               |
+| `RATE_LIMIT_MULTIPLIER`              | dev/test   | Loosens rate limits locally / in E2E (50). Ignored in staging/production                                              |
+| `DEV_BUREAU_CHECKS_PER_30_DAYS`      | dev/test   | Raises the 3-per-30-days credit-check limit for demos (1–100). Ignored in staging/production                          |
+| `INTEGRATION_*`                      | per vendor | Vendor credentials, referenced by name from `/ops`; never in the DB                                                   |
 
 No vendor secrets are needed while every capability runs on mocks. Session tokens are random and only their SHA-256
 hashes are stored.
@@ -298,6 +306,39 @@ src/
   Example: `ABCPE1238F` → strong.
 - **Mock Account Aggregator:** see Stage 09b.
 
+### Stage 16: QA and security pass
+
+Full report for partner diligence: [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md). Data inventory and
+classification: [docs/DATA_CLASSIFICATION.md](docs/DATA_CLASSIFICATION.md).
+
+- **Access control:** a route-guard inventory test (`tests/unit/route-guards.test.ts`) checks every page, route
+  handler and server action for an authorisation call, with an explicit, reasoned list of public entry points. An API
+  test checks one creator can't reach another's records.
+- **Rate limits** (user decision: Postgres, hashed IP): fixed windows in `ops.rate_limit_counters` keyed by a keyed
+  hash of the client IP (IPv6 per /64), user or partner — never the raw value — deleted after 48 hours. Sign-up,
+  sign-in, OTP send/verify, eligibility start, Access requests, app screen views, signed-out page views (capped, not
+  rejected) and the partner API. They sit on top of the existing account lockout, OTP and bureau limits. Rules:
+  `modules/rate-limit/rules.ts` (`rl-0.1.0`). Fails open if counting itself fails.
+- **Strict CSP** (user decision): a nonce per request from `src/proxy.ts` (`script-src 'self' 'nonce-…'
+'strict-dynamic'`, no third-party origins, `frame-ancestors 'none'`); APIs get a deny-all policy. Plus COOP/CORP
+  and a tighter Permissions-Policy.
+- **Log redaction:** database errors (Drizzle parameters, Postgres key values) are redacted in our logger, job errors
+  and the framework's own error output (`src/instrumentation.ts`).
+- **Least-privilege database role:** migration 0036 creates `creatorco_app` (rows only — no DDL, no TRUNCATE, no
+  migration history) with an explicit RLS policy; `db:migrate` re-applies grants after every run. The full E2E suite
+  passes with the server connected as a member of it (`DATABASE_URL_E2E_APP`).
+- **Data minimisation:** new `purge_auth_records` job (sign-in attempts and ended sessions after 180 days, verification
+  codes after 30). Data inventory with a test that every table is classified.
+- **Sign-up attribution** (user add-on, first-party): `account_created` v2 records allow-listed source/medium, a
+  registered campaign (`ANALYTICS_CAMPAIGNS`) or `other`, and the referrer kind (search/social/other) — never URLs or
+  free text. Carried from the landing page in a 24-hour cookie (`cc_attr`) and disclosed on the sign-up page. Shown on
+  `/insights` with small values folded together.
+- **Dev-only bureau limit** (user add-on): `DEV_BUREAU_CHECKS_PER_30_DAYS` in development/test.
+- **Dependencies:** Next.js 16.4.3 and Zod 4.6.7 (security advisories); `npm audit --omit=dev` is clean.
+- **Accessibility:** axe (WCAG 2.1 A/AA) E2E checks on public, creator (both themes), risk, ops and partnerships
+  screens; two label-in-name issues fixed.
+- **Staff MFA** was deferred (user decision); see the security review.
+
 ### Stage 15: analytics and instrumentation
 
 - **First-party only** (user decision): events go to a separate `analytics` schema through `recordEvent`, inside the
@@ -309,7 +350,8 @@ src/
   - Subjects are a keyed pseudonym (`ANALYTICS_PSEUDONYM_KEY`, versioned and rotatable).
   - Only the India-time day is kept — no timestamp — so events can't be re-linked by time.
   - Staff accounts are never recorded; `.test` accounts are flagged as internal.
-  - Landing and join-page views are anonymous (no ID, no cookie).
+  - Landing and join-page views are anonymous (no ID). From Stage 16 a 24-hour cookie may carry reviewed campaign
+    tags to sign-up.
 - **Consent** (user decision: essential + optional):
   - Funnel steps are essential, pseudonymous service measurement, disclosed in the consent centre ("Service
     measurement").
@@ -635,7 +677,8 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   - its retention should be confirmed by counsel.
 - Audit metadata goes through `sanitiseAuditMetadata`, which rejects sensitive-looking keys and non-scalar values. A DB
   CHECK caps its size.
-- The logger redacts sensitive keys, form payloads are never logged, and DB query logging is off.
+- The logger redacts sensitive keys, form payloads are never logged, and DB query logging is off. Database errors are
+  redacted before they reach any log (Stage 16).
 
 ---
 
@@ -669,8 +712,9 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   reveals whether an email is registered.
 - Identity, GST and SMS providers are **mocks**. Choosing vendors and the data-rights and DPDP review of "mobile → PAN"
   lookups are open items for counsel.
-- Login throttling is per account (email hash). There is no IP or global rate limit yet.
-- No Content-Security-Policy header yet. Other security headers are set in `next.config.ts`.
+- Rate limits trust the edge proxy's client-IP header (see `CLIENT_IP_TRUSTED_HOPS`); never expose `next start`
+  directly.
+- Staff accounts have no second factor yet (deferred; see docs/SECURITY_REVIEW.md).
 - Consent withdrawal exists as an audited service primitive only. The creator-facing journey is Stage 08.
 - Consent text is **draft** and pending counsel review.
 - Social data is **mock only**. A vendor adapter (and each platform's API terms) is still to be chosen.

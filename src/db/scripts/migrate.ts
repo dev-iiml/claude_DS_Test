@@ -1,5 +1,6 @@
 import { pathToFileURL } from "node:url";
 
+import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 
 import { createDb } from "../create-db";
@@ -11,6 +12,8 @@ export async function runMigrations(url: string) {
   const { db, client } = createDb({ url, max: 1 });
   try {
     await migrate(db, { migrationsFolder: "src/db/migrations", migrationsSchema: "drizzle" });
+    // Least-privilege app role (Stage 16): cover tables added by any migration (no-op until the role exists).
+    await db.execute(sql`select public.grant_app_access()`);
   } finally {
     await client.end();
   }
@@ -33,7 +36,8 @@ async function migrateAndPublish(url: string) {
 
 // pathToFileURL percent-encodes the path (e.g. spaces), matching import.meta.url.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const url = requireDatabaseUrl();
+  // Migrations run as the schema owner; the app itself connects with a least-privilege user (Stage 16).
+  const url = process.env.DATABASE_MIGRATION_URL || requireDatabaseUrl();
   migrateAndPublish(url)
     .then(() => console.log(`✓ migrations and reference data applied to ${describeUrl(url)}`))
     .catch((e: unknown) => {

@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { appEnvOf } from "@/lib/app-env";
 
 /**
  * Pseudonymous analytics subject (Stage 15): HMAC-SHA256 of the user id under
@@ -29,7 +30,7 @@ function currentKey(): PseudonymKey {
     if (configured.length < 32) throw new Error("ANALYTICS_PSEUDONYM_KEY must be at least 32 characters");
     return { version, key: configured };
   }
-  const env = process.env.APP_ENV ?? "development";
+  const env = appEnvOf();
   if (env === "development" || env === "test") return { version, key: DEV_ONLY_KEY };
   throw new Error("ANALYTICS_PSEUDONYM_KEY must be set outside development and test");
 }

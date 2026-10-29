@@ -1,3 +1,4 @@
+import { redactLogText } from "./log-redaction";
 import { isSensitiveKey } from "./sensitive-keys";
 
 /**
@@ -27,8 +28,16 @@ export const logger = {
   error: (event: string, ctx?: Record<string, unknown>) => emit("error", event, ctx),
 };
 
-/** Error summary safe to log: name + message, no stack payloads or causes with data. */
+/**
+ * Error summary safe to log: name + redacted message, no stack payloads or
+ * causes with data. A failed query is reduced to the database's own message
+ * (the query text and its parameters are dropped).
+ */
 export function describeError(error: unknown): { name: string; message: string } {
-  if (error instanceof Error) return { name: error.name, message: error.message.slice(0, 300) };
-  return { name: "UnknownError", message: "non-error thrown" };
+  if (!(error instanceof Error)) return { name: "UnknownError", message: "non-error thrown" };
+  const failedQuery = error.message.startsWith("Failed query");
+  const message = failedQuery
+    ? `Failed query${error.cause instanceof Error ? `: ${error.cause.message}` : ""}`
+    : error.message;
+  return { name: error.name, message: redactLogText(message).slice(0, 300) };
 }

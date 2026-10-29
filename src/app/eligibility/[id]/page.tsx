@@ -55,7 +55,7 @@ export default async function SummaryPage({ params }: PageProps<"/eligibility/[i
   const withLender = app.status === "submitted";
   if (lender.stage === "decided" && lender.offer?.state === "open") {
     // Optional screen-view measurement: recorded only with the Product analytics consent.
-    recordAfterResponse({ event: "offer_viewed", userId: user.userId, props: { simulated: lender.simulated } });
+    await recordAfterResponse({ event: "offer_viewed", userId: user.userId, props: { simulated: lender.simulated } });
   }
 
   // Once a partner lender has decided, the decision (and any offer) leads the page.

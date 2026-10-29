@@ -91,7 +91,9 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-start">
         <div className="flex flex-col gap-4">
-          <Link href="/passport" aria-label="Open your Creator Passport" className="block rounded-xl">
+          <Link href="/passport" className="block rounded-xl">
+            {/* Visible content stays part of the name (WCAG 2.5.3 label in name). */}
+            <span className="sr-only">Open your Creator Passport: </span>
             <MembershipCard
               displayName={passport.displayName}
               handle={passport.handle}

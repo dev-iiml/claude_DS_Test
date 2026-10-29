@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 import type { ProviderMode } from "@/providers/types";
+import { appEnvOf } from "@/lib/app-env";
 
 /**
  * Guardrails for Account Aggregator line items (Stage 09b, user decision
@@ -28,7 +29,7 @@ function key(): Buffer {
     if (raw.length !== 32) throw new Error("FI_DATA_ENCRYPTION_KEY must be 32 bytes, base64-encoded");
     return raw;
   }
-  const env = process.env.APP_ENV ?? "development";
+  const env = appEnvOf();
   if (env === "development" || env === "test") return createHash("sha256").update(DEV_ONLY_KEY).digest();
   throw new Error("FI_DATA_ENCRYPTION_KEY must be set outside development and test");
 }

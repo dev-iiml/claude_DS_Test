@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "Apply" };
 
 export default async function SignUpPage() {
   await redirectIfSignedIn();
-  // Anonymous funnel count: no identifier, no cookie.
-  recordAfterResponse({ event: "application_started" });
+  // Anonymous funnel count (no identifier). Campaign tags, if any, are kept in a short-lived cookie by the proxy.
+  await recordAfterResponse({ event: "application_started" });
   return (
     <AuthShell
       title="Apply for membership"

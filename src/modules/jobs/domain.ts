@@ -1,3 +1,5 @@
+import { redactLogText } from "@/lib/log-redaction";
+
 /**
  * Background job vocabulary and pure policy. Jobs carry identifiers and
  * counts only — never personal or financial payloads.
@@ -11,6 +13,8 @@ export const JOB_TYPES = [
   "deliver_partner_webhooks",
   "expire_access_requests",
   "analytics_maintenance",
+  "rate_limit_purge",
+  "purge_auth_records",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -76,6 +80,19 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
     everyMinutes: 60,
   },
   {
+    type: "rate_limit_purge",
+    label: "Purge rate-limit counters",
+    description: "Deletes rate-limit counters (hashed network/account keys, counts only) older than 48 hours.",
+    everyMinutes: 60,
+  },
+  {
+    type: "purge_auth_records",
+    label: "Purge expired security records",
+    description:
+      "Deletes sign-in attempts and ended sessions after 180 days, and mobile verification codes after 30 days.",
+    everyMinutes: 60,
+  },
+  {
     type: "provider_health_check",
     label: "Provider health checks",
     description: "Checks every enabled provider configuration.",
@@ -104,5 +121,5 @@ export function describeJobError(error: unknown): string {
   if (!(error instanceof Error)) return "Unknown error";
   const root = error.message.startsWith("Failed query") && error.cause instanceof Error ? error.cause : error;
   const message = root.message.split(/\bparams:/)[0] ?? "";
-  return `${root.name}: ${message}`.replace(/\s+/g, " ").trim().slice(0, 300);
+  return redactLogText(`${root.name}: ${message}`).replace(/\s+/g, " ").trim().slice(0, 300);
 }

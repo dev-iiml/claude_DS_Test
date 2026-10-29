@@ -245,6 +245,39 @@ test.describe("API v1", () => {
     expect((await request.delete(`/api/v1/eligibility/${app.id}`, { headers: bearer(token) })).status()).toBe(204);
   });
 
+  test("creators can't reach each other's records", async ({ request }) => {
+    const owner = (await signInApi(request, "kabir.sethi@creators.creatorco.test")).token;
+    const other = (await signInApi(request, "naina.kapoor@creators.creatorco.test")).token;
+    const consent = await (
+      await request.get("/api/v1/consents/financial_eligibility", { headers: bearer(owner) })
+    ).json();
+    const app = await (
+      await request.post("/api/v1/eligibility", {
+        headers: bearer(owner),
+        data: { consentDefinitionId: consent.definition.id, agree: true },
+      })
+    ).json();
+    const centre = await (await request.get("/api/v1/consents", { headers: bearer(owner) })).json();
+    const receiptId: string = centre.purposes.find(
+      (p: { key: string }) => p.key === "financial_eligibility",
+    ).activeReceiptId;
+
+    for (const res of [
+      await request.get(`/api/v1/eligibility/${app.id}`, { headers: bearer(other) }),
+      await request.get(`/api/v1/eligibility/${app.id}/bank`, { headers: bearer(other) }),
+      await request.put(`/api/v1/eligibility/${app.id}/details`, { headers: bearer(other), data: {} }),
+      await request.post(`/api/v1/eligibility/${app.id}/confirm`, { headers: bearer(other) }),
+      await request.delete(`/api/v1/eligibility/${app.id}`, { headers: bearer(other) }),
+      await request.get(`/api/v1/consents/receipts/${receiptId}`, { headers: bearer(other) }),
+    ]) {
+      // Refused on the caller's own state (no consent → 409) or as not found — never served, never echoed.
+      expect([404, 409, 422], res.url()).toContain(res.status());
+      expect(await res.text()).not.toContain(app.id);
+    }
+    expect((await request.get(`/api/v1/eligibility/${app.id}`, { headers: bearer(owner) })).status()).toBe(200);
+    expect((await request.delete(`/api/v1/eligibility/${app.id}`, { headers: bearer(owner) })).status()).toBe(204);
+  });
+
   test("staff tokens can't use creator endpoints", async ({ request }) => {
     const { token } = await signInApi(request, "risk.admin@staff.creatorco.test");
     const res = await request.get("/api/v1/passport", { headers: bearer(token) });
