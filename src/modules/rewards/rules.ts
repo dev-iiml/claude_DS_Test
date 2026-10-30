@@ -39,5 +39,5 @@ export function formatPoints(n: number): string {
 export const POINTS_TERMS = [
   "Creator Points have no cash value and aren't money.",
   "They can't be transferred, sold, exchanged or withdrawn.",
-  "They're earned for membership milestones and Creator Status — never for borrowing.",
+  "They're earned for membership milestones and Creator Status — never for applying for credit, giving consent or sharing data.",
 ] as const;

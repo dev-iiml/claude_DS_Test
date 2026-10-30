@@ -44,6 +44,8 @@ export interface CreatorOpportunityView {
     status: AccessRequestStatus;
     pointsHeld: number;
     requestedAt: Date;
+    /** The creator's own note with the request. */
+    note: string | null;
     declineReason: string | null;
   } | null;
 }
@@ -124,6 +126,7 @@ async function creatorViews(
             status: latest.status,
             pointsHeld: latest.pointsHeld,
             requestedAt: latest.requestedAt,
+            note: latest.note,
             declineReason: latest.declineReason,
           }
         : null,

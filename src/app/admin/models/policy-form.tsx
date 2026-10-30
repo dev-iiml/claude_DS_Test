@@ -19,7 +19,7 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
       <FormMessage state={state} />
       {state.status === "idle" && state.message ? <Alert tone="success">{state.message}</Alert> : null}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <FormField id="decisionBasis" label="Decision basis">
+        <FormField id="decisionBasis" required label="Decision basis">
           {(a11y) => (
             <NativeSelect {...a11y} name="decisionBasis" defaultValue={current.decisionBasis}>
               <option value="traditional">Traditional</option>
@@ -27,7 +27,7 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
             </NativeSelect>
           )}
         </FormField>
-        <FormField id="minGrade" label="Worst grade accepted">
+        <FormField id="minGrade" required label="Worst grade accepted">
           {(a11y) => (
             <NativeSelect {...a11y} name="minGrade" defaultValue={current.minGrade}>
               {["A", "B", "C", "D", "E"].map((g) => (
@@ -36,15 +36,15 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
             </NativeSelect>
           )}
         </FormField>
-        <FormField id="maxExposure" label="Maximum amount (₹)">
+        <FormField id="maxExposure" required label="Maximum amount (₹)">
           {(a11y) => <Input {...a11y} name="maxExposure" inputMode="numeric" defaultValue={current.maxExposure} />}
         </FormField>
-        <FormField id="maxTenorMonths" label="Maximum tenor (months)">
+        <FormField id="maxTenorMonths" required label="Maximum tenor (months)">
           {(a11y) => (
             <Input {...a11y} name="maxTenorMonths" inputMode="numeric" defaultValue={current.maxTenorMonths} />
           )}
         </FormField>
-        <FormField id="maxDelinquencies12m" label="Missed payments allowed (12 months)">
+        <FormField id="maxDelinquencies12m" required label="Missed payments allowed (12 months)">
           {(a11y) => (
             <Input
               {...a11y}
@@ -54,7 +54,7 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
             />
           )}
         </FormField>
-        <FormField id="minBankCoverage" label="Least bank coverage">
+        <FormField id="minBankCoverage" required label="Least bank coverage">
           {(a11y) => (
             <NativeSelect {...a11y} name="minBankCoverage" defaultValue={current.minBankCoverage}>
               <option value="none">None needed</option>
@@ -63,7 +63,7 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
             </NativeSelect>
           )}
         </FormField>
-        <FormField id="minCompletenessPct" label="Least model completeness (%)">
+        <FormField id="minCompletenessPct" required label="Least model completeness (%)">
           {(a11y) => (
             <Input
               {...a11y}
@@ -74,7 +74,7 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
           )}
         </FormField>
         {(["A", "B", "C", "D", "E"] as const).map((g) => (
-          <FormField key={g} id={`rate${g}`} label={`Illustrative rate, grade ${g} (% p.a.)`}>
+          <FormField key={g} id={`rate${g}`} required label={`Illustrative rate, grade ${g} (% p.a.)`}>
             {(a11y) => (
               <Input
                 {...a11y}
@@ -85,7 +85,7 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
             )}
           </FormField>
         ))}
-        <FormField id="processingFeePct" label="Processing fee (% of amount)">
+        <FormField id="processingFeePct" required label="Processing fee (% of amount)">
           {(a11y) => (
             <Input
               {...a11y}
@@ -95,12 +95,12 @@ export function PolicyForm({ current }: { current: SimulatedLenderPolicy }) {
             />
           )}
         </FormField>
-        <FormField id="offerValidDays" label="Offer valid for (days)">
+        <FormField id="offerValidDays" required label="Offer valid for (days)">
           {(a11y) => (
             <Input {...a11y} name="offerValidDays" inputMode="numeric" defaultValue={current.pricing.offerValidDays} />
           )}
         </FormField>
-        <FormField id="coolingOffDays" label="Cooling-off period (days)">
+        <FormField id="coolingOffDays" required label="Cooling-off period (days)">
           {(a11y) => (
             <Input {...a11y} name="coolingOffDays" inputMode="numeric" defaultValue={current.pricing.coolingOffDays} />
           )}

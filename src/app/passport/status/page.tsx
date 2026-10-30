@@ -1,7 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 
-import { BackLink, CreatorStatusBadge, ListGroup, ListRow, PageHeader, StatusBadge } from "@/components/creatorco";
+import { BackLink, CreatorStatusBadge, ListGroup, ListRow, StatusBadge } from "@/components/creatorco";
 import { Alert } from "@/components/ui/alert";
 import {
   STATUS_CRITERION_LABELS,
@@ -13,6 +12,7 @@ import { CREATOR_STATUS_LABELS } from "@/modules/creator-status/status";
 
 import { requireMember } from "@/app/_lib/member";
 import { CreatorShell } from "@/app/_components/creator-shell";
+import { PageTitle } from "@/app/_components/page-title";
 
 export const metadata: Metadata = { title: "Creator Status" };
 
@@ -40,21 +40,21 @@ export default async function StatusPage() {
   return (
     <CreatorShell>
       <BackLink href="/passport" label="Passport" />
-      <PageHeader
+      <PageTitle
         title="Creator Status"
         description="Your professional standing in the CreatorCo network: Member, Onyx or Icon."
-        action={<CreatorStatusBadge tier={status.tier} />}
+        status={<CreatorStatusBadge tier={status.tier} />}
       />
 
       <div className="flex max-w-2xl flex-col gap-8">
-        <Alert tone="info">{STATUS_NOT_CREDIT_NOTE}</Alert>
+        <Alert tone="neutral">{STATUS_NOT_CREDIT_NOTE}</Alert>
 
         {status.basis === "no_signals" ? (
-          <ListGroup id="get-started" label="Getting considered">
+          <ListGroup id="get-started" label="How to be considered">
             <ListRow
               href="/passport/connect"
               label="Connect a social account"
-              detail="Status is built from verified activity, not what's self-declared."
+              detail="Status is built from verified activity, not what&rsquo;s self-declared."
             />
             <ListRow
               href="/passport/signals"
@@ -64,8 +64,8 @@ export default async function StatusPage() {
           </ListGroup>
         ) : (
           <p className="text-subhead text-ink-muted">
-            You&apos;re {CREATOR_STATUS_LABELS[status.tier]}. Updated {dateTime.format(status.computedAt!)} from your
-            latest professional signals.
+            Your Creator Status is {CREATOR_STATUS_LABELS[status.tier]}. Updated {dateTime.format(status.computedAt!)}{" "}
+            from your latest professional signals.
           </p>
         )}
 
@@ -77,24 +77,35 @@ export default async function StatusPage() {
             footer={
               tier === "icon"
                 ? "Icon includes everything Onyx asks for, at a higher level."
-                : "Every item must be met. A signal we can't measure yet counts as not met — never guessed."
+                : "Every item must be met. A signal we can\u2019t measure yet counts as not met — never guessed."
             }
           >
             {criteria.map((c) => (
               <ListRow
                 key={c.key}
                 label={STATUS_CRITERION_LABELS[c.key]}
-                detail={`${criterionRequirement(c)} · You: ${criterionValue(c)}`}
+                detail={
+                  c.state === "missing"
+                    ? criterionRequirement(c)
+                    : `${criterionRequirement(c)} · You: ${criterionValue(c)}`
+                }
                 accessory={<StatusBadge tone={STATE[c.state].tone}>{STATE[c.state].label}</StatusBadge>}
               />
             ))}
           </ListGroup>
         ))}
 
-        <p className="text-footnote text-ink-subtle">
-          Rules {status.rulesVersion}. Brand activity will count towards Status once it can be verified. Reaching a tier
-          for the first time earns <Link href="/access/points">Creator Points</Link>.
-        </p>
+        <ListGroup
+          id="rewards"
+          label="Rewards"
+          footer="Brand activity will count towards Status once it can be verified."
+        >
+          <ListRow
+            href="/access/points"
+            label="Creator Points"
+            detail="Earned the first time you reach Onyx or Icon. See your points and how to earn more."
+          />
+        </ListGroup>
       </div>
     </CreatorShell>
   );

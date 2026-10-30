@@ -1,5 +1,5 @@
 import type { CreatorAvailability, CreatorOpportunityView } from "@/modules/access";
-import { tierRequirementLabel } from "@/modules/access/presentation";
+import { tierLockLabel } from "@/modules/access/presentation";
 import { formatPoints } from "@/modules/rewards/rules";
 
 /** Display helpers for the creator's Access pages. */
@@ -23,7 +23,7 @@ export function availabilityBadge(o: CreatorOpportunityView): { label: string; t
     open: { label: "Open", tone: "success" },
     requested: { label: "Requested", tone: "info" },
     approved: { label: "Approved", tone: "success" },
-    tier_locked: { label: tierRequirementLabel(o.minTier), tone: "neutral" },
+    tier_locked: { label: tierLockLabel(o.minTier), tone: "neutral" },
     insufficient_points: { label: `Needs ${formatPoints(o.pointsCost)}`, tone: "neutral" },
     full: { label: "Full", tone: "neutral" },
     not_open_yet: { label: `Opens ${dayMonth.format(o.opensAt)}`, tone: "neutral" },

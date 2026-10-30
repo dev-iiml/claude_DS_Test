@@ -178,7 +178,7 @@ test.describe("Cohort A0 creator journey", () => {
   test("a typed GSTIN is validated as you type and checked against the registry", async ({ page }) => {
     await signIn(page, "naina.kapoor@creators.creatorco.test");
     await expect(page).toHaveURL(/\/onboarding\/business$/);
-    await expect(page.getByText(/Verify your mobile and fetch your details/)).toBeVisible();
+    await expect(page.getByText(/Verify your mobile in About you/)).toBeVisible();
     await page.getByLabel("Individual creator").check();
     await page.getByLabel("Registered for GST", { exact: true }).check();
     const gstin = page.getByLabel("GSTIN");

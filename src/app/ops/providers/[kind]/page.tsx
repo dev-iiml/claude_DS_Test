@@ -121,7 +121,9 @@ export default async function ProviderPage({ params, searchParams }: PageProps<"
             />
           </Disclosure>
           {k.route ? (
-            <Disclosure summary={k.route.paused ? "Lift the kill switch" : "Kill switch"}>
+            <Disclosure
+              summary={k.route.paused ? "Kill switch is on — lift it" : "Kill switch (off) — pause every call"}
+            >
               <KillSwitchForm kind={kind} paused={k.route.paused} label={k.label.toLowerCase()} />
             </Disclosure>
           ) : null}

@@ -65,7 +65,7 @@ export default async function ModelsPage() {
   return (
     <AdminShell role={admin.role}>
       <PageHeader
-        eyebrow="Read-only · changes ship as new versions"
+        eyebrow="Internal · engines are read-only · the simulated policy is four-eyes"
         title="Models & rules"
         description="What CreatorCo's engines compute and the simulated partner-lender policy. Engine changes are code releases that bump a version; the simulated policy changes through maker-checker here."
       />

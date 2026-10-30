@@ -30,7 +30,7 @@ export function EnableSignalsForm({ definition }: { definition: ConsentTextDefin
         <CardFooter className="flex-col items-stretch">
           <CheckboxRow
             name="agree"
-            label="Turn on professional analytics for my Passport"
+            label="Turn on professional signals for my Passport"
             aria-describedby={["analytics-consent", e.agree ? "agree-error" : null].filter(Boolean).join(" ")}
             aria-invalid={e.agree ? true : undefined}
           />

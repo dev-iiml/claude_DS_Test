@@ -61,7 +61,7 @@ describe("Access schemas", () => {
   it("labels who can request", () => {
     expect(tierRequirementLabel("member")).toBe("All members");
     expect(tierRequirementLabel("onyx")).toBe("Onyx and above");
-    expect(tierRequirementLabel("icon")).toBe("Icon");
+    expect(tierRequirementLabel("icon")).toBe("Icon only");
   });
 });
 

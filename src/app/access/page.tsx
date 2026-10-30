@@ -11,7 +11,7 @@ import { formatPoints } from "@/modules/rewards/rules";
 import { requireMember } from "../_lib/member";
 import { CreatorShell } from "../_components/creator-shell";
 
-import { availabilityBadge, costLabel, dayMonth } from "./_lib/present";
+import { availabilityBadge, costLabel, dayMonth, fullDate } from "./_lib/present";
 
 export const metadata: Metadata = { title: "Access" };
 
@@ -52,7 +52,7 @@ export default async function AccessPage() {
               </span>
             ) : null}
           </span>
-          <span className="text-subhead text-gold">History</span>
+          <span className="text-subhead text-gold">Points history</span>
         </Link>
         <Link
           href="/passport/status"
@@ -67,6 +67,24 @@ export default async function AccessPage() {
           <span className="text-subhead text-gold">How it works</span>
         </Link>
       </div>
+
+      {requests.length ? (
+        <ListGroup id="requests" label="Your requests" className="mb-8">
+          {requests.map((r) => (
+            <ListRow
+              key={r.id}
+              href={`/access/${r.opportunityId}`}
+              label={r.title}
+              detail={`${r.brandName} · requested ${dayMonth.format(r.requestedAt)}`}
+              accessory={
+                <StatusBadge tone={r.status === "approved" ? "success" : r.status === "requested" ? "info" : "neutral"}>
+                  {ACCESS_REQUEST_STATUS_LABELS[r.status]}
+                </StatusBadge>
+              }
+            />
+          ))}
+        </ListGroup>
+      ) : null}
 
       {opportunities.length ? (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Opportunities">
@@ -85,7 +103,7 @@ export default async function AccessPage() {
                     <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
                   </div>
                   <div>
-                    <p className="text-title-2 leading-tight font-semibold tracking-tight">{o.title}</p>
+                    <p className="line-clamp-2 text-title-2 leading-tight font-semibold tracking-tight">{o.title}</p>
                     <p className="mt-1 text-subhead text-ink-muted">
                       {o.brand.name}
                       {o.brand.isSample ? " · Sample brand" : ""}
@@ -93,7 +111,7 @@ export default async function AccessPage() {
                   </div>
                   <p className="flex items-center justify-between text-footnote text-ink-subtle">
                     <span>{costLabel(o.pointsCost)}</span>
-                    <span>Closes {dayMonth.format(o.closesAt)}</span>
+                    <span>Closes {fullDate.format(o.closesAt)}</span>
                   </p>
                 </Link>
               </li>
@@ -103,24 +121,6 @@ export default async function AccessPage() {
       ) : (
         <EmptyState title="Nothing open right now" description="New opportunities appear here when they open." />
       )}
-
-      {requests.length ? (
-        <ListGroup id="requests" label="Your requests" className="mt-10">
-          {requests.map((r) => (
-            <ListRow
-              key={r.id}
-              href={`/access/${r.opportunityId}`}
-              label={r.title}
-              detail={`${r.brandName} · requested ${dayMonth.format(r.requestedAt)}`}
-              accessory={
-                <StatusBadge tone={r.status === "approved" ? "success" : r.status === "requested" ? "info" : "neutral"}>
-                  {ACCESS_REQUEST_STATUS_LABELS[r.status]}
-                </StatusBadge>
-              }
-            />
-          ))}
-        </ListGroup>
-      ) : null}
 
       <p className="mt-6 max-w-prose text-footnote text-ink-subtle">
         Preview: every brand and opportunity here is a sample. Requests are reviewed by CreatorCo, but nothing is sent

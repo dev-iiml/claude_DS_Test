@@ -58,8 +58,10 @@ export default async function SummaryPage({ params }: PageProps<"/eligibility/[i
     await recordAfterResponse({ event: "offer_viewed", userId: user.userId, props: { simulated: lender.simulated } });
   }
 
-  // Once a partner lender has decided, the decision (and any offer) leads the page.
-  const lenderFirst = lender.stage === "decided";
+  // The lender journey — the next action (sharing), the status with a lender, or its decision and offer — leads the
+  // page; the inputs behind it follow (QA pass).
+  const simulated = "simulated" in lender && lender.simulated === true;
+  const pilot = simulated ? " (simulated pilot)" : "";
   const badge = withLender ? lenderBadge(lender) : null;
   const lenderSection = (
     <LenderSection
@@ -101,17 +103,19 @@ export default async function SummaryPage({ params }: PageProps<"/eligibility/[i
           : withLender
             ? lender.stage === "decided"
               ? lender.offer?.state === "open"
-                ? "Your offer"
-                : "Partner-lender decision"
-              : "With a partner lender"
+                ? `Your offer${pilot}`
+                : `Partner-lender decision${pilot}`
+              : `With a partner lender${pilot}`
             : "Your check"
       }
       description={
         open
-          ? "Your inputs are confirmed. Below is your Financial Capacity — the financial picture a partner lender would look at. Your CreatorCo recommendation also weighs your creator business."
+          ? "Your inputs are confirmed. Your Financial Capacity — the financial picture a partner lender would look at — is below. Your CreatorCo recommendation also weighs your creator business."
           : withLender
             ? lender.stage === "decided" && lender.offer?.state === "open"
-              ? "A partner lender has made you an offer. Read its Key Fact Statement before you answer."
+              ? simulated
+                ? "The pilot's simulated lender has made you an illustrative offer. No loan will be made. Read its Key Fact Statement before you answer."
+                : "A partner lender has made you an offer. Read its Key Fact Statement before you answer."
               : lender.stage === "decided" && lender.offer?.state === "accepted"
                 ? "You accepted this offer. The next steps are with the partner lender."
                 : "This check was sent to a partner lender as a credit proposal, so it can't be changed now."
@@ -119,7 +123,7 @@ export default async function SummaryPage({ params }: PageProps<"/eligibility/[i
       }
     >
       <div className="flex flex-col gap-8">
-        {lenderFirst ? lenderSection : null}
+        {lenderSection}
         <ListGroup
           id="request"
           label="Your request"
@@ -143,15 +147,18 @@ export default async function SummaryPage({ params }: PageProps<"/eligibility/[i
             }
             detail={app.purposeNote ?? undefined}
           />
-          <ListRow label="Amount" value={app.requestedAmount !== null ? formatInr(app.requestedAmount) : "—"} />
+          <ListRow
+            label="Amount you asked for"
+            value={app.requestedAmount !== null ? formatInr(app.requestedAmount) : "—"}
+          />
           <ListRow
             label="Status"
             accessory={
-              <StatusBadge tone={badge ? badge.tone : open ? "success" : "neutral"}>
+              <StatusBadge tone={badge ? badge.tone : "neutral"}>
                 {badge
                   ? badge.label
                   : open
-                    ? "Confirmed"
+                    ? "Inputs confirmed"
                     : app.status === "expired"
                       ? "Expired"
                       : app.status === "submitted"
@@ -216,29 +223,29 @@ export default async function SummaryPage({ params }: PageProps<"/eligibility/[i
           </ListGroup>
         )}
 
-        <ListGroup id="next" label="What happens next">
-          <ListRow
-            label="CreatorCo recommendation"
-            detail={
-              prepared
-                ? "Prepared from your Financial Capacity and your creator business. A partner lender reviews it under its own policy before any offer."
-                : "Combines your Financial Capacity with your creator business. Subject to partner-lender approval."
-            }
-            accessory={
-              <StatusBadge tone={prepared ? "success" : "neutral"}>
-                {prepared ? "Prepared" : "Not prepared"}
-              </StatusBadge>
-            }
-          />
-          {lender.stage === "not_shared" ? (
+        {withLender ? null : (
+          <ListGroup id="next" label="What happens next">
             <ListRow
-              label="Nothing is sent to a lender yet"
-              detail="That needs a separate consent from you — see below."
+              label="CreatorCo recommendation"
+              detail={
+                prepared
+                  ? "Prepared from your Financial Capacity and your creator business. A partner lender reviews it under its own policy before any offer."
+                  : "Combines your Financial Capacity with your creator business. Subject to partner-lender approval."
+              }
+              accessory={
+                <StatusBadge tone={prepared ? "success" : "neutral"}>
+                  {prepared ? "Prepared" : "Not prepared"}
+                </StatusBadge>
+              }
             />
-          ) : null}
-        </ListGroup>
-
-        {lenderFirst ? null : lenderSection}
+            {lender.stage === "not_shared" ? (
+              <ListRow
+                label="Nothing is sent to a lender yet"
+                detail="That needs a separate consent from you — see above."
+              />
+            ) : null}
+          </ListGroup>
+        )}
 
         {open && !prepared && capacity ? (
           <form action={prepareRecommendationAction}>

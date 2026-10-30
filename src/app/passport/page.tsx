@@ -82,7 +82,7 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
               label="Your Creator Status"
               detail={
                 passport.status.basis === "no_signals"
-                  ? "Connect an account and turn on signals to be considered"
+                  ? "Connect an account to be considered — professional signals help"
                   : "See what each tier looks for"
               }
               accessory={<CreatorStatusBadge tier={passport.tier} />}
@@ -149,10 +149,10 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
                 label={<span className="text-gold">Add another {p.label} account</span>}
               />
             ))}
-            {passport.connectablePlatforms.some((p) => !passport.accounts.some((a) => a.platform === p.code)) ? (
-              <ListRow href="/passport/connect" label={<span className="text-gold">Connect another account</span>} />
-            ) : passport.accounts.length === 0 ? (
+            {connected.length === 0 ? (
               <ListRow href="/passport/connect" label={<span className="text-gold">Connect an account</span>} />
+            ) : passport.connectablePlatforms.some((p) => !passport.accounts.some((a) => a.platform === p.code)) ? (
+              <ListRow href="/passport/connect" label={<span className="text-gold">Connect another account</span>} />
             ) : null}
           </ListGroup>
 

@@ -62,7 +62,7 @@ test.describe("Access preview and Creator Points (Stage 14)", () => {
 
     await page.goto("/access");
     const opportunities = page.getByRole("list", { name: "Opportunities" });
-    await expect(opportunities.getByRole("link", { name: /Camera Creator Programme/ })).toContainText("Onyx and above");
+    await expect(opportunities.getByRole("link", { name: /Camera Creator Programme/ })).toContainText("Onyx+ only");
     await opportunities.getByRole("link", { name: /Luxury Beauty Drop/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Luxury Beauty Drop" })).toBeVisible();
     await page.getByLabel(/Note to the brand team/).fill("Autumn skincare fits my routine videos.");

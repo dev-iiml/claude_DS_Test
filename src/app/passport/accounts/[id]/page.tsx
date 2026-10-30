@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { BackLink, ListGroup, ListRow, PageHeader, StatusBadge } from "@/components/creatorco";
+import { BackLink, ListGroup, ListRow, StatusBadge } from "@/components/creatorco";
 import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import { getOwnSocialAccount } from "@/modules/social-data/queries";
 
 import { requireMember } from "@/app/_lib/member";
 import { CreatorShell } from "@/app/_components/creator-shell";
+import { PageTitle } from "@/app/_components/page-title";
 
 import { disconnectAccountAction, makePrimaryAccountAction } from "../../connect-actions";
 
@@ -23,7 +24,7 @@ const compact = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFra
 
 export default async function AccountDetailPage({ params }: PageProps<"/passport/accounts/[id]">) {
   const { id } = await params;
-  const { user } = await requireMember();
+  const { user, passport } = await requireMember();
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const account = await getOwnSocialAccount(getDb(), { userId: user.userId, accountId: id });
   if (!account || account.status !== "connected") notFound();
@@ -32,10 +33,10 @@ export default async function AccountDetailPage({ params }: PageProps<"/passport
   return (
     <CreatorShell>
       <BackLink href="/passport" label="Passport" />
-      <PageHeader
+      <PageTitle
         title={account.platformLabel}
         description={`@${account.handle}${account.otherAccountsOnPlatform && account.isPrimary ? " · primary account" : ""}`}
-        action={<StatusBadge tone="success">Connected</StatusBadge>}
+        status={<StatusBadge tone="success">Connected</StatusBadge>}
       />
 
       <div className="flex max-w-2xl flex-col gap-8">
@@ -72,6 +73,20 @@ export default async function AccountDetailPage({ params }: PageProps<"/passport
           {account.latest ? <ListRow label="As of" value={date.format(account.latest.capturedAt)} /> : null}
         </ListGroup>
 
+        {!passport.consents.professionalAnalytics ? (
+          <ListGroup
+            id="signals"
+            label="Professional signals"
+            footer="Optional and separate. Not a credit score. Turn off any time in Account › Consents."
+          >
+            <ListRow
+              href="/passport/signals"
+              label="See how your creator business is trending"
+              detail="Turn on signals to add longevity, consistency and platform mix to your Passport — and to be considered for Onyx and Icon."
+            />
+          </ListGroup>
+        ) : null}
+
         {account.otherAccountsOnPlatform && !account.isPrimary ? (
           <form action={makePrimaryAccountAction} className="flex flex-col gap-2">
             <input type="hidden" name="accountId" value={account.id} />
@@ -85,15 +100,21 @@ export default async function AccountDetailPage({ params }: PageProps<"/passport
           </form>
         ) : null}
 
-        <form action={disconnectAccountAction} className="flex flex-col gap-2">
-          <input type="hidden" name="accountId" value={account.id} />
-          <Button type="submit" variant="destructive" size="lg" className="w-full sm:w-auto">
-            Disconnect {account.platformLabel}
-          </Button>
-          <p className="text-footnote text-ink-subtle">
-            We&rsquo;ll stop reading this account. If you declared it, it stays on your Passport as self-declared.
-          </p>
-        </form>
+        {/* Two steps: disconnecting stops reading the account and removes its stored metrics. */}
+        <details className="group flex flex-col gap-2">
+          <summary className="w-fit cursor-pointer list-none rounded-control text-body font-medium text-danger [&::-webkit-details-marker]:hidden">
+            Disconnect {account.platformLabel}…
+          </summary>
+          <form action={disconnectAccountAction} className="mt-3 flex flex-col gap-2">
+            <input type="hidden" name="accountId" value={account.id} />
+            <p className="text-subhead text-ink-muted">
+              We&rsquo;ll stop reading this account. If you declared it, it stays on your Passport as self-declared.
+            </p>
+            <Button type="submit" variant="destructive" size="lg" className="w-full sm:w-auto">
+              Yes, disconnect {account.platformLabel}
+            </Button>
+          </form>
+        </details>
       </div>
     </CreatorShell>
   );

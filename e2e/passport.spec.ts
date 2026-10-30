@@ -85,7 +85,7 @@ test.describe("Creator Passport, social connection and professional signals", ()
     }
     await expect(page.getByText("Verified").first()).toBeVisible();
     await expect(page.getByText(/confidence/).first()).toBeVisible();
-    await expect(page.getByText(/engine pg-0\.2\.0/)).toBeVisible();
+    await expect(page.getByText(/monthly snapshots/)).toBeVisible();
   });
 
   test("cancelling at the provider shares nothing", async ({ page }) => {
@@ -113,7 +113,8 @@ test.describe("Creator Passport, social connection and professional signals", ()
       .click();
     await expect(page.getByRole("heading", { level: 1, name: "Instagram" })).toBeVisible();
     await expect(page.getByText("12 monthly snapshots stored.")).toBeVisible();
-    await page.getByRole("button", { name: "Disconnect Instagram" }).click();
+    await page.getByText("Disconnect Instagram…").click();
+    await page.getByRole("button", { name: "Yes, disconnect Instagram" }).click();
     await expect(page).toHaveURL(/\/passport\?disconnected=1$/);
     await expect(page.getByText("@kabir.ontheroad.demo · self-declared")).toHaveCount(2);
     // The extra account stays connected (and is still the primary one).

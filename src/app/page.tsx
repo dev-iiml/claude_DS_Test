@@ -60,11 +60,6 @@ export default async function LandingPage() {
           <Button asChild size="lg" className="sm:w-auto">
             <Link href="/signup">Apply for membership</Link>
           </Button>
-          {!home ? (
-            <Button asChild size="lg" variant="secondary" className="sm:w-auto">
-              <Link href="/login">I&rsquo;m a member</Link>
-            </Button>
-          ) : null}
         </div>
 
         <ul className="mt-16 grid grid-cols-1 gap-3 sm:grid-cols-3">

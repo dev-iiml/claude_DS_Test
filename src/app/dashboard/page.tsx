@@ -40,9 +40,11 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
   const sentCheck = openCheck
     ? null
     : ((await listApplications(getDb(), user.userId)).find((a) => a.status === "submitted") ?? null);
-  const sentBadge = sentCheck
-    ? lenderBadge(await getCreatorLenderView(getDb(), { userId: user.userId, applicationId: sentCheck.id }))
+  const sentView = sentCheck
+    ? await getCreatorLenderView(getDb(), { userId: user.userId, applicationId: sentCheck.id })
     : null;
+  const sentBadge = sentView ? lenderBadge(sentView) : null;
+  const simulatedPilot = sentView !== null && "simulated" in sentView && sentView.simulated === true;
   const [opportunities, points] = await Promise.all([
     listOpportunitiesForCreator(getDb(), { userId: user.userId, creatorId: passport.creatorId }),
     getPointsSummary(getDb(), passport.creatorId, 0),
@@ -68,7 +70,7 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
       view.completion.percent < 100 && {
         href: "/passport",
         label: "Complete your Passport",
-        detail: `${view.completion.percent}% complete`,
+        detail: "Add the details that are still missing.",
       },
   ].filter((s): s is { href: string; label: string; detail: string } => Boolean(s));
 
@@ -163,14 +165,18 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
             <div className="flex items-center justify-between gap-3">
               <CardTitle>Financial eligibility</CardTitle>
               {openCheck ? (
-                <StatusBadge tone={openCheck.status === "inputs_ready" ? "success" : "info"}>
-                  {openCheck.status === "inputs_ready" ? "Check complete" : "In progress"}
+                <StatusBadge tone={openCheck.status === "inputs_ready" ? "brand" : "info"}>
+                  {openCheck.status === "inputs_ready" ? "Ready to share" : "In progress"}
                 </StatusBadge>
               ) : sentBadge ? (
                 <StatusBadge tone={sentBadge.tone}>{sentBadge.label}</StatusBadge>
               ) : null}
             </div>
-            <CardDescription>Optional, with its own separate consent.</CardDescription>
+            <CardDescription>
+              {simulatedPilot
+                ? "Simulated pilot — illustrative terms only. No loan will be made."
+                : "Optional, with its own separate consent."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-start gap-4">
             <p className="text-subhead text-ink-muted">
@@ -186,7 +192,13 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
                       : "View your check"}
                 </Link>
               ) : (
-                <Link href="/eligibility">{openCheck ? "Continue your check" : "Check financial eligibility"}</Link>
+                <Link href={openCheck?.status === "inputs_ready" ? `/eligibility/${openCheck.id}` : "/eligibility"}>
+                  {openCheck?.status === "inputs_ready"
+                    ? "Review and share"
+                    : openCheck
+                      ? "Continue your check"
+                      : "Check financial eligibility"}
+                </Link>
               )}
             </Button>
           </CardContent>
@@ -201,7 +213,7 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
           </Link>
         </div>
         {opportunities.length ? (
-          <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+          <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
             {featured.map((o) => (
               <li key={o.id} className="w-[72%] shrink-0 snap-start sm:w-auto">
                 <Link
@@ -221,7 +233,10 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
           <p className="text-subhead text-ink-muted">Nothing open right now.</p>
         )}
         <p className="mt-2 text-footnote text-ink-subtle">
-          {formatPoints(points.balance)} available · Preview with sample brands.
+          <Link href="/access/points" className="text-gold underline underline-offset-2">
+            {formatPoints(points.balance)} available
+          </Link>{" "}
+          · Preview with sample brands.
         </p>
       </section>
     </CreatorShell>

@@ -77,7 +77,9 @@ export function RequestAccessForm({
         <SubmitButton size="lg" className="w-full sm:w-auto" pendingLabel="Requesting…">
           Request access
         </SubmitButton>
-        <span className="text-footnote text-ink-subtle">{costLabel} held until the team decides.</span>
+        <span className="text-footnote text-ink-subtle">
+          {costLabel === "No points needed" ? "No points needed." : `${costLabel} held until the team decides.`}
+        </span>
       </div>
     </form>
   );

@@ -6,6 +6,7 @@ import type { Tone } from "@/components/creatorco/status-badge";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
+import { appEnvOf } from "@/lib/app-env";
 import {
   MISSING_ACCOUNT_REASONS,
   type BankAccountType,
@@ -105,8 +106,9 @@ export default async function BankPage({ params, searchParams }: PageProps<"/eli
         ) : null}
         {provider.descriptor.mode === "mock" ? (
           <p className="rounded-[12px] bg-warning-soft px-4 py-3 text-[13px] leading-snug text-warning">
-            Test mode — simulated Account Aggregator. Numbers ending in 0 find no accounts, 5 find three, 9 find two
-            (one needs a retry); others find one or two.
+            {appEnvOf() === "production"
+              ? "Sample bank data — a simulated Account Aggregator. No real bank is contacted."
+              : "Test mode — simulated Account Aggregator. Numbers ending in 0 find no accounts, 5 find three, 9 find two (one needs a retry); others find one or two."}
           </p>
         ) : null}
 
@@ -182,6 +184,7 @@ export default async function BankPage({ params, searchParams }: PageProps<"/eli
                   : "The Account Aggregator sends this number an OTP and finds the accounts linked to it. You can search another number here afterwards."
             }
             cta={searched ? "Search this number" : "Share via Account Aggregator"}
+            variant={searched ? "secondary" : "primary"}
           />
         ) : searched ? (
           <p className="px-1 text-[13px] leading-snug text-ink-subtle">
@@ -216,7 +219,7 @@ export default async function BankPage({ params, searchParams }: PageProps<"/eli
           <div className="flex flex-col gap-2">
             <form action={skipBankAction}>
               <input type="hidden" name="applicationId" value={app.id} />
-              <Button type="submit" size="lg" variant="ghost" className="w-full sm:w-auto">
+              <Button type="submit" size="lg" variant="secondary" className="w-full sm:w-auto">
                 Continue without bank data
               </Button>
             </form>

@@ -111,11 +111,13 @@ test.describe("Underwriting Engine v0 (Stage 10)", () => {
     const row = page
       .getByRole("region", { name: "Recent runs" })
       .getByRole("link", { name: new RegExp(app.id.slice(0, 8)) });
-    await expect(row).toContainText("fraud review");
+    await expect(row).toContainText("Fraud review");
     await row.click();
     await expect(page.getByRole("heading", { level: 1, name: "Underwriting run" })).toBeVisible();
     await expect(page.getByText("Needs review")).toBeVisible();
-    await expect(page.getByRole("listitem").filter({ hasText: "Same PAN on another account" })).toContainText("high");
+    await expect(page.getByRole("listitem").filter({ hasText: "Same PAN on another account" })).toContainText(
+      "High severity",
+    );
     await expect(page.getByText("FRAUD_REVIEW").first()).toBeVisible();
   });
 

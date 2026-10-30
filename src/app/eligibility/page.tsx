@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Financial eligibility" };
 
 const STATUS = {
   draft: { tone: "info", label: "In progress" },
-  inputs_ready: { tone: "success", label: "Check complete" },
+  inputs_ready: { tone: "brand", label: "Ready to share" },
   submitted: { tone: "brand", label: "With a partner lender" },
   withdrawn: { tone: "neutral", label: "Closed" },
   expired: { tone: "neutral", label: "Expired" },
@@ -40,7 +40,7 @@ const HOW = [
   {
     label: "Your bank accounts",
     detail:
-      "Statements for the accounts you choose, via an Account Aggregator — across more than one number if you need.",
+      "Statements for the accounts you choose, via an Account Aggregator — including accounts linked to different mobile numbers.",
   },
   {
     label: "Review and confirm",
@@ -94,7 +94,7 @@ export default async function EligibilityPage({ searchParams }: PageProps<"/elig
                 <ListRow
                   key={h.label}
                   leading={
-                    <span className="flex size-7 items-center justify-center rounded-full bg-elevated text-[13px] font-semibold text-gold tabular-nums">
+                    <span className="flex size-7 items-center justify-center rounded-full bg-elevated text-[13px] font-semibold text-gold tabular-nums ring-1 ring-line ring-inset">
                       {i + 1}
                     </span>
                   }
@@ -131,7 +131,7 @@ export default async function EligibilityPage({ searchParams }: PageProps<"/elig
           </ListGroup>
         ) : null}
 
-        <p className="px-1 text-[13px] leading-snug text-ink-subtle">
+        <p className="px-4 text-footnote leading-snug text-ink-subtle">
           Checking eligibility doesn&rsquo;t commit you to anything. Any eligibility shown will be a CreatorCo
           recommendation, subject to partner-lender approval.
         </p>

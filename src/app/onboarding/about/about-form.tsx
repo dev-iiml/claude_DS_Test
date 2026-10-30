@@ -125,7 +125,7 @@ export function AboutForm({
           id="displayName"
           label="Display name"
           required
-          description="Your creator name."
+          description="How brands and members see you."
           errors={e.displayName}
         >
           {(a11y) => (

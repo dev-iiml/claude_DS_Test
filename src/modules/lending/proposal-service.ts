@@ -10,6 +10,7 @@ import {
   creditProposals,
   decisionQueries,
   partners,
+  providerConfigs,
   decisionReviews,
   lenderDecisions,
   offerResponses,
@@ -647,6 +648,16 @@ async function activePartnerFor(db: DbExecutor, lenderKey: string) {
 /** The pilot's simulated lender (its proposals carry the simulated policy version). */
 const isSimulated = (p: Proposal) => p.policyVersion !== null;
 
+/** Whether a lender config (by key) is the pilot's simulated lender — for display before a proposal is sent. */
+async function isMockLender(db: DbExecutor, key: string): Promise<boolean> {
+  const [row] = await db
+    .select({ mode: providerConfigs.mode })
+    .from(providerConfigs)
+    .where(and(eq(providerConfigs.kind, "lender"), eq(providerConfigs.key, key)))
+    .limit(1);
+  return row?.mode === "mock";
+}
+
 /**
  * A risk admin reviews the lender's latest decision before the creator sees
  * it. Simulated lender: confirm, or override with a reason (never more
@@ -1136,8 +1147,9 @@ export type CreatorLenderView =
   | { stage: "not_shared" }
   /** A check sent to a lender whose lender records were erased after the relationship closed (Stage 13). */
   | { stage: "closed" }
-  | { stage: "preparing" }
-  | { stage: "with_lender" }
+  /** `simulated`: the pilot's simulated lender — always labelled as such to the creator (QA pass). */
+  | { stage: "preparing"; simulated?: boolean }
+  | { stage: "with_lender"; simulated: boolean }
   | {
       stage: "decided";
       outcome: DecisionOutcome;
@@ -1194,10 +1206,15 @@ export async function getCreatorLenderView(
     return shared ? { stage: "preparing" } : { stage: "not_shared" };
   }
   const p = proposal.p;
-  if (p.status === "held" || p.status === "queued" || p.status === "failed") return { stage: "preparing" };
-  if (p.status === "sending") return { stage: "with_lender" };
+  // Sent proposals record the simulated policy they ran under; before sending, ask the lender config's mode.
+  const simulated =
+    p.policyVersion !== null ||
+    ((p.status === "held" || p.status === "queued" || p.status === "failed" || p.status === "sending") &&
+      (await isMockLender(db, p.lender)));
+  if (p.status === "held" || p.status === "queued" || p.status === "failed") return { stage: "preparing", simulated };
+  if (p.status === "sending") return { stage: "with_lender", simulated };
   const [review] = await db.select().from(decisionReviews).where(eq(decisionReviews.proposalId, p.id)).limit(1);
-  if (!review) return { stage: "with_lender" };
+  if (!review) return { stage: "with_lender", simulated };
   const terms = termsOf(review.finalOfferTerms);
   let offer: CreatorOffer | null = null;
   if (terms && review.finalOfferExpiresAt) {
@@ -1217,7 +1234,7 @@ export async function getCreatorLenderView(
     outcome: review.finalOutcome,
     amount: review.finalExposure,
     tenorMonths: review.finalTenorMonths,
-    simulated: p.policyVersion !== null,
+    simulated,
     adjusted: review.action === "override",
     decidedAt: review.createdAt,
     offer,

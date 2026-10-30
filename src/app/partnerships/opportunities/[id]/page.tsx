@@ -99,7 +99,7 @@ export default async function StaffOpportunityPage({
             </section>
             <section aria-labelledby="close-heading" className="flex flex-col gap-3">
               <h2 id="close-heading" className="text-title-3 font-semibold tracking-tight">
-                Close
+                Close opportunity
               </h2>
               <p className="text-subhead text-ink-muted">
                 Stops new requests. Pending requests expire and their points go back to the creators; approved ones

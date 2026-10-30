@@ -16,12 +16,14 @@ export function ShareForm({
   label,
   description,
   cta,
+  variant = "primary",
 }: {
   applicationId: string;
   defaultMobile: string | null;
   label: string;
   description: string;
   cta: string;
+  variant?: "primary" | "secondary";
 }) {
   const [state, action] = useActionState(startBankSharingAction, initialFormState);
   return (
@@ -51,7 +53,7 @@ export function ShareForm({
         )}
       </FormField>
       <div>
-        <SubmitButton size="lg" className="w-full sm:w-auto">
+        <SubmitButton size="lg" variant={variant} className="w-full sm:w-auto">
           {cta}
         </SubmitButton>
       </div>

@@ -16,6 +16,12 @@ const day = new Intl.DateTimeFormat("en-IN", {
   minute: "2-digit",
   timeZone: "Asia/Kolkata",
 });
+const dateOnly = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
 const shortDay = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 /**
@@ -42,7 +48,7 @@ export function LenderSection({
     return (
       <section aria-labelledby="share-heading" className="flex flex-col gap-3">
         <h2 id="share-heading" className="px-1 text-[13px] font-medium tracking-wide text-ink-subtle uppercase">
-          Share with a partner lender
+          Next step
         </h2>
         <p className="px-1 text-[15px] leading-snug text-ink-muted">
           A regulated partner bank or NBFC can look at this check and decide whether to make an offer. It needs your
@@ -67,6 +73,7 @@ export function LenderSection({
       <ListGroup
         id="lender"
         label="Partner lender"
+        action={view.simulated ? <StatusBadge tone="warning">Simulated pilot</StatusBadge> : undefined}
         footer="The partner lender decides under its own credit policy. CreatorCo is not a lender."
       >
         <ListRow
@@ -76,7 +83,11 @@ export function LenderSection({
               ? "Your check is being prepared as a credit proposal."
               : "Awaiting their decision. We'll show it here once it has been checked."
           }
-          accessory={<StatusBadge tone="info">{view.stage === "preparing" ? "Preparing" : "Sent"}</StatusBadge>}
+          accessory={
+            <StatusBadge tone={view.stage === "preparing" ? "info" : "brand"}>
+              {view.stage === "preparing" ? "Preparing" : "Sent"}
+            </StatusBadge>
+          }
         />
       </ListGroup>
     );
@@ -133,17 +144,25 @@ export function LenderSection({
             : `These terms are ${lender}'s, as it provided them. CreatorCo is not a lender.`
         }
       >
-        {offer.state === "open" ? <ListRow label="Valid until" value={day.format(offer.expiresAt)} /> : null}
+        {offer.state === "open" ? <ListRow label="Valid until" value={dateOnly.format(offer.expiresAt)} /> : null}
         <ListRow label="Amount" value={formatInr(t.sanctionedAmount)} />
-        <ListRow label="Monthly instalment" value={`${formatInr(t.emiAmount)} × ${t.emiCount}`} />
+        <ListRow label="Monthly instalment" value={`${formatInr(t.emiAmount)} a month for ${t.emiCount} months`} />
         <ListRow label="Interest rate" value={`${t.annualInterestRatePct}% a year`} />
-        <ListRow label="APR (all-in yearly cost)" value={`${t.aprPct}%`} />
+        <ListRow
+          label="Annual Percentage Rate (APR)"
+          detail="The all-in yearly cost, including fees"
+          value={`${t.aprPct}%`}
+        />
         <ListRow label="Total you repay" value={formatInr(t.totalRepayable)} />
       </ListGroup>
 
-      <details className="rounded-control px-1" open={offer.state === "open"} aria-label="Key Fact Statement">
-        <summary className="cursor-pointer text-[13px] font-medium tracking-wide text-ink-subtle uppercase">
-          Key Fact Statement
+      <details className="group rounded-control" open={offer.state === "open"} aria-label="Key Fact Statement">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-[16px] bg-surface px-4 text-[15px] font-medium text-ink ring-1 ring-line ring-inset [&::-webkit-details-marker]:hidden">
+          <span>Key Fact Statement</span>
+          <span className="text-[13px] font-normal text-gold">
+            <span className="group-open:hidden">Show</span>
+            <span className="hidden group-open:inline">Hide</span>
+          </span>
         </summary>
         <div className="mt-3">
           <ListGroup

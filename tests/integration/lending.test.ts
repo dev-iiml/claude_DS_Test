@@ -78,7 +78,7 @@ describe("credit proposals (Stage 12)", () => {
     // Idempotent.
     expect((await proposeIfShared(deps(), c))?.id ?? p.id).toBe(p.id);
     // Not visible to the creator until a CreatorCo reviewer has checked it.
-    expect(await getCreatorLenderView(db, c)).toEqual({ stage: "with_lender" });
+    expect(await getCreatorLenderView(db, c)).toEqual({ stage: "with_lender", simulated: true });
     const reviewer = await staff("reviewer");
     await reviewDecision(db, {
       staffId: reviewer,
@@ -114,7 +114,7 @@ describe("credit proposals (Stage 12)", () => {
     const c = await confirmedCheck("dup2", { pan }); // same PAN on another account → high flag → review
     const p = (await proposeIfShared(deps(), c))!;
     expect(p).toMatchObject({ status: "held", holdReason: "fraud_review" });
-    expect(await getCreatorLenderView(db, c)).toEqual({ stage: "preparing" }); // never reveals the review
+    expect(await getCreatorLenderView(db, c)).toEqual({ stage: "preparing", simulated: true }); // never reveals the review
     const admin = await staff("releaser");
     await expect(releaseHeldProposal(deps(), { staffId: admin, proposalId: p.id, reason: "" })).rejects.toMatchObject({
       code: "invalid",

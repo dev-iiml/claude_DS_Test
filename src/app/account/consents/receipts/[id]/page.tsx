@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { BackLink, ConsentText, ListGroup, ListRow, PageHeader, StatusBadge } from "@/components/creatorco";
+import { BackLink, ConsentText, ListGroup, ListRow, StatusBadge } from "@/components/creatorco";
+import { PageTitle } from "@/app/_components/page-title";
 import { Card, CardContent } from "@/components/ui/card";
 import { getDb } from "@/db";
 import { WITHDRAWAL_REASON_LABELS, getReceipt, purposeFor } from "@/modules/privacy";
@@ -30,22 +31,35 @@ export default async function ReceiptPage({ params }: PageProps<"/account/consen
   return (
     <ConsentFrame paused={paused}>
       <BackLink href={`/account/consents/${receipt.key}`} label={policy?.label ?? "Consent"} />
-      <PageHeader
+      <PageTitle
         title="Consent receipt"
-        action={
+        status={
           <StatusBadge tone={receipt.status === "granted" ? "success" : "neutral"}>
-            {receipt.status === "granted" ? "In force" : "Withdrawn"}
+            {receipt.status === "granted" ? "Given" : "Withdrawn"}
           </StatusBadge>
         }
       />
       <div className="flex max-w-2xl flex-col gap-8">
         <ListGroup id="receipt" label="Receipt">
-          <ListRow label="Receipt ID" value={<span className="font-mono text-[13px] break-all">{receipt.id}</span>} />
+          <ListRow
+            label="Reference"
+            value={<span className="font-mono text-[13px]">{receipt.id.slice(0, 8).toUpperCase()}</span>}
+          />
           <ListRow label="Purpose" value={policy?.label ?? receipt.key} />
           <ListRow label="Version" value={receipt.version} />
-          <ListRow label="Given" value={receipt.grantedAt ? dateTime.format(receipt.grantedAt) : "—"} />
-          <ListRow label="Where" value={SOURCE_LABEL[receipt.source] ?? receipt.source} />
-          {receipt.withdrawnAt ? <ListRow label="Withdrawn" value={dateTime.format(receipt.withdrawnAt)} /> : null}
+          <ListRow
+            label="Given"
+            value={
+              <span className="whitespace-nowrap">{receipt.grantedAt ? dateTime.format(receipt.grantedAt) : "—"}</span>
+            }
+          />
+          <ListRow label="Where" value={SOURCE_LABEL[receipt.source] ?? "CreatorCo"} />
+          {receipt.withdrawnAt ? (
+            <ListRow
+              label="Withdrawn"
+              value={<span className="whitespace-nowrap">{dateTime.format(receipt.withdrawnAt)}</span>}
+            />
+          ) : null}
           {receipt.withdrawal?.reason ? (
             <ListRow label="Reason" value={WITHDRAWAL_REASON_LABELS[receipt.withdrawal.reason]} />
           ) : null}
@@ -60,8 +74,12 @@ export default async function ReceiptPage({ params }: PageProps<"/account/consen
         <ListGroup
           id="fingerprint"
           label="Text fingerprint"
-          footer="A SHA-256 of the exact wording you agreed to. It changes if a single character of the text changes."
+          footer="A SHA-256 of the exact wording you agreed to. It changes if a single character of the text changes. Quote the full receipt ID if you contact us about this consent."
         >
+          <ListRow
+            label="Full receipt ID"
+            detail={<span className="font-mono text-[13px] break-all">{receipt.id}</span>}
+          />
           <ListRow label={<span className="font-mono text-[13px] break-all">{receipt.fingerprint}</span>} />
         </ListGroup>
       </div>

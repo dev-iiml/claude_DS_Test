@@ -21,7 +21,7 @@ const GROUPS = [
   { key: "authenticity", label: "Authenticity" },
 ] as const;
 
-const SOURCE_LABEL: Record<string, string> = { verified: "Verified", declared: "Self-declared", derived: "Derived" };
+const SOURCE_LABEL: Record<string, string> = { verified: "Verified", declared: "Self-declared", derived: "Calculated" };
 const SOURCE_TONE = { verified: "success", declared: "neutral", derived: "info" } as const;
 
 const dateTime = new Intl.DateTimeFormat("en-IN", {
@@ -56,7 +56,15 @@ export default async function SignalsPage({ searchParams }: PageProps<"/passport
       <div className="max-w-2xl">
         {!on ? (
           passport.consents.analyticsDefinition ? (
-            <EnableSignalsForm definition={passport.consents.analyticsDefinition} />
+            <div className="flex flex-col gap-6">
+              <ListGroup id="what-you-see" label="What you’ll see">
+                <ListRow label="Career" detail="How long you’ve been creating, and how steadily you post." />
+                <ListRow label="Audience" detail="Reach and engagement across your connected accounts." />
+                <ListRow label="Consistency" detail="Platform mix and how stable your growth has been." />
+                <ListRow label="Authenticity" detail="Signs that your audience and engagement are genuine." />
+              </ListGroup>
+              <EnableSignalsForm definition={passport.consents.analyticsDefinition} />
+            </div>
           ) : (
             <EmptyState title="Not available yet" description="Professional signals aren't available right now." />
           )
@@ -80,7 +88,7 @@ export default async function SignalsPage({ searchParams }: PageProps<"/passport
                             <span>{copy.explain}</span>
                             <span className="flex flex-wrap gap-1.5">
                               <StatusBadge tone={SOURCE_TONE[f.source as keyof typeof SOURCE_TONE] ?? "neutral"}>
-                                {SOURCE_LABEL[f.source] ?? f.source}
+                                {SOURCE_LABEL[f.source] ?? "Calculated"}
                               </StatusBadge>
                               <StatusBadge>{`${f.confidence[0]!.toUpperCase()}${f.confidence.slice(1)} confidence`}</StatusBadge>
                             </span>
@@ -100,8 +108,7 @@ export default async function SignalsPage({ searchParams }: PageProps<"/passport
                 with a financial partner without your separate consent.
               </p>
               <p>
-                Updated {dateTime.format(graph.computedAt)} · engine {graph.engineVersion} · {graph.snapshotCount}{" "}
-                monthly snapshots
+                Updated {dateTime.format(graph.computedAt)} · from {graph.snapshotCount} monthly snapshots
               </p>
             </div>
           </div>

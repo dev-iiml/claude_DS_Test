@@ -127,7 +127,7 @@ test.describe("financial eligibility (Stages 09/09b)", () => {
 
     // Home shows the check.
     await page.goto("/dashboard");
-    await expect(page.getByRole("link", { name: "Continue your check" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Review and share" })).toBeVisible();
   });
 
   test("discarding a check is quiet and erases its inputs", async ({ page }) => {

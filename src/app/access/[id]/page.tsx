@@ -1,8 +1,9 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
-import { BackLink, ListGroup, ListRow, PageHeader, StatusBadge } from "@/components/creatorco";
+import { BackLink, ListGroup, ListRow, StatusBadge } from "@/components/creatorco";
 import { Alert } from "@/components/ui/alert";
 import { getDb } from "@/db";
 import { getOpportunityForCreator } from "@/modules/access";
@@ -20,6 +21,7 @@ import { formatPoints } from "@/modules/rewards/rules";
 import { recordAfterResponse } from "../../_lib/analytics";
 import { requireMember } from "../../_lib/member";
 import { CreatorShell } from "../../_components/creator-shell";
+import { PageTitle } from "../../_components/page-title";
 import { availabilityBadge, costLabel, fullDate } from "../_lib/present";
 
 import { CancelRequestForm, RequestAccessForm } from "./forms";
@@ -57,11 +59,11 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
   return (
     <CreatorShell>
       <BackLink href="/access" label="Access" />
-      <PageHeader
+      <PageTitle
         eyebrow={`${OPPORTUNITY_KIND_LABELS[o.kind]} · ${o.brand.name}${o.brand.isSample ? " (sample)" : ""}`}
         title={o.title}
         description={o.summary}
-        action={<StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
+        status={<StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
       />
       {notice ? (
         <Alert tone="success" className="mb-6">
@@ -81,18 +83,21 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
         </ListGroup>
 
         {o.request?.status === "requested" ? (
-          <ListGroup
-            id="your-request"
-            label="Your request"
-            footer="The partnerships team reviews requests. If it isn't approved, or the opportunity closes first, your points come back."
-          >
-            <ListRow label="Status" accessory={<StatusBadge tone="info">Requested</StatusBadge>} />
-            <ListRow label="Points held" value={formatPoints(o.request.pointsHeld)} />
-            <ListRow label="Cancel" detail={<CancelRequestForm requestId={o.request.id} opportunityId={o.id} />} />
-          </ListGroup>
+          <div className="flex flex-col gap-4">
+            <ListGroup
+              id="your-request"
+              label="Your request"
+              footer="The partnerships team reviews requests. If it isn't approved, or the opportunity closes first, your points come back."
+            >
+              <ListRow label="Requested" value={fullDate.format(o.request.requestedAt)} />
+              {o.request.note ? <ListRow label="Your note" detail={o.request.note} /> : null}
+              <ListRow label="Points held" value={costLabel(o.request.pointsHeld)} />
+            </ListGroup>
+            <CancelRequestForm requestId={o.request.id} opportunityId={o.id} />
+          </div>
         ) : o.request?.status === "approved" ? (
           <ListGroup id="your-request" label="Your request">
-            <ListRow label="Status" accessory={<StatusBadge tone="success">Approved</StatusBadge>} />
+            <ListRow label="Requested" value={fullDate.format(o.request.requestedAt)} />
             <ListRow
               label="What happens next"
               detail="This is a preview, so nothing happens next: with a real brand, its team would contact you through CreatorCo."
@@ -107,7 +112,7 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
               <Alert tone="info">
                 {o.request.status === "declined"
                   ? `Your last request wasn't selected${
-                      o.request.declineReason
+                      o.request.declineReason && o.request.declineReason !== "other"
                         ? ` — ${ACCESS_DECLINE_REASON_LABELS[o.request.declineReason as AccessDeclineReason].toLowerCase()}`
                         : ""
                     }. Its points were returned.`
@@ -137,8 +142,12 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
               </section>
             ) : o.availability === "tier_locked" ? (
               <Alert tone="info">
-                This opportunity is for {CREATOR_STATUS_LABELS[o.minTier]} members. You&apos;re{" "}
-                {CREATOR_STATUS_LABELS[passport.tier]} — see how Creator Status works on your Passport.
+                This opportunity is for{" "}
+                {o.minTier === "icon" ? "Icon members" : `${CREATOR_STATUS_LABELS[o.minTier]} members and above`}. Your
+                Creator Status is {CREATOR_STATUS_LABELS[passport.tier]}.{" "}
+                <Link href="/passport/status" className="text-gold">
+                  See how Status works
+                </Link>
               </Alert>
             ) : o.availability === "insufficient_points" ? (
               <Alert tone="info">

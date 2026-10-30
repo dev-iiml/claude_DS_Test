@@ -100,7 +100,11 @@ export function ProfileForm({
         id="categories"
         legend="Categories"
         required
-        description={`Choose up to ${MAX_CATEGORIES}, then mark your main one.`}
+        description={
+          chosenCategories.length > 1
+            ? `Choose up to ${MAX_CATEGORIES}, then mark your main one.`
+            : `Choose up to ${MAX_CATEGORIES}.`
+        }
         errors={e.categories ?? e.primaryCategory}
       >
         <div className="flex flex-wrap gap-2">
@@ -200,7 +204,7 @@ export function ProfileForm({
                       id={handleId}
                       label={`${p.label} handle`}
                       optionalLabel={false}
-                      description="Leave blank if it's the same as your primary handle."
+                      description="Leave blank if it’s the same as your primary handle."
                       errors={e[handleId]}
                     >
                       {(a11y) => (
@@ -211,7 +215,15 @@ export function ProfileForm({
                           autoCorrect="off"
                           spellCheck={false}
                           maxLength={65}
-                          defaultValue={textValue(state, handleId, saved.platforms[p.code])}
+                          defaultValue={textValue(
+                            state,
+                            handleId,
+                            // Blank when it just repeats the primary handle (that's what blank means).
+                            saved.platforms[p.code] &&
+                              saved.platforms[p.code]!.toLowerCase() !== saved.primaryCreatorHandle?.toLowerCase()
+                              ? saved.platforms[p.code]
+                              : null,
+                          )}
                         />
                       )}
                     </FormField>

@@ -431,7 +431,7 @@ export const DEMO_OPPORTUNITIES = [
     category: "Photography & film",
     summary: "Three months with a mirrorless kit and a monthly craft session.",
     details:
-      "A loan kit (body and two lenses) for three months, plus a monthly session with the brand's imaging team. For creators with an established practice.",
+      "A kit to use for three months (body and two lenses), plus a monthly session with the brand's imaging team. For creators with an established practice.",
     minTier: "onyx",
     pointsCost: 800,
     seats: 10,

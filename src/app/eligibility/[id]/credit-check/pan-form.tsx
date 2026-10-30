@@ -29,7 +29,7 @@ export function PanForm({
         description={
           verifiedPanMasked
             ? `Must match your verified PAN (${verifiedPanMasked}). Used once for this check; we keep only the masked form.`
-            : "Used once for this check through a partner bureau. We keep only a masked form, like XXXXX1234F."
+            : "10 characters, as printed on your PAN card. Used once for this check through a partner bureau; we keep only a masked form."
         }
         errors={e.pan}
         required
@@ -43,11 +43,14 @@ export function PanForm({
             autoCorrect="off"
             spellCheck={false}
             maxLength={10}
-            placeholder="ABCPE1234F"
             className="font-mono tracking-[0.12em] uppercase"
           />
         )}
       </FormField>
+      <p className="text-footnote leading-snug text-ink-muted">
+        The bureau records this check as a credit enquiry on your report. Several enquiries in a short time can affect
+        how lenders see your credit profile.
+      </p>
       <div className="flex flex-col gap-2">
         <CheckboxRow
           name="confirm"

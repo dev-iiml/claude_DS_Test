@@ -191,6 +191,7 @@ export function DecideRequestForm({ requestId, canApprove = true }: { requestId:
           id="decline-reason"
           legend="Decline — reason shown to the creator"
           errors={state.fieldErrors?.reason}
+          required
         >
           {ACCESS_DECLINE_REASONS.map((r) => (
             <RadioRow

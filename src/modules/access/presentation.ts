@@ -32,7 +32,12 @@ export const ACCESS_DECLINE_REASON_LABELS: Record<AccessDeclineReason, string> =
   other: "Other",
 };
 
-/** Who may request: "All members", "Onyx and above" or "Icon". */
+/** Short badge for an opportunity above the creator's Status: "Onyx+ only" or "Icon only". */
+export function tierLockLabel(tier: CreatorStatusTier): string {
+  return tier === "icon" ? "Icon only" : `${CREATOR_STATUS_LABELS[tier]}+ only`;
+}
+
+/** Who may request: "All members", "Onyx and above" or "Icon only". */
 export function tierRequirementLabel(tier: CreatorStatusTier): string {
-  return tier === "member" ? "All members" : tier === "icon" ? "Icon" : `${CREATOR_STATUS_LABELS[tier]} and above`;
+  return tier === "member" ? "All members" : tier === "icon" ? "Icon only" : `${CREATOR_STATUS_LABELS[tier]} and above`;
 }
