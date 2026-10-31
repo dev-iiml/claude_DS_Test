@@ -183,7 +183,23 @@ export const DATA_INVENTORY: readonly TableEntry[] = [
     domain: "creator_professional",
     sensitivity: "confidential",
     personal: true,
-    holds: "Creator Points earn/hold/release entries",
+    holds: "Creator Points earn/hold/release/reverse entries (rule codes and ids only)",
+    retained: KEPT_WITH_ACCOUNT,
+  },
+  {
+    table: "public.points_tasks",
+    domain: "creator_professional",
+    sensitivity: "internal",
+    personal: false,
+    holds: "staff-defined points tasks (title, description, points, four-eyes status)",
+    retained: "kept while useful; retired, never deleted (completions point to them)",
+  },
+  {
+    table: "public.points_task_completions",
+    domain: "creator_professional",
+    sensitivity: "confidential",
+    personal: true,
+    holds: "which creator completed which task, when, and a short staff note (no identifiers)",
     retained: KEPT_WITH_ACCOUNT,
   },
 
@@ -207,7 +223,7 @@ export const DATA_INVENTORY: readonly TableEntry[] = [
     domain: "access",
     sensitivity: "confidential",
     personal: true,
-    holds: "requests, notes, points held",
+    holds: "requests, notes, points held, completion date",
     erasedBy: ["access_requests"],
   },
 

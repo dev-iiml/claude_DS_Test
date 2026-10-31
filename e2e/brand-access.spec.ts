@@ -51,7 +51,7 @@ test.describe("Access preview and Creator Points (Stage 14)", () => {
 
     await signIn(page, m.email, E2E_PASSWORD);
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByText("500 points available")).toBeVisible();
+    await expect(page.getByText("750 points available")).toBeVisible(); // welcome 500 + profile details 250
     await expect(page.getByRole("link", { name: /Luxury Beauty Drop/ })).toBeVisible();
 
     // Creator Status: Member until signals exist; never a credit input.
@@ -60,9 +60,16 @@ test.describe("Access preview and Creator Points (Stage 14)", () => {
     await expect(page.getByText(/never affects financial eligibility/)).toBeVisible();
     await expect(page.getByRole("region", { name: "What Onyx looks for" })).toContainText("Professional reach");
 
+    // Filters: search, then "You can request" hides tier-locked items.
     await page.goto("/access");
+    await page.getByLabel("Search").fill("Camera");
+    await page.getByRole("button", { name: "Apply" }).click();
     const opportunities = page.getByRole("list", { name: "Opportunities" });
     await expect(opportunities.getByRole("link", { name: /Camera Creator Programme/ })).toContainText("Onyx+ only");
+    await page.getByLabel("Show").selectOption("available");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page.getByText("Nothing matches these filters")).toBeVisible();
+    await page.goto("/access?q=Luxury&sort=points_low");
     await opportunities.getByRole("link", { name: /Luxury Beauty Drop/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Luxury Beauty Drop" })).toBeVisible();
     await page.getByLabel(/Note to the brand team/).fill("Autumn skincare fits my routine videos.");
@@ -74,7 +81,7 @@ test.describe("Access preview and Creator Points (Stage 14)", () => {
     await expect(page.getByRole("region", { name: "Your request" })).toContainText("300 points");
 
     const access = await (await request.get("/api/v1/access", { headers: m.headers })).json();
-    expect(access.points).toEqual({ balance: 200, onHold: 300 });
+    expect(access.points).toEqual({ balance: 450, onHold: 300 });
     const consent = await (await request.get("/api/v1/consents/brand_opportunities", { headers: m.headers })).json();
     expect(consent.granted).toBe(true);
 
@@ -98,7 +105,7 @@ test.describe("Access preview and Creator Points (Stage 14)", () => {
     await page.goto("/access");
     await expect(page.getByRole("region", { name: "Your requests" })).toContainText("Approved");
     const after = await (await request.get("/api/v1/points", { headers: m.headers })).json();
-    expect(after).toMatchObject({ balance: 200, onHold: 0, rulesVersion: "pts-0.1.0" });
+    expect(after).toMatchObject({ balance: 450, onHold: 0, rulesVersion: "pts-0.2.0" });
     expect(after.history[0]).toMatchObject({ type: "spent", amount: -300 });
   });
 

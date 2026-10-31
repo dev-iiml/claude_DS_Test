@@ -138,12 +138,15 @@ async function finish(
   return dead ? ("dead" as const) : ("retrying" as const);
 }
 
+/** Jobs one tick runs: enough for every schedule plus per-item jobs (document scans, erasures). */
+export const DEFAULT_TICK_LIMIT = 25;
+
 export async function runDueJobs(
   deps: { db: Database; now?: () => Date; handlers: JobHandlers },
   opts: { limit?: number; onlyIds?: string[] } = {},
 ) {
   const clock = deps.now ?? (() => new Date());
-  const claimed = await claimDueJobs(deps.db, clock(), opts.limit ?? 10, opts.onlyIds);
+  const claimed = await claimDueJobs(deps.db, clock(), opts.limit ?? DEFAULT_TICK_LIMIT, opts.onlyIds);
   const summary = { ran: claimed.length, succeeded: 0, retrying: 0, dead: 0, lost: 0 };
   for (const job of claimed) {
     let outcome: { result?: Record<string, number>; error?: unknown };

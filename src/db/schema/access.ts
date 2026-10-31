@@ -108,6 +108,9 @@ export const accessRequests = pgTable(
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     declineReason: text("decline_reason", { enum: ACCESS_DECLINE_REASONS }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
+    /** Partnerships staff marked an approved request as completed (attended / delivered). Earns points once. */
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedBy: uuid("completed_by").references(() => users.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -132,6 +135,7 @@ export const accessRequests = pgTable(
         and (${t.status} = 'declined') = (${t.declineReason} is not null)
         and (${t.status} = 'requested') = (${t.closedAt} is null)`,
     ),
+    check("access_requests_completed_shape", sql`${t.completedAt} is null or ${t.status} = 'approved'`),
   ],
 ).enableRLS();
 
@@ -150,10 +154,10 @@ export const creatorPointsLedger = pgTable(
       .references(() => creatorProfiles.id, { onDelete: "cascade" }),
     entryType: text("entry_type", { enum: LEDGER_ENTRY_TYPES }).notNull(),
     amount: integer("amount").notNull(),
-    /** earn: the rule code (e.g. `welcome`, `tier_onyx`). */
+    /** earn: the rule code (e.g. `welcome`, `tier_onyx`); reverse: the rule of the earn it undoes. */
     rule: text("rule"),
     rulesVersion: text("rules_version"),
-    /** earn: idempotency key, unique per creator. */
+    /** earn: idempotency key, unique per creator; reverse: `reverse:<earn key>`. */
     earnKey: text("earn_key"),
     /**
      * hold/release: the request. Deliberately not a foreign key — the request row is erased when the
@@ -179,6 +183,7 @@ export const creatorPointsLedger = pgTable(
         when 'earn' then ${t.amount} > 0 and ${t.rule} is not null and ${t.rulesVersion} is not null and ${t.earnKey} is not null
         when 'hold' then ${t.amount} < 0 and ${t.rule} is null and ${t.earnKey} is null
         when 'release' then ${t.amount} > 0 and ${t.rule} is null and ${t.earnKey} is null
+        when 'reverse' then ${t.amount} < 0 and ${t.rule} is not null and ${t.earnKey} like 'reverse:%'
       end`,
     ),
   ],

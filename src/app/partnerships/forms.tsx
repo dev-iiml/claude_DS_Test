@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 
-import { ChoiceFieldset, FormField, FormMessage, RadioRow } from "@/components/creatorco";
+import { CheckboxRow, ChoiceFieldset, FormField, FormMessage, RadioRow } from "@/components/creatorco";
 import { SubmitButton } from "@/components/creatorco/submit-button";
 import { fieldClasses, Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/select";
@@ -19,6 +19,7 @@ import { CREATOR_STATUS_TIERS } from "@/modules/creator-status/status";
 import {
   closeOpportunityAction,
   createOpportunityAction,
+  completeRequestAction,
   decideRequestAction,
   updateOpportunityAction,
 } from "./actions";
@@ -211,5 +212,29 @@ export function DecideRequestForm({ requestId, canApprove = true }: { requestId:
         </div>
       </form>
     </div>
+  );
+}
+
+/** Marks an approved request as completed (attended / delivered). The creator earns the participation points once. */
+export function CompleteRequestForm({ requestId }: { requestId: string }) {
+  const [state, action] = useActionState(completeRequestAction, initialFormState);
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <FormMessage state={state} />
+      <input type="hidden" name="requestId" value={requestId} />
+      <CheckboxRow
+        name="confirm"
+        label="The creator took part (attended or delivered)"
+        aria-invalid={state.fieldErrors?.confirm ? true : undefined}
+      />
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Saving…">
+          Mark completed
+        </SubmitButton>
+      </div>
+      <p className="text-footnote text-ink-subtle">
+        The creator earns the Access participation points once. Points never depend on the opportunity&apos;s cost.
+      </p>
+    </form>
   );
 }

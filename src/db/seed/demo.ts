@@ -476,8 +476,73 @@ export const DEMO_OPPORTUNITIES = [
   },
 ] as const;
 
+/**
+ * 50 more FICTIONAL opportunities (n 6–55) so the Access list has enough to filter, sort and page through.
+ * Generated deterministically from fixed lists: invented brands, fixed dates, no randomness.
+ */
+export const EXTRA_DEMO_BRANDS = [
+  { n: 6, name: "Monsoon Thread Co", category: "Fashion", description: "A fictional handloom-first apparel label." },
+  { n: 7, name: "Pixelgrove Audio", category: "Tech", description: "A fictional headphones and mic maker." },
+  {
+    n: 8,
+    name: "Kesar & Clove Kitchens",
+    category: "Food",
+    description: "A fictional regional-cuisine restaurant group.",
+  },
+  { n: 9, name: "Trailmark Outdoors", category: "Travel", description: "A fictional trekking and outdoor gear brand." },
+  { n: 10, name: "Lumen Skin Lab", category: "Beauty", description: "A fictional dermatologist-led skincare brand." },
+  {
+    n: 11,
+    name: "Stridewell Fitness",
+    category: "Fitness",
+    description: "A fictional fitness studio and apparel brand.",
+  },
+  { n: 12, name: "Quillmere Learning", category: "Education", description: "A fictional online learning platform." },
+  { n: 13, name: "Harbourline Stays", category: "Travel", description: "A fictional coastal homestay network." },
+  { n: 14, name: "Velvet Reel Studios", category: "Music & events", description: "A fictional indie music label." },
+  { n: 15, name: "Orbitnest Gadgets", category: "Tech", description: "A fictional smart-home accessories brand." },
+  { n: 16, name: "Saathi Home Living", category: "Home & decor", description: "A fictional home-decor brand." },
+  { n: 17, name: "Brewlane Coffee", category: "Food", description: "A fictional specialty coffee roaster." },
+] as const;
+
+const EXTRA_TEMPLATES = [
+  { kind: "pr_drop", title: "Launch Kit", summary: "A launch kit from the new range, before it reaches stores." },
+  { kind: "event", title: "Creator Evening", summary: "An invitation to an evening with the brand team." },
+  { kind: "experience", title: "Weekend Experience", summary: "A hosted weekend experience for one, with a guest." },
+  { kind: "programme", title: "Creator Programme", summary: "A three-month programme with monthly sessions." },
+  { kind: "pr_drop", title: "First Look Box", summary: "A first-look box with samples and a note from the founders." },
+] as const;
+
+const EXTRA_TIERS = ["member", "member", "onyx", "member", "icon"] as const;
+const EXTRA_COSTS = [0, 150, 300, 500, 800, 1200, 2000] as const;
+
+export const EXTRA_DEMO_OPPORTUNITIES = Array.from({ length: 50 }, (_, i) => {
+  const n = 6 + i;
+  const brand = EXTRA_DEMO_BRANDS[i % EXTRA_DEMO_BRANDS.length]!;
+  const t = EXTRA_TEMPLATES[i % EXTRA_TEMPLATES.length]!;
+  // Closing dates spread across Oct 2027 – Mar 2028, after the original five (which stay first when sorting by date).
+  const closesAt = new Date(Date.UTC(2027, 9 + (i % 6), 28, 18, 29));
+  // Every tenth opens later, so "Not available yet" has something to show.
+  const opensAt =
+    i % 10 === 9 ? new Date("2027-01-15T04:30:00.000Z") : new Date(Date.UTC(2026, 8, 15 + (i % 30), 4, 30));
+  return {
+    n,
+    brand: brand.n,
+    title: `${brand.name} ${t.title}`,
+    kind: t.kind,
+    category: brand.category,
+    summary: t.summary,
+    details: `${t.summary} A sample opportunity from ${brand.name}, a fictional brand in the CreatorCo preview. Nothing is sent to a brand and nothing is fulfilled.`,
+    minTier: EXTRA_TIERS[i % EXTRA_TIERS.length]!,
+    pointsCost: EXTRA_COSTS[i % EXTRA_COSTS.length]!,
+    seats: 5 + ((i * 7) % 36),
+    opensAt,
+    closesAt,
+  };
+});
+
 async function seedAccessPreview(tx: Parameters<Parameters<Database["transaction"]>[0]>[0]) {
-  for (const b of DEMO_BRANDS) {
+  for (const b of [...DEMO_BRANDS, ...EXTRA_DEMO_BRANDS]) {
     await tx
       .insert(brands)
       .values({
@@ -491,7 +556,11 @@ async function seedAccessPreview(tx: Parameters<Parameters<Database["transaction
       })
       .onConflictDoNothing();
   }
-  for (const o of DEMO_OPPORTUNITIES) {
+  const all = [
+    ...DEMO_OPPORTUNITIES.map((o) => ({ ...o, opensAt: ACCESS_OPENS, closesAt: ACCESS_CLOSES })),
+    ...EXTRA_DEMO_OPPORTUNITIES,
+  ];
+  for (const o of all) {
     await tx
       .insert(accessOpportunities)
       .values({
@@ -505,8 +574,8 @@ async function seedAccessPreview(tx: Parameters<Parameters<Database["transaction
         minTier: o.minTier,
         pointsCost: o.pointsCost,
         seats: o.seats,
-        opensAt: ACCESS_OPENS,
-        closesAt: ACCESS_CLOSES,
+        opensAt: o.opensAt,
+        closesAt: o.closesAt,
         status: "live",
         isSample: true,
         createdAt: SEED_AT,

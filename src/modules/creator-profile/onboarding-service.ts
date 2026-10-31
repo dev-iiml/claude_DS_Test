@@ -98,6 +98,8 @@ async function auditStep(
     entityId: profileId,
     metadata: mode === "passport" ? { section: step } : { step },
   });
+  // Passport edits may complete the profile details milestone (simulated Creator Points; idempotent).
+  if (mode === "passport") await syncMilestonePoints(db, { userId });
 }
 
 const progressFor = (mode: EditMode, current: OnboardingStep, saved: OnboardingStep) =>
@@ -460,7 +462,7 @@ export async function completeOnboarding(
       props: { category: completed.creatorCategory ?? null },
       now,
     });
-    // Membership milestones (welcome, verified mobile) — simulated Creator Points.
+    // Membership milestones (welcome, verified mobile, profile details) — simulated Creator Points.
     await syncMilestonePoints(tx, { userId, now });
     return completed;
   });

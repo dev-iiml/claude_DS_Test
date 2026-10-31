@@ -9,6 +9,7 @@ import { expireStaleChanges, runHealthChecks } from "@/modules/integrations";
 import { processDeferredErasures } from "@/modules/privacy";
 import { purgeRateLimitCounters } from "@/modules/rate-limit";
 import { purgeAuthRecords } from "@/modules/identity/housekeeping";
+import { grantMembershipMilestones } from "@/modules/rewards/ledger-service";
 
 import type { JobHandlers } from "./runner";
 
@@ -40,6 +41,7 @@ export const JOB_HANDLERS: JobHandlers = {
   analytics_maintenance: async ({ db, now }) => maintainAnalytics({ db, now }),
   rate_limit_purge: async ({ db, now }) => purgeRateLimitCounters(db, now),
   purge_auth_records: async ({ db, now }) => purgeAuthRecords(db, now),
+  grant_membership_milestones: async ({ db, now }) => grantMembershipMilestones({ db, now }),
   provider_health_check: async ({ db, now }) => {
     const health = await runHealthChecks({ db, now, production: process.env.APP_ENV === "production" });
     return { ...health, expired_changes: await expireStaleChanges({ db, now }) };

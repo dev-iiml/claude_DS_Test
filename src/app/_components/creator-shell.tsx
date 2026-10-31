@@ -39,6 +39,8 @@ export const OPS_NAV: NavItem[] = [
 export const PARTNERSHIPS_NAV: NavItem[] = [
   { href: "/partnerships", label: "Requests", icon: "approvals" },
   { href: "/partnerships/opportunities", label: "Opportunities", icon: "access" },
+  // Reuses an existing icon: a dedicated one would be a design-system change (pinned v2.0.0).
+  { href: "/partnerships/tasks", label: "Points tasks", icon: "approvals" },
 ];
 
 /** How other consoles link to the partnerships desk (super admins only). */

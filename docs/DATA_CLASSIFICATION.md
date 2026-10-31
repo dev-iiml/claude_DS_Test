@@ -72,17 +72,18 @@ secrets (environment only; the database holds env var names).
 | `analytics.events` | confidential | analytics | yes | event, keyed pseudonym, enum props (incl. reviewed sign-up campaign tags), India-time day | erased on withdrawal: product_analytics_events, financial_funnel_events; purged after 24 months, once rolled up (analytics_maintenance) |
 | `iam.login_attempts` | confidential | identity | yes | hashed email, success flag | purged after 180 days (purge_auth_records) |
 | `ops.rate_limit_counters` | confidential | control plane | yes | keyed hash of IP/user/partner, window counts | purged after 48 hours (rate_limit_purge) |
-| `public.access_requests` | confidential | access | yes | requests, notes, points held | erased on withdrawal: access_requests |
+| `public.access_requests` | confidential | access | yes | requests, notes, points held, completion date | erased on withdrawal: access_requests |
 | `public.audit_events` | confidential | audit | yes | actor and entity ids, event type, small scalar metadata | append-only audit trail (period: counsel/RE) |
 | `public.consent_receipts` | confidential | consent | yes | who agreed to which version, when | proof of consent (counsel to confirm the period) |
 | `public.consent_withdrawals` | confidential | consent | yes | withdrawals, reason code, effects | proof of withdrawal (counsel to confirm the period) |
 | `public.creator_additional_categories` | confidential | creator professional | yes | category codes | kept while the account exists (account closure: open item) |
-| `public.creator_points_ledger` | confidential | creator professional | yes | Creator Points earn/hold/release entries | kept while the account exists (account closure: open item) |
+| `public.creator_points_ledger` | confidential | creator professional | yes | Creator Points earn/hold/release/reverse entries (rule codes and ids only) | kept while the account exists (account closure: open item) |
 | `public.creator_preferences` | confidential | creator professional | yes | category, brand, travel and PR interests | kept while the account exists (account closure: open item) |
 | `public.creator_professional_features` | confidential | creator professional | yes | derived professional features with provenance | erased on withdrawal: professional_graph |
 | `public.creator_social_accounts` | confidential | creator professional | yes | platform, handle, provider account id | erased on withdrawal: social_account_data |
 | `public.creator_social_snapshots` | confidential | creator professional | yes | follower, view, reach and engagement figures | erased on withdrawal: social_account_data |
 | `public.creator_status_runs` | confidential | creator professional | yes | Creator Status tier and criteria | erased on withdrawal: professional_graph |
+| `public.points_task_completions` | confidential | creator professional | yes | which creator completed which task, when, and a short staff note (no identifiers) | kept while the account exists (account closure: open item) |
 | `public.professional_graph_runs` | confidential | creator professional | yes | graph run metadata | erased on withdrawal: professional_graph |
 | `public.social_connection_requests` | confidential | creator professional | yes | hashed OAuth state, platform | erased on withdrawal: social_account_data |
 | `analytics.daily_counts` | internal | analytics | no | daily event and subject counts (no ids) | no personal data |
@@ -98,6 +99,7 @@ secrets (environment only; the database holds env var names).
 | `ops.provider_runtime` | internal | control plane | no | circuit breaker and health state | no personal data |
 | `ops.simulated_lender_policies` | internal | control plane | no | simulated lender policy versions | no personal data |
 | `public.data_erasure_requests` | internal | consent | yes | erasure scope, status, hold reasons, counts | proof of erasure |
+| `public.points_tasks` | internal | creator professional | no | staff-defined points tasks (title, description, points, four-eyes status) | kept while useful; retired, never deleted (completions point to them) |
 | `public.provider_requests` | internal | audit | yes | provider call metadata (no payloads) | audit of third-party data access (period: counsel/RE) |
 | `public.access_opportunities` | public | reference | no | sample opportunities | no personal data |
 | `public.brands` | public | reference | no | sample brand names and descriptions | no personal data |

@@ -47,6 +47,8 @@ export interface CreatorOpportunityView {
     /** The creator's own note with the request. */
     note: string | null;
     declineReason: string | null;
+    /** Partnerships staff marked it completed (attended / delivered). */
+    completedAt: Date | null;
   } | null;
 }
 
@@ -128,6 +130,7 @@ async function creatorViews(
             requestedAt: latest.requestedAt,
             note: latest.note,
             declineReason: latest.declineReason,
+            completedAt: latest.completedAt,
           }
         : null,
     };

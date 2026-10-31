@@ -91,7 +91,13 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
 
           <ListGroup id="verification" label="Verification">
             {passport.verifications.map((v) => (
-              <ListRow key={v.key} leading={<VerificationMark state={v.state} />} label={v.label} detail={v.detail} />
+              <ListRow
+                key={v.key}
+                href={v.href}
+                leading={<VerificationMark state={v.state} />}
+                label={v.label}
+                detail={v.detail}
+              />
             ))}
           </ListGroup>
         </div>
@@ -262,7 +268,17 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
           </ListGroup>
 
           {passport.activity.length ? (
-            <ListGroup id="activity" label="Recent activity">
+            <ListGroup
+              id="activity"
+              label="Recent activity"
+              action={
+                passport.moreActivity ? (
+                  <Link href="/passport/activity" className="text-subhead text-gold">
+                    See all
+                  </Link>
+                ) : undefined
+              }
+            >
               {passport.activity.map((a) => (
                 <ListRow
                   key={a.id}

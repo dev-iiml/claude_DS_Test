@@ -10,6 +10,7 @@ import {
   AccessError,
   closeOpportunity,
   createOpportunity,
+  completeAccessRequest,
   decideAccessRequest,
   updateOpportunity,
 } from "@/modules/access";
@@ -93,6 +94,24 @@ export async function closeOpportunityAction(_prev: FormState, form: FormData): 
     return accessFailure(error, "We couldn't close the opportunity.");
   }
   redirect(`/partnerships/opportunities/${id.data}?notice=closed`);
+}
+
+/** Marks an approved request as completed (attended / delivered): the creator earns the Access participation points once. */
+export async function completeRequestAction(_prev: FormState, form: FormData): Promise<FormState> {
+  const staff = await requirePartnershipsAdmin();
+  const requestId = idSchema.safeParse(readText(form, "requestId"));
+  if (!requestId.success) return formError("Please reload and try again.");
+  if (readText(form, "confirm") !== "on") {
+    return formError("Confirm the creator took part.", {
+      fieldErrors: { confirm: ["Confirm the creator took part."] },
+    });
+  }
+  try {
+    await completeAccessRequest(getDb(), { staffUserId: staff.userId, requestId: requestId.data });
+  } catch (error) {
+    return accessFailure(error, "We couldn't mark it completed.");
+  }
+  redirect(`/partnerships/requests/${requestId.data}?notice=completed`);
 }
 
 export async function decideRequestAction(_prev: FormState, form: FormData): Promise<FormState> {

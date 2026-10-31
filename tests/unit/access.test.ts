@@ -23,12 +23,13 @@ const valid = {
 };
 
 describe("Creator Points rules", () => {
-  it("are versioned membership milestones and tiers — nothing credit- or consent-related", () => {
-    expect(POINTS_RULES_VERSION).toBe("pts-0.1.0");
-    expect(EARN_RULE_CODES.sort()).toEqual(["mobile_verified", "tier_icon", "tier_onyx", "welcome"]);
+  it("are versioned milestones and verified outcomes — nothing credit- or consent-related", () => {
+    expect(POINTS_RULES_VERSION).toBe("pts-0.2.0");
+    expect(EARN_RULE_CODES).toEqual(expect.arrayContaining(["mobile_verified", "tier_icon", "tier_onyx", "welcome"]));
     for (const code of EARN_RULE_CODES) {
       expect(code).not.toMatch(/loan|credit|offer|eligib|borrow|consent|connect/);
-      expect(EARN_RULES[code].points).toBeGreaterThan(0);
+      const points = EARN_RULES[code].points;
+      if (points !== null) expect(points).toBeGreaterThan(0);
     }
   });
 

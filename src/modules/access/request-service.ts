@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, lte, or } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 
 import type { Database } from "@/db/create-db";
 import { isUniqueViolation } from "@/db/errors";
@@ -10,7 +10,13 @@ import { CONSENT_KEYS, findValidReceipt, grantConsent, hasValidConsent } from "@
 import type { ConsentSource } from "@/modules/consent/domain";
 import { currentTier } from "@/modules/creator-status/status-service";
 import { CREATOR_STATUS_LABELS, meetsTier } from "@/modules/creator-status/status";
-import { holdPoints, lockPointsAccount, pointsBalance, releasePoints } from "@/modules/rewards/ledger-service";
+import {
+  earnPoints,
+  holdPoints,
+  lockPointsAccount,
+  pointsBalance,
+  releasePoints,
+} from "@/modules/rewards/ledger-service";
 import { formatPoints } from "@/modules/rewards/rules";
 
 import type { AccessDeclineReason, AccessRequestStatus } from "./domain";
@@ -263,6 +269,44 @@ export async function decideAccessRequest(
   });
 }
 
+/**
+ * The partnerships desk marks an approved request as completed (the creator
+ * attended / delivered). Earns the `access_completed` points once per request —
+ * the same whatever the opportunity cost. Idempotent.
+ */
+export async function completeAccessRequest(
+  db: Database,
+  input: { staffUserId: string; requestId: string; now?: Date },
+): Promise<{ completed: boolean }> {
+  const now = input.now ?? new Date();
+  return db.transaction(async (tx) => {
+    const [r] = await tx.select().from(accessRequests).where(eq(accessRequests.id, input.requestId)).for("update");
+    if (!r) throw new AccessError("not_found");
+    if (r.userId === input.staffUserId) throw new AccessError("wrong_state", "You can't complete your own request.");
+    if (r.status !== "approved") throw new AccessError("wrong_state", "Only approved requests can be completed.");
+    if (r.completedAt) return { completed: false };
+    await tx
+      .update(accessRequests)
+      .set({ completedAt: now, completedBy: input.staffUserId })
+      .where(and(eq(accessRequests.id, r.id), isNull(accessRequests.completedAt)));
+    await earnPoints(tx, {
+      creatorId: r.creatorId,
+      rule: "access_completed",
+      ref: r.id,
+      requestId: r.id,
+      now,
+    });
+    await recordAuditEvent(tx, {
+      actorType: "user",
+      actorId: input.staffUserId,
+      eventType: "access.completed",
+      entityType: "access_request",
+      entityId: r.id,
+    });
+    return { completed: true };
+  });
+}
+
 /** Expires an opportunity's pending requests (the caller holds the opportunity lock). */
 export async function expireRequestsFor(tx: DbExecutor, input: { opportunityId: string; now: Date }) {
   const pending = await tx
@@ -320,6 +364,7 @@ export interface CreatorRequestView {
   pointsHeld: number;
   requestedAt: Date;
   closedAt: Date | null;
+  completedAt: Date | null;
   declineReason: AccessDeclineReason | null;
 }
 
@@ -341,6 +386,7 @@ export async function listRequestsForCreator(db: DbExecutor, userId: string): Pr
     pointsHeld: r.pointsHeld,
     requestedAt: r.requestedAt,
     closedAt: r.closedAt,
+    completedAt: r.completedAt,
     declineReason: r.declineReason,
   }));
 }

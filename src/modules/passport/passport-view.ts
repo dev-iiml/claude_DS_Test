@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 
-import { auditEvents, type consentDefinitions, users } from "@/db/schema";
+import { auditEvents, consentDefinitions, consentReceipts, users } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { CONSENT_KEYS, findValidReceipt, getActiveDefinition } from "@/modules/consent";
 import { GST_STATUS_OPTIONS, LANGUAGES, LEGAL_FORM_OPTIONS } from "@/modules/creator-profile/reference";
@@ -9,6 +9,11 @@ import { getLatestProfessionalGraph } from "@/modules/professional-graph/graph-s
 import { getCreatorStatus } from "@/modules/creator-status/status-service";
 import { resolveProvider } from "@/modules/integrations/router";
 import { MAX_ACCOUNTS_PER_PLATFORM } from "@/modules/social-data/domain";
+import { purposeFor } from "@/modules/privacy/purposes";
+
+import type { ActivityKind } from "./activity-kinds";
+
+export { ACTIVITY_KINDS, ACTIVITY_KIND_LABELS, type ActivityKind } from "./activity-kinds";
 
 /**
  * Creator Passport read model — the creator's own verified professional
@@ -26,6 +31,8 @@ export interface PassportVerification {
   label: string;
   state: VerificationState;
   detail: string;
+  /** Where the creator verifies or updates this. */
+  href: string;
 }
 
 export interface PassportAccount {
@@ -47,6 +54,7 @@ export interface PassportAccount {
 export interface PassportActivity {
   id: string;
   label: string;
+  kind: ActivityKind;
   at: string;
 }
 
@@ -68,6 +76,8 @@ export function memberNumberFor(creatorId: string): string {
   const hex = creatorId.replace(/-/g, "").slice(-8).toUpperCase();
   return `CC ${hex.slice(0, 4)} ${hex.slice(4)}`;
 }
+
+const ABOUT = "/passport/edit/about";
 
 const monthYear = new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -129,11 +139,31 @@ export async function getPassport(db: DbExecutor, userId: string) {
 
   const verifications: PassportVerification[] = [
     user?.mobileVerifiedAt
-      ? { key: "mobile", label: "Mobile number", state: "verified", detail: "Verified by one-time code" }
-      : { key: "mobile", label: "Mobile number", state: "missing", detail: "Not verified yet" },
+      ? { key: "mobile", label: "Mobile number", state: "verified", detail: "Verified by one-time code", href: ABOUT }
+      : {
+          key: "mobile",
+          label: "Mobile number",
+          state: "missing",
+          detail: "Not verified yet — verify it now",
+          href: ABOUT,
+        },
     profile.legalNameSource === "verified_lookup"
-      ? { key: "legal_name", label: "Legal name", state: "verified", detail: "Matched to your identity records" }
-      : { key: "legal_name", label: "Legal name", state: "declared", detail: "Self-declared" },
+      ? {
+          key: "legal_name",
+          label: "Legal name",
+          state: "verified",
+          detail: "Matched to your identity records",
+          href: ABOUT,
+        }
+      : {
+          key: "legal_name",
+          label: "Legal name",
+          state: "declared",
+          detail: user?.mobileVerifiedAt
+            ? "Self-declared — look it up from your PAN"
+            : "Self-declared — verify your mobile to match it",
+          href: ABOUT,
+        },
     gstFor(profile.gstStatus, gstRegistration?.registrationStatus ?? null),
     connectedCount
       ? {
@@ -141,12 +171,14 @@ export async function getPassport(db: DbExecutor, userId: string) {
           label: "Creator activity",
           state: "verified",
           detail: `${connectedCount} connected account${connectedCount === 1 ? "" : "s"}`,
+          href: "/passport#accounts",
         }
       : {
           key: "social",
           label: "Creator activity",
           state: "declared",
           detail: "Self-declared — connect an account to verify",
+          href: "/passport/connect",
         },
   ];
 
@@ -160,12 +192,12 @@ export async function getPassport(db: DbExecutor, userId: string) {
     getActiveDefinition(db, CONSENT_KEYS.socialAccountConnection),
   ]);
 
-  const activity = await recentActivity(
-    db,
+  const { items: activity, hasMore: moreActivity } = await listActivity(db, {
     userId,
-    profile.id,
-    accounts.map((a) => a.id),
-  );
+    creatorId: profile.id,
+    accountIds: accounts.map((a) => a.id),
+    limit: PASSPORT_ACTIVITY_LIMIT,
+  });
   const legalForm = LEGAL_FORM_OPTIONS.find((o) => o.value === profile.legalForm)?.label ?? null;
   const gstLabel = GST_STATUS_OPTIONS.find((o) => o.value === profile.gstStatus)?.label ?? null;
   const memberSince = profile.completedAt ?? user?.createdAt ?? new Date();
@@ -211,6 +243,7 @@ export async function getPassport(db: DbExecutor, userId: string) {
       connectionDefinition: connectionDefinition ? pickDefinition(connectionDefinition) : null,
     },
     activity,
+    moreActivity,
   };
 }
 
@@ -221,7 +254,7 @@ function pickDefinition(d: typeof consentDefinitions.$inferSelect) {
 }
 
 function gstFor(declared: string | null, registry: string | null): PassportVerification {
-  const base = { key: "gst" as const, label: "GST registration" };
+  const base = { key: "gst" as const, label: "GST registration", href: "/passport/edit/business" };
   if (declared === "registered") {
     if (registry === "active") return { ...base, state: "verified", detail: "Active on the GST registry" };
     if (registry === "suspended" || registry === "cancelled") {
@@ -235,27 +268,88 @@ function gstFor(declared: string | null, registry: string | null): PassportVerif
   return { ...base, state: "missing", detail: "Not declared" };
 }
 
-async function recentActivity(
+const ACTIVITY_KIND_OF: Record<string, ActivityKind> = {
+  "auth.signed_up": "profile",
+  "creator_profile.completed": "profile",
+  "creator_profile.updated": "profile",
+  "identity.mobile_verified": "identity",
+  "identity.prefill_fetched": "identity",
+  "consent.granted": "consent",
+  "consent.withdrawn": "consent",
+  "social.account_connected": "accounts",
+  "social.account_disconnected": "accounts",
+  "professional_graph.computed": "signals",
+};
+
+/** Rows shown on the Passport; the rest live on the activity page. */
+export const PASSPORT_ACTIVITY_LIMIT = 5;
+export const ACTIVITY_PAGE_SIZE = 25;
+
+export interface ActivityQuery {
+  userId: string;
+  creatorId: string;
+  accountIds: string[];
+  kind?: ActivityKind | null;
+  order?: "newest" | "oldest";
+  limit: number;
+  offset?: number;
+}
+
+/**
+ * The creator's own activity, from the audit trail (event types and dates
+ * only — never metadata beyond the consent purpose). Returns one extra row's
+ * worth of knowledge as `hasMore`.
+ */
+export async function listActivity(
   db: DbExecutor,
-  userId: string,
-  creatorId: string,
-  accountIds: string[],
-): Promise<PassportActivity[]> {
-  const entityIds = [creatorId, ...accountIds];
+  q: ActivityQuery,
+): Promise<{ items: PassportActivity[]; hasMore: boolean }> {
+  const types = Object.keys(ACTIVITY_COPY).filter((t) => !q.kind || ACTIVITY_KIND_OF[t] === q.kind);
+  const entityIds = [q.creatorId, ...q.accountIds];
   const rows = await db
-    .select({ id: auditEvents.id, eventType: auditEvents.eventType, createdAt: auditEvents.createdAt })
+    .select({
+      id: auditEvents.id,
+      eventType: auditEvents.eventType,
+      entityId: auditEvents.entityId,
+      createdAt: auditEvents.createdAt,
+    })
     .from(auditEvents)
     .where(
       and(
-        inArray(auditEvents.eventType, Object.keys(ACTIVITY_COPY)),
-        or(eq(auditEvents.actorId, userId), inArray(auditEvents.entityId, entityIds)),
+        inArray(auditEvents.eventType, types),
+        or(eq(auditEvents.actorId, q.userId), inArray(auditEvents.entityId, entityIds)),
       ),
     )
-    .orderBy(desc(auditEvents.createdAt))
-    .limit(8);
-  return rows.map((r) => ({
-    id: r.id,
-    label: ACTIVITY_COPY[r.eventType] ?? r.eventType,
-    at: r.createdAt.toISOString(),
-  }));
+    .orderBy(q.order === "oldest" ? asc(auditEvents.createdAt) : desc(auditEvents.createdAt), asc(auditEvents.id))
+    .limit(q.limit + 1)
+    .offset(q.offset ?? 0);
+  const page = rows.slice(0, q.limit);
+
+  // "Turned on Professional signals" reads better than "Gave a consent": look up each receipt's purpose.
+  const receiptIds = page
+    .filter((r) => r.eventType.startsWith("consent.") && r.entityId)
+    .map((r) => r.entityId as string);
+  const purposeOf = new Map<string, string>();
+  if (receiptIds.length) {
+    const receipts = await db
+      .select({ id: consentReceipts.id, key: consentDefinitions.key })
+      .from(consentReceipts)
+      .innerJoin(consentDefinitions, eq(consentDefinitions.id, consentReceipts.consentDefinitionId))
+      .where(and(inArray(consentReceipts.id, receiptIds), eq(consentReceipts.userId, q.userId)));
+    for (const r of receipts) {
+      const label = purposeFor(r.key)?.label;
+      if (label) purposeOf.set(r.id, label);
+    }
+  }
+
+  return {
+    items: page.map((r) => {
+      const purpose = r.entityId ? purposeOf.get(r.entityId) : undefined;
+      const label = purpose
+        ? `${r.eventType === "consent.granted" ? "Gave consent" : "Withdrew consent"}: ${purpose}`
+        : (ACTIVITY_COPY[r.eventType] ?? r.eventType);
+      return { id: r.id, label, kind: ACTIVITY_KIND_OF[r.eventType] ?? "profile", at: r.createdAt.toISOString() };
+    }),
+    hasMore: rows.length > q.limit,
+  };
 }

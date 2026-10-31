@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { auditEvents, jobs, users } from "@/db/schema";
 import { signUpCreator } from "@/modules/identity/auth/auth-service";
 import { enqueueJob, retryJob, runDueJobs, tick, type JobHandlers } from "@/modules/jobs";
-import { JOB_SCHEDULES } from "@/modules/jobs/domain";
+import { JOB_SCHEDULES, JOB_TYPES } from "@/modules/jobs/domain";
 import { JOB_HANDLERS } from "@/modules/jobs/handlers";
 
 import { authDepsFor, connectTestDb, testEmail } from "../support/db";
@@ -15,16 +15,7 @@ const at = (ms: number) => () => new Date(T0.getTime() + ms);
 
 const ok: JobHandlers["provider_health_check"] = async () => ({ done: 1 });
 const handlers = (override: Partial<JobHandlers> = {}): JobHandlers => ({
-  expire_stale_applications: ok,
-  process_deferred_erasures: ok,
-  provider_health_check: ok,
-  purge_expired_fi_data: ok,
-  process_lender_proposals: ok,
-  deliver_partner_webhooks: ok,
-  expire_access_requests: ok,
-  analytics_maintenance: ok,
-  rate_limit_purge: ok,
-  purge_auth_records: ok,
+  ...(Object.fromEntries(JOB_TYPES.map((t) => [t, ok])) as JobHandlers),
   ...override,
 });
 

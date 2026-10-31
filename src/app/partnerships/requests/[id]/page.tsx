@@ -12,13 +12,14 @@ import { formatPoints } from "@/modules/rewards/rules";
 
 import { PartnershipsShell } from "../../../_components/creator-shell";
 import { REQUEST_TONE, istDateTime } from "../../_lib/present";
-import { DecideRequestForm } from "../../forms";
+import { CompleteRequestForm, DecideRequestForm } from "../../forms";
 
 export const metadata: Metadata = { title: "Access request" };
 
 const NOTICES: Record<string, string> = {
   approved: "Approved. The creator sees it on their Access page.",
   declined: "Declined. The creator's points were returned.",
+  completed: "Marked completed. The creator earned their Access participation points.",
 };
 
 const people = new Intl.NumberFormat("en-IN");
@@ -84,6 +85,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             <ListRow label="Requested" value={istDateTime.format(r.requestedAt)} />
             {r.decidedAt ? <ListRow label="Decided" value={istDateTime.format(r.decidedAt)} /> : null}
             {r.declineReason ? <ListRow label="Reason" value={ACCESS_DECLINE_REASON_LABELS[r.declineReason]} /> : null}
+            {r.completedAt ? <ListRow label="Completed" value={istDateTime.format(r.completedAt)} /> : null}
           </ListGroup>
 
           {r.status === "requested" ? (
@@ -95,6 +97,8 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
             ) : (
               <DecideRequestForm requestId={r.id} />
             )
+          ) : r.status === "approved" && !r.completedAt ? (
+            <CompleteRequestForm requestId={r.id} />
           ) : null}
         </div>
       </div>

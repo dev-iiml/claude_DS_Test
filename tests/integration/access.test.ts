@@ -84,7 +84,8 @@ async function member(handle: string) {
     businessStepSchema.parse({ legalForm: "individual", gstStatus: "not_registered" }),
   );
   await saveInterestsStep(db, userId, {
-    prInterest: true,
+    // No interests: the "profile details" milestone (pts-0.2.0) stays unearned, so balances start at the welcome 500.
+    prInterest: false,
     preferredCategories: [],
     brandInterests: [],
     travelInterest: false,

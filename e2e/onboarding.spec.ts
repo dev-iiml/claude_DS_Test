@@ -111,7 +111,8 @@ test.describe("Cohort A0 creator journey", () => {
     await expect(page.getByText("Creator Status: Member")).toBeAttached();
     await expect(page.getByRole("link", { name: "Check financial eligibility" })).toBeVisible();
     // Welcome (500) + verified mobile (100) Creator Points.
-    await expect(page.getByText(/600 points available · Preview with sample brands/)).toBeVisible();
+    // welcome 500 + verified mobile 100 + profile details 250
+    await expect(page.getByText(/850 points available · Preview with sample brands/)).toBeVisible();
     await expect(page.getByRole("progressbar", { name: "Passport completion" })).toHaveAttribute("aria-valuenow", "80");
     await expect(
       page

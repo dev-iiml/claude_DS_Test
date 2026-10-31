@@ -15,6 +15,7 @@ export const JOB_TYPES = [
   "analytics_maintenance",
   "rate_limit_purge",
   "purge_auth_records",
+  "grant_membership_milestones",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -91,6 +92,13 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
     description:
       "Deletes sign-in attempts and ended sessions after 180 days, and mobile verification codes after 30 days.",
     everyMinutes: 60,
+  },
+  {
+    type: "grant_membership_milestones",
+    label: "Grant membership milestones",
+    description:
+      "Grants Creator Points for membership anniversaries and any milestone a hook missed (idempotent; never for consents or credit).",
+    everyMinutes: 1_440,
   },
   {
     type: "provider_health_check",

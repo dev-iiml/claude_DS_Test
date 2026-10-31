@@ -15,6 +15,7 @@ export {
 } from "./opportunity-service";
 export {
   cancelAccessRequest,
+  completeAccessRequest,
   decideAccessRequest,
   expireAccessRequests,
   listRequestsForCreator,

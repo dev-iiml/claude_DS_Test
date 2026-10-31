@@ -98,10 +98,18 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
         ) : o.request?.status === "approved" ? (
           <ListGroup id="your-request" label="Your request">
             <ListRow label="Requested" value={fullDate.format(o.request.requestedAt)} />
-            <ListRow
-              label="What happens next"
-              detail="This is a preview, so nothing happens next: with a real brand, its team would contact you through CreatorCo."
-            />
+            {o.request.completedAt ? (
+              <ListRow
+                label="Took part"
+                value={fullDate.format(o.request.completedAt)}
+                detail="Confirmed by the partnerships team. You earned Creator Points for taking part."
+              />
+            ) : (
+              <ListRow
+                label="What happens next"
+                detail="With a real brand, its team would contact you through CreatorCo. Once the partnerships team confirms you took part, you earn Creator Points."
+              />
+            )}
             {o.request.pointsHeld > 0 ? (
               <ListRow label="Points spent" value={formatPoints(o.request.pointsHeld)} />
             ) : null}

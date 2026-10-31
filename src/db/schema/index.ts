@@ -16,3 +16,4 @@ export * from "./partners";
 export * from "./creator-status";
 export * from "./access";
 export * from "./analytics";
+export * from "./rewards";

@@ -260,6 +260,20 @@
       "when": 1793299670423,
       "tag": "0036_stage16_app_role",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793431900440,
+      "tag": "0037_points_v2",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793431922062,
+      "tag": "0038_points_v2_guards",
+      "breakpoints": true
     }
   ]
 }
