@@ -1,12 +1,25 @@
 import { and, eq, lte, or } from "drizzle-orm";
 
-import { integrationChangeRequests, providerConfigs, providerRoutes, providerRuntime } from "@/db/schema";
+import {
+  featureSwitches,
+  integrationChangeRequests,
+  providerConfigs,
+  providerRoutes,
+  providerRuntime,
+} from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { recordAuditEvent } from "@/modules/audit";
 import { findAdapter, type AdapterDefinition } from "@/providers/catalog";
 import type { ProviderKind, ProviderMode } from "@/providers/types";
 
-import { changeExpiresAt, requiresApproval, type ApprovalContext, type ChangeAction } from "./domain";
+import {
+  FEATURE_SWITCHES,
+  changeExpiresAt,
+  requiresApproval,
+  type ApprovalContext,
+  type ChangeAction,
+  type FeatureSwitchKey,
+} from "./domain";
 import { invalidateRoutingCache } from "./router";
 import type { ChangeInput } from "./schemas";
 
@@ -185,6 +198,20 @@ async function prepare(deps: ChangeDeps, input: ChangeInput): Promise<PreparedCh
         baseConfigVersion: null,
       };
     }
+    case "set_feature": {
+      const feature = input.feature as FeatureSwitchKey;
+      const [row] = await db.select().from(featureSwitches).where(eq(featureSwitches.key, feature)).limit(1);
+      if ((row?.enabled ?? false) === input.enabled) throw invalid(input.enabled ? "Already on." : "Already off.");
+      return {
+        action: input.action,
+        kind: FEATURE_SWITCHES[feature].kind,
+        configId: null,
+        payload: { feature, enabled: input.enabled },
+        approval: { action: input.action, enabling: input.enabled },
+        baseRouteVersion: row?.version ?? 0,
+        baseConfigVersion: null,
+      };
+    }
     case "pause_kind":
     case "resume_kind": {
       const route = await routeFor(db, input.kind);
@@ -300,6 +327,22 @@ async function apply(
       }
       return { configId: null };
     }
+    case "set_feature": {
+      const feature = String(p.feature);
+      const enabled = p.enabled === true;
+      const [row] = await tx.select().from(featureSwitches).where(eq(featureSwitches.key, feature)).for("update");
+      // Turning off works mid-incident (no version check); turning on re-checks the version it was based on.
+      if (enabled && (row?.version ?? 0) !== req.baseRouteVersion) return "superseded";
+      if (row) {
+        await tx
+          .update(featureSwitches)
+          .set({ enabled, version: row.version + 1, updatedBy: req.requestedBy })
+          .where(eq(featureSwitches.key, feature));
+      } else {
+        await tx.insert(featureSwitches).values({ key: feature, enabled, version: 1, updatedBy: req.requestedBy });
+      }
+      return { configId: null };
+    }
     case "pause_kind":
     case "resume_kind": {
       const [route] = await tx.select().from(providerRoutes).where(eq(providerRoutes.kind, req.kind)).for("update");
@@ -323,6 +366,25 @@ async function apply(
 
 function auditMeta(req: { action: ChangeAction; kind: ProviderKind; approvalRequired: boolean }) {
   return { action: req.action, kind: req.kind, approval_required: req.approvalRequired };
+}
+
+/** Whether a control-plane feature switch is on (off when never set). */
+export async function isFeatureEnabled(db: DbExecutor, key: FeatureSwitchKey): Promise<boolean> {
+  const [row] = await db
+    .select({ enabled: featureSwitches.enabled })
+    .from(featureSwitches)
+    .where(eq(featureSwitches.key, key))
+    .limit(1);
+  return row?.enabled ?? false;
+}
+
+export async function listFeatureSwitches(db: DbExecutor) {
+  const rows = await db.select().from(featureSwitches);
+  return (Object.keys(FEATURE_SWITCHES) as FeatureSwitchKey[]).map((key) => ({
+    key,
+    ...FEATURE_SWITCHES[key],
+    enabled: rows.find((r) => r.key === key)?.enabled ?? false,
+  }));
 }
 
 export async function proposeChange(
@@ -375,7 +437,10 @@ export async function proposeChange(
     await recordAuditEvent(tx, {
       actorType: "user",
       actorId: input.actorId,
-      eventType: prepared.action === "pause_kind" ? "integrations.kill_switch_engaged" : "integrations.change_applied",
+      eventType:
+        prepared.action === "pause_kind" || (prepared.action === "set_feature" && prepared.payload.enabled === false)
+          ? "integrations.kill_switch_engaged"
+          : "integrations.change_applied",
       entityType: "integration_change_request",
       entityId: row!.id,
       metadata: auditMeta({ ...prepared, approvalRequired }),

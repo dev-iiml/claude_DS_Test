@@ -1,6 +1,7 @@
 // Server-side surface of the analytics module (Stage 15). The catalogue (`events.ts`) is pure and imported directly.
 export {
   analyticsDay,
+  eraseBrandWorkEvents,
   eraseFinancialFunnelEvents,
   eraseOptionalEvents,
   recordEvent,

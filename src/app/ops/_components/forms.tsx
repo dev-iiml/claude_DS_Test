@@ -285,3 +285,30 @@ export function DecisionForm({ requestId, ownRequest }: { requestId: string; own
     </form>
   );
 }
+
+/** A control-plane feature switch: on needs a second ops admin; off applies at once. */
+export function FeatureSwitchForm({ feature, enabled, label }: { feature: string; enabled: boolean; label: string }) {
+  const [state, action] = useActionState(proposeChangeAction, initialFormState);
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <FormMessage state={state} />
+      <input type="hidden" name="action" value="set_feature" />
+      <input type="hidden" name="feature" value={feature} />
+      <input type="hidden" name="enabled" value={enabled ? "false" : "true"} />
+      <ReasonField
+        state={state}
+        placeholder={
+          enabled
+            ? "e.g. Pausing while we review a partner query"
+            : "e.g. Partner lender confirmed the AA purpose covers it"
+        }
+      />
+      <ApprovalNote needsApproval={!enabled} />
+      <div>
+        <SubmitButton variant={enabled ? "destructive" : "secondary"} pendingLabel="Submitting…">
+          {enabled ? `Turn off ${label.toLowerCase()} now` : `Request to turn on ${label.toLowerCase()}`}
+        </SubmitButton>
+      </div>
+    </form>
+  );
+}

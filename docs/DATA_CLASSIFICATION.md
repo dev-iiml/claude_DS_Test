@@ -64,6 +64,7 @@ secrets (environment only; the database holds env var names).
 | `iam.identities` | restricted | identity | yes | email, password hash (scrypt) | kept while the account exists (account closure: open item) |
 | `iam.sessions` | restricted | identity | yes | session token hash, client, expiry | purged 180 days after the session ends (purge_auth_records) |
 | `ops.partner_api_keys` | restricted | control plane | no | API key SHA-256 hashes and prefixes | no personal data |
+| `public.brand_work_documents` | restricted | creator professional | yes | document metadata only (kind, opaque storage key, SHA-256, size, scan verdict); the bytes — which can contain PAN, GSTIN, bank details — live only in document storage | erased on withdrawal: brand_work_records |
 | `public.creator_gst_registrations` | restricted | creator professional | yes | GSTIN (embeds PAN), registered names, state | kept while the account exists (account closure: open item) |
 | `public.creator_profiles` | restricted | creator professional | yes | legal/display name, location, legal form, GST status, GSTIN | kept while the account exists (account closure: open item); withdrawing Creator Profile pauses membership |
 | `public.identity_lookup_results` | restricted | identity | yes | verified name, masked PAN, mobile | erased on withdrawal: identity_lookup |
@@ -74,12 +75,15 @@ secrets (environment only; the database holds env var names).
 | `ops.rate_limit_counters` | confidential | control plane | yes | keyed hash of IP/user/partner, window counts | purged after 48 hours (rate_limit_purge) |
 | `public.access_requests` | confidential | access | yes | requests, notes, points held, completion date | erased on withdrawal: access_requests |
 | `public.audit_events` | confidential | audit | yes | actor and entity ids, event type, small scalar metadata | append-only audit trail (period: counsel/RE) |
+| `public.brand_work_records` | confidential | creator professional | yes | brand collaborations: brand, billed party, platforms, deliverables, dates, invoice amount, review state | erased on withdrawal: brand_work_records, brand_payment_matches |
+| `public.brand_work_reversals` | confidential | creator professional | yes | four-eyes reversal proposals and decisions | erased on withdrawal: brand_work_records |
+| `public.brand_work_reviews` | confidential | creator professional | yes | append-only reviewer actions (codes, short staff notes checked for identifiers) | erased on withdrawal: brand_work_records |
 | `public.consent_receipts` | confidential | consent | yes | who agreed to which version, when | proof of consent (counsel to confirm the period) |
 | `public.consent_withdrawals` | confidential | consent | yes | withdrawals, reason code, effects | proof of withdrawal (counsel to confirm the period) |
 | `public.creator_additional_categories` | confidential | creator professional | yes | category codes | kept while the account exists (account closure: open item) |
 | `public.creator_points_ledger` | confidential | creator professional | yes | Creator Points earn/hold/release/reverse entries (rule codes and ids only) | kept while the account exists (account closure: open item) |
 | `public.creator_preferences` | confidential | creator professional | yes | category, brand, travel and PR interests | kept while the account exists (account closure: open item) |
-| `public.creator_professional_features` | confidential | creator professional | yes | derived professional features with provenance | erased on withdrawal: professional_graph |
+| `public.creator_professional_features` | confidential | creator professional | yes | derived professional features with provenance | erased on withdrawal: professional_graph, brand_work_records |
 | `public.creator_social_accounts` | confidential | creator professional | yes | platform, handle, provider account id | erased on withdrawal: social_account_data |
 | `public.creator_social_snapshots` | confidential | creator professional | yes | follower, view, reach and engagement figures | erased on withdrawal: social_account_data |
 | `public.creator_status_runs` | confidential | creator professional | yes | Creator Status tier and criteria | erased on withdrawal: professional_graph |
@@ -87,6 +91,7 @@ secrets (environment only; the database holds env var names).
 | `public.professional_graph_runs` | confidential | creator professional | yes | graph run metadata | erased on withdrawal: professional_graph |
 | `public.social_connection_requests` | confidential | creator professional | yes | hashed OAuth state, platform | erased on withdrawal: social_account_data |
 | `analytics.daily_counts` | internal | analytics | no | daily event and subject counts (no ids) | no personal data |
+| `ops.feature_switches` | internal | control plane | no | feature switches (e.g. brand payment matching), maker-checker | no personal data |
 | `ops.integration_change_requests` | internal | control plane | no | maker-checker changes (staff ids) | no personal data |
 | `ops.jobs` | internal | control plane | no | job queue (ids and counts only) | no personal data |
 | `ops.partner_events` | internal | control plane | no | event feed (ids only) | no personal data |
@@ -98,10 +103,16 @@ secrets (environment only; the database holds env var names).
 | `ops.provider_routes` | internal | control plane | no | routing, kill switch | no personal data |
 | `ops.provider_runtime` | internal | control plane | no | circuit breaker and health state | no personal data |
 | `ops.simulated_lender_policies` | internal | control plane | no | simulated lender policy versions | no personal data |
+| `public.brand_aliases` | internal | reference | no | normalised brand-name aliases | kept as reference data |
+| `public.brand_directory` | internal | reference | no | canonical brand names and industries (business data) | kept as reference data; merged, never deleted |
+| `public.brand_directory_merges` | internal | reference | no | four-eyes merges of duplicate brands | kept as an audit of reference data |
+| `public.creator_notices` | internal | creator professional | yes | neutral in-app notices (kind and a date), refreshed daily | erased on withdrawal: brand_work_records; purged replaced by the daily reminder job |
 | `public.data_erasure_requests` | internal | consent | yes | erasure scope, status, hold reasons, counts | proof of erasure |
 | `public.points_tasks` | internal | creator professional | no | staff-defined points tasks (title, description, points, four-eyes status) | kept while useful; retired, never deleted (completions point to them) |
 | `public.provider_requests` | internal | audit | yes | provider call metadata (no payloads) | audit of third-party data access (period: counsel/RE) |
 | `public.access_opportunities` | public | reference | no | sample opportunities | no personal data |
+| `public.brand_industries` | public | reference | no | brand industry vocabulary | no personal data |
+| `public.brand_work_reasons` | public | reference | no | review reason vocabulary | no personal data |
 | `public.brands` | public | reference | no | sample brand names and descriptions | no personal data |
 | `public.consent_definitions` | public | reference | no | versioned consent texts | no personal data |
 | `public.creator_categories` | public | reference | no | category vocabulary | no personal data |

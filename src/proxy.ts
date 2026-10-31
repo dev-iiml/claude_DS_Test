@@ -34,6 +34,7 @@ const PROTECTED_PREFIXES = [
   "/admin",
   "/ops",
   "/partnerships",
+  "/brand-work",
   "/insights",
   "/passport",
   "/account",

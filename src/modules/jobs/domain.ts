@@ -16,6 +16,9 @@ export const JOB_TYPES = [
   "rate_limit_purge",
   "purge_auth_records",
   "grant_membership_milestones",
+  "brand_work_scan_document",
+  "brand_work_erase_documents",
+  "brand_work_consent_reminders",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -98,6 +101,13 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
     label: "Grant membership milestones",
     description:
       "Grants Creator Points for membership anniversaries and any milestone a hook missed (idempotent; never for consents or credit).",
+    everyMinutes: 1_440,
+  },
+  {
+    type: "brand_work_consent_reminders",
+    label: "Bank-data permission reminders",
+    description:
+      "Refreshes neutral in-app notices for creators whose Account Aggregator permission is ending or whose shared bank data has passed its permitted period. No points, no urgency.",
     everyMinutes: 1_440,
   },
   {

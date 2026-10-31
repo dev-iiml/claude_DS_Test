@@ -82,6 +82,7 @@ export interface StaffRequestDetail {
   decidedAt: Date | null;
   declineReason: AccessDeclineReason | null;
   completedAt: Date | null;
+  creatorId: string;
   opportunity: { id: string; title: string; brandName: string; seats: number; status: string };
   creator: {
     displayName: string;
@@ -159,6 +160,7 @@ export async function getRequestForStaff(
     decidedAt: row.r.decidedAt,
     declineReason: row.r.declineReason,
     completedAt: row.r.completedAt,
+    creatorId: row.r.creatorId,
     opportunity: {
       id: row.r.opportunityId,
       title: row.title,

@@ -14,6 +14,10 @@ import { MockSocialDataProvider } from "./social/mock-social-data-provider";
 import type { SocialDataProvider } from "./social/types";
 import { MockTaxRegistrationProvider } from "./tax-registration/mock-tax-registration-provider";
 import type { TaxRegistrationProvider } from "./tax-registration/types";
+import { MockDocumentStorageProvider } from "./document-storage/mock-document-storage-provider";
+import type { DocumentStorageProvider } from "./document-storage/types";
+import { MockFileScanProvider } from "./file-scan/mock-file-scan-provider";
+import type { FileScanProvider } from "./file-scan/types";
 
 /**
  * The set of capabilities business code depends on. Live instances come from
@@ -29,6 +33,8 @@ export interface ProviderRegistry {
   bureau: CreditBureauProvider;
   financialData: FinancialDataProvider;
   lender: LenderProvider;
+  documentStorage: DocumentStorageProvider;
+  fileScan: FileScanProvider;
 }
 
 /** Direct mocks, bypassing routing — for unit tests and scripts only. */
@@ -42,5 +48,7 @@ export function createMockProviderRegistry(): ProviderRegistry {
     bureau: new MockCreditBureauProvider(),
     financialData: new MockFinancialDataProvider(),
     lender: new MockLenderProvider(),
+    documentStorage: new MockDocumentStorageProvider(),
+    fileScan: new MockFileScanProvider(),
   };
 }

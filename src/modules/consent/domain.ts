@@ -9,6 +9,8 @@ export const CONSENT_KEYS = {
   lenderHandoff: "lender_handoff",
   brandOpportunities: "brand_opportunities",
   productAnalytics: "product_analytics",
+  brandWorkRecords: "brand_work_records",
+  brandPaymentMatch: "brand_payment_match",
 } as const;
 export type ConsentKey = (typeof CONSENT_KEYS)[keyof typeof CONSENT_KEYS];
 
@@ -31,6 +33,8 @@ export const ERASURE_SCOPES = [
   "access_requests",
   "product_analytics_events",
   "financial_funnel_events",
+  "brand_work_records",
+  "brand_payment_matches",
 ] as const;
 export type ErasureScope = (typeof ERASURE_SCOPES)[number];
 

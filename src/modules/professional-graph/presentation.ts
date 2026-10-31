@@ -7,7 +7,7 @@ import type { FeatureKey } from "./engine";
  */
 export const FEATURE_COPY: Record<
   FeatureKey,
-  { label: string; explain: string; group: "career" | "audience" | "consistency" | "authenticity" }
+  { label: string; explain: string; group: "career" | "audience" | "consistency" | "authenticity" | "brand_work" }
 > = {
   professional_longevity_months: {
     label: "Creating for",
@@ -69,7 +69,75 @@ export const FEATURE_COPY: Record<
     explain: "Any month where followers jumped more than 50%.",
     group: "authenticity",
   },
+  verified_brand_count: {
+    label: "Brands worked with",
+    explain: "Different brands with verified collaborations.",
+    group: "brand_work",
+  },
+  verified_collaborations_12m: {
+    label: "Collaborations, last 12 months",
+    explain: "Verified brand collaborations in the past year.",
+    group: "brand_work",
+  },
+  repeat_brand_count: {
+    label: "Repeat brands",
+    explain: "Brands you've worked with more than once.",
+    group: "brand_work",
+  },
+  brand_recurrence_rate: {
+    label: "Brands that come back",
+    explain: "Share of your brands with more than one collaboration.",
+    group: "brand_work",
+  },
+  brand_tenure_months: {
+    label: "Brand work span",
+    explain: "From your first to your latest verified collaboration.",
+    group: "brand_work",
+  },
+  brand_industry_count: { label: "Industries", explain: "Different industries you've worked in.", group: "brand_work" },
+  brand_industry_concentration: {
+    label: "Industry mix",
+    explain: "How spread your collaborations are across industries.",
+    group: "brand_work",
+  },
+  top_brand_revenue_share_12m: {
+    label: "Largest client's share",
+    explain: "Your biggest brand's share of verified invoice value this year.",
+    group: "brand_work",
+  },
+  highest_verified_deal: {
+    label: "Largest verified deal",
+    explain: "Your largest single verified invoice.",
+    group: "brand_work",
+  },
+  median_verified_deal_12m: {
+    label: "Typical deal, last 12 months",
+    explain: "The middle value of your verified invoices this year.",
+    group: "brand_work",
+  },
+  verified_brand_billings_12m: {
+    label: "Verified brand invoices, 12 months",
+    explain: "Total of verified invoices this year. Not bank-verified income.",
+    group: "brand_work",
+  },
+  deal_value_growth_12m: {
+    label: "Deal value growth",
+    explain: "This year's verified invoice value against last year's.",
+    group: "brand_work",
+  },
+  agency_mediated_share: {
+    label: "Through agencies or platforms",
+    explain: "Share of collaborations billed through an agency or platform.",
+    group: "brand_work",
+  },
+  payment_confirmation_rate: {
+    label: "Payments confirmed",
+    explain: "Share of verified collaborations with a confirmed payment.",
+    group: "brand_work",
+  },
 };
+
+const rupees = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 
 const compact = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
 
@@ -96,6 +164,25 @@ export function formatFeatureValue(key: FeatureKey, value: number | boolean | nu
       return value >= 0.75 ? "Very steady" : value >= 0.5 ? "Steady" : value >= 0.25 ? "Variable" : "Volatile";
     case "posting_consistency_12m":
       return `${Math.round(value * 100)}% of months`;
+    case "highest_verified_deal":
+    case "median_verified_deal_12m":
+    case "verified_brand_billings_12m":
+      return rupees.format(value);
+    case "brand_tenure_months": {
+      const y = Math.floor(value / 12);
+      const m = value % 12;
+      if (y === 0) return `${m} month${m === 1 ? "" : "s"}`;
+      return m ? `${y} yr ${m} mo` : `${y} year${y === 1 ? "" : "s"}`;
+    }
+    case "brand_recurrence_rate":
+    case "top_brand_revenue_share_12m":
+    case "agency_mediated_share":
+    case "payment_confirmation_rate":
+      return `${Math.round(value * 100)}%`;
+    case "brand_industry_concentration":
+      return value >= 0.75 ? "Concentrated" : value >= 0.45 ? "Balanced" : "Diversified";
+    case "deal_value_growth_12m":
+      return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
     default:
       return String(value);
   }

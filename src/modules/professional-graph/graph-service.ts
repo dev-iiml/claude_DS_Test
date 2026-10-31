@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, lte, ne } from "drizzle-orm";
 
 import type { Database } from "@/db/create-db";
 import {
+  brandWorkRecords,
   creatorProfessionalFeatures,
   creatorProfiles,
   creatorSocialAccounts,
@@ -15,7 +16,14 @@ import { CONSENT_KEYS, hasValidConsent } from "@/modules/consent";
 import { refreshCreatorStatus } from "@/modules/creator-status/status-service";
 
 import type { GraphRunTrigger } from "./domain";
-import { ENGINE_VERSION, computeFeatures, type EngineInput, type FeatureKey, type FeatureResult } from "./engine";
+import {
+  ENGINE_VERSION,
+  computeFeatures,
+  type BrandWorkInput,
+  type EngineInput,
+  type FeatureKey,
+  type FeatureResult,
+} from "./engine";
 import { hashInputs } from "./inputs-hash";
 
 /** Builds the engine input from stored data. Snapshots ≤ asOf only, so reruns are reproducible. */
@@ -49,6 +57,7 @@ export async function loadEngineInput(db: DbExecutor, creatorId: string, asOf: s
     : [];
 
   const asOfEnd = `${asOf}T23:59:59.999Z`;
+  const brandWork = await loadVerifiedBrandWork(db, creatorId, asOf);
   return {
     asOf: `${asOf}T00:00:00.000Z`,
     creatorSince: profile?.creatorSince ?? null,
@@ -67,7 +76,53 @@ export async function loadEngineInput(db: DbExecutor, creatorId: string, asOf: s
           postsCount: s.postsCount,
         })),
     })),
+    brandWork,
   };
+}
+
+/**
+ * VERIFIED brand-work records with a resolved brand, worked on by `asOf`
+ * (Stage 18). Drafts, rejected and reversed records never count. Ids, codes,
+ * months and amounts only — never names.
+ */
+export async function loadVerifiedBrandWork(
+  db: DbExecutor,
+  creatorId: string,
+  asOf: string,
+): Promise<BrandWorkInput[]> {
+  const rows = await db
+    .select({
+      id: brandWorkRecords.id,
+      brandId: brandWorkRecords.brandDirectoryId,
+      industry: brandWorkRecords.industryCode,
+      billedPartyType: brandWorkRecords.billedPartyType,
+      deliverables: brandWorkRecords.deliverables,
+      workDate: brandWorkRecords.workDate,
+      amount: brandWorkRecords.invoiceAmountPaise,
+      paymentStatus: brandWorkRecords.paymentStatus,
+      confirmedMonth: brandWorkRecords.paymentConfirmedMonth,
+    })
+    .from(brandWorkRecords)
+    .where(
+      and(
+        eq(brandWorkRecords.creatorId, creatorId),
+        eq(brandWorkRecords.verificationStatus, "verified"),
+        isNotNull(brandWorkRecords.brandDirectoryId),
+        lte(brandWorkRecords.workDate, asOf),
+      ),
+    )
+    .orderBy(asc(brandWorkRecords.workDate), asc(brandWorkRecords.id));
+  return rows.map((r) => ({
+    id: r.id,
+    brandId: r.brandId!,
+    industry: r.industry ?? "other",
+    billedPartyType: r.billedPartyType,
+    deliverables: [...r.deliverables].sort(),
+    workMonth: r.workDate.slice(0, 7),
+    amountPaise: r.amount,
+    paymentConfirmed: r.paymentStatus === "confirmed",
+    confirmationMonth: r.confirmedMonth ? r.confirmedMonth.slice(0, 7) : null,
+  }));
 }
 
 export type GraphRunResult =

@@ -8,6 +8,8 @@ import { getDb } from "@/db";
 import { getRequestForStaff } from "@/modules/access";
 import { ACCESS_DECLINE_REASON_LABELS, ACCESS_REQUEST_STATUS_LABELS } from "@/modules/access/presentation";
 import { requirePartnershipsAdmin } from "@/modules/identity";
+import { partnershipsBrandSummary } from "@/modules/brand-work";
+import { INDUSTRY_LABELS } from "@/modules/brand-work/presentation";
 import { formatPoints } from "@/modules/rewards/rules";
 
 import { PartnershipsShell } from "../../../_components/creator-shell";
@@ -32,6 +34,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
   const r = await getRequestForStaff(getDb(), { requestId: id, staffUserId: staff.userId });
   if (!r) notFound();
   const notice = typeof q.notice === "string" ? NOTICES[q.notice] : undefined;
+  const brandWork = await partnershipsBrandSummary(getDb(), r.creatorId);
 
   return (
     <PartnershipsShell role={staff.role}>
@@ -71,6 +74,22 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
               label="Total audience"
               value={r.creator.totalAudience !== null ? people.format(r.creator.totalAudience) : "Not measured"}
             />
+          </ListGroup>
+          <ListGroup
+            id="brand-work"
+            label="Verified brand work"
+            footer="From records the creator shows on their Passport, under the Verified brand work consent. No documents, amounts or private records."
+          >
+            <ListRow label="Verified collaborations" value={String(brandWork.verifiedRecords)} />
+            <ListRow label="Any payment confirmed" value={brandWork.anyPaymentConfirmed ? "Yes" : "No"} />
+            {brandWork.brands.map((b) => (
+              <ListRow
+                key={b.name}
+                label={b.name}
+                detail={INDUSTRY_LABELS[b.industry] ?? b.industry}
+                value={`${b.collaborations} ${b.collaborations === 1 ? "collaboration" : "collaborations"}`}
+              />
+            ))}
           </ListGroup>
           <ListGroup id="note" label="Note from the creator">
             <ListRow label={r.note ?? "No note"} />

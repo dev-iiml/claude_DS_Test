@@ -127,6 +127,30 @@ export const PURPOSES: readonly PurposePolicy[] = [
     ],
     erasure: ["product_analytics_events"],
   },
+  {
+    key: CONSENT_KEYS.brandWorkRecords,
+    label: "Verified brand work",
+    summary:
+      "Storing your brand-work records and documents, verifying them and using verified ones in your Professional Graph.",
+    core: false,
+    onWithdraw: [
+      "We stop processing your brand-work records straight away.",
+      "Your records, documents and their review history are erased.",
+      "Creator Points you've already earned stay.",
+    ],
+    erasure: ["brand_work_records"],
+  },
+  {
+    key: CONSENT_KEYS.brandPaymentMatch,
+    label: "Check brand payments in shared bank data",
+    summary: "Checking bank data you already shared for a payment matching a verified record. Optional.",
+    core: false,
+    onWithdraw: [
+      "We stop checking your shared bank data for brand payments.",
+      "Payments confirmed this way go back to unconfirmed. Other confirmations stay.",
+    ],
+    erasure: ["brand_payment_matches"],
+  },
 ];
 
 /** Shown wherever erasure is mentioned: credit records follow the partner lender's retention rules. */

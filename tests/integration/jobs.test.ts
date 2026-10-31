@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { auditEvents, jobs, users } from "@/db/schema";
@@ -21,8 +21,25 @@ const handlers = (override: Partial<JobHandlers> = {}): JobHandlers => ({
 
 describe("Job runner", () => {
   it("enqueues each schedule once per window and runs them", async () => {
+    // Other test files share this database and may have queued their own jobs (e.g. document scans),
+    // so check the scheduled jobs themselves rather than the tick's totals.
     const first = await tick({ db, now: at(0), handlers: handlers() });
-    expect(first).toMatchObject({ enqueued: JOB_SCHEDULES.length, succeeded: JOB_SCHEDULES.length, dead: 0 });
+    expect(first).toMatchObject({ enqueued: JOB_SCHEDULES.length, dead: 0 });
+    for (let more = first.ran; more > 0;) more = (await runDueJobs({ db, now: at(0), handlers: handlers() })).ran;
+    const scheduled = await db
+      .select({ type: jobs.type, status: jobs.status })
+      .from(jobs)
+      .where(
+        inArray(
+          jobs.type,
+          JOB_SCHEDULES.map((s) => s.type),
+        ),
+      );
+    for (const { type } of JOB_SCHEDULES)
+      expect(
+        scheduled.some((j) => j.type === type && j.status === "succeeded"),
+        type,
+      ).toBe(true);
     const again = await tick({ db, now: at(30_000), handlers: handlers() });
     expect(again.enqueued).toBe(0);
     // The 1-minute webhook window rolls over first…

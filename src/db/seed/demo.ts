@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { hashPassword } from "@/modules/identity/auth/password";
 import { hashApiKey } from "@/modules/partners/credentials";
 import { syncMilestonePoints } from "@/modules/rewards/ledger-service";
+import { seedBrandWorkDemo } from "./brand-work-demo";
 import { gstinCheckCharacter } from "@/modules/creator-profile/gstin";
 import { CONSENT_DEFINITION_SEEDS } from "@/modules/consent/definitions";
 import { SELF_DECLARED_PROVIDER } from "@/modules/social-data/domain";
@@ -174,6 +175,9 @@ export const DEMO_STAFF: { n: number; email: string; role: UserRole }[] = [
   { n: 105, email: "partnerships.admin@staff.creatorco.test", role: "partnerships_admin" },
   // Read-only aggregate analytics (Stage 15): /insights only.
   { n: 106, email: "analyst@staff.creatorco.test", role: "analyst" },
+  // Verified brand work reviewers (Stage 18) — two, so flagged records, reversals and merges can use four eyes.
+  { n: 107, email: "brand.reviewer@staff.creatorco.test", role: "brand_work_reviewer" },
+  { n: 108, email: "brand.approver@staff.creatorco.test", role: "brand_work_reviewer" },
 ];
 
 const uuid = (prefix: string, n: number) => `00000000-0000-4000-${prefix}-${String(n).padStart(12, "0")}`;
@@ -321,6 +325,12 @@ export async function seedDemoData(db: Database, password: string) {
 
     await seedSandboxPartner(tx);
     await seedAccessPreview(tx);
+    await seedBrandWorkDemo(tx, {
+      userId: demoIds.user(2),
+      creatorId: demoIds.profile(2),
+      reviewerA: demoIds.user(107),
+      reviewerB: demoIds.user(108),
+    });
 
     if (createdProfiles > 0) {
       await tx.insert(auditEvents).values({

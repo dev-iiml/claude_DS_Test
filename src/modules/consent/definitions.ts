@@ -188,6 +188,38 @@ export const CONSENT_DEFINITION_SEEDS = [
     ].join("\n\n"),
     activeFrom: new Date("2026-10-28T00:00:00.000Z"),
   },
+  {
+    id: "00000000-0000-4000-8000-00000000c013",
+    key: CONSENT_KEYS.brandWorkRecords,
+    version: 1,
+    title: "Verified brand work",
+    purpose:
+      "To store the brand-work records and documents you add, have CreatorCo staff verify them, and use verified records in your Creator Professional Graph.",
+    body: [
+      "When you add a brand collaboration, CreatorCo stores what you enter (the brand, who you billed, platforms, deliverables, dates and, if you add it, the invoice amount) and the documents you upload — invoices, purchase orders, agreements or remittance advice. Documents are kept in private, encrypted storage under a random reference; we don't keep the file name and we don't extract text from them.",
+      "A small team of CreatorCo brand-work reviewers opens your documents to check them against the record. Every time a reviewer opens a document is logged. Documents can include details such as your PAN, GSTIN or bank account — those stay inside the documents only and are never copied into CreatorCo's other systems, analytics or logs.",
+      "Verified records feed your Creator Professional Graph (for example how many brands you've worked with and how often they come back) and earn Creator Points at milestones. Points are the same however a payment is confirmed, and never depend on how much you were paid.",
+      "CreatorCo's partnerships team can see the brands, industries and number of collaborations from records you show on your Passport (never your private records, documents or amounts) when they review your Access requests.",
+      "This is not a credit product. Verified brand work is not used to check financial eligibility, by any partner lender or for Creator Status.",
+      "You can delete a draft at any time and withdraw this consent at any time: we stop processing straight away and erase your records, documents and their review history. Creator Points you've already earned stay.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-31T00:00:00.000Z"),
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000c014",
+    key: CONSENT_KEYS.brandPaymentMatch,
+    version: 1,
+    title: "Check brand payments in shared bank data",
+    purpose:
+      "To check bank data you already shared for an eligibility check for a payment matching a verified brand-work record, and record only whether it was seen and in which month.",
+    body: [
+      "Optional. With this on, when you ask CreatorCo to check a payment, the financial-eligibility part of CreatorCo looks in the Account Aggregator data you already shared for an active eligibility check, while that data is still within its permitted period. It never asks your bank for new data.",
+      "Only two things are recorded on your brand-work record: whether a matching payment was seen, and the month. No amount, payer name, narration, account or transaction is copied out of the financial data.",
+      "You don't need this to confirm payments: your agency can confirm, or you can upload a remittance advice. Creator Points are the same whichever you choose.",
+      "You can withdraw this consent at any time: we stop checking, and payments confirmed this way go back to unconfirmed.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-31T00:00:00.000Z"),
+  },
 ] as const;
 
 /** The newest seeded version of a purpose (what a creator is asked to agree to now). */

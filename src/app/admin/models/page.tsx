@@ -7,6 +7,18 @@ import { CASHFLOW_ANALYSIS_VERSION, OWN_TRANSFER_WINDOW_DAYS } from "@/modules/f
 import { FIN_ENGINE_VERSION, FIN_FEATURE_VERSIONS } from "@/modules/financial-eligibility/financial-features";
 import { formatInr } from "@/modules/financial-eligibility/presentation";
 import { FRAUD_CHECK_LABELS } from "@/modules/fraud/presentation";
+import {
+  BRAND_WORK_FLAGS,
+  BRAND_WORK_FLAG_LABELS,
+  BRAND_WORK_RULES_VERSION,
+  RULE_SETTINGS,
+} from "@/modules/brand-work/rules";
+import {
+  PAYMENT_MATCH_RULES_VERSION,
+  PAYMENT_MATCH_SETTINGS,
+} from "@/modules/financial-eligibility/payment-match-rules";
+import { EARN_GUIDE } from "@/modules/rewards/presentation";
+import { POINTS_RULES_VERSION, TASK_POINTS_MAX, TASK_POINTS_MIN } from "@/modules/rewards/rules";
 import { FRAUD_CHECK_CODES, FRAUD_RULES_VERSION, FRAUD_THRESHOLDS } from "@/modules/fraud/rules";
 import { requireAdmin } from "@/modules/identity";
 import { getActivePolicy, listPolicies } from "@/modules/lending";
@@ -136,6 +148,50 @@ export default async function ModelsPage() {
               detail={Object.entries(FRAUD_THRESHOLDS)
                 .map(([k, v]) => `${k} ${v}`)
                 .join(" · ")}
+            />
+          </ListGroup>
+          <ListGroup
+            id="brand-work-rules"
+            label={`Brand-work rules · ${BRAND_WORK_RULES_VERSION}`}
+            footer="Flags only — they route a record to a second reviewer and never reject it. Brand work is not an underwriting input."
+          >
+            {BRAND_WORK_FLAGS.map((f) => (
+              <ListRow key={f} label={BRAND_WORK_FLAG_LABELS[f]} />
+            ))}
+            <ListRow
+              label="Bands"
+              detail={`₹${RULE_SETTINGS.minPlausiblePaise / 100}–₹${(RULE_SETTINGS.maxPlausiblePaise / 100).toLocaleString("en-IN")} per record · ${RULE_SETTINGS.medianMultiple}× own median after ${RULE_SETTINGS.medianMinRecords} records · ${RULE_SETTINGS.newBrandsThreshold}+ new brands in ${RULE_SETTINGS.newBrandsWindowDays} days`}
+            />
+          </ListGroup>
+          <ListGroup
+            id="payment-match-rules"
+            label={`Brand payment match · ${PAYMENT_MATCH_RULES_VERSION}`}
+            footer="Runs inside the financial domain only when the creator chose it, both consents are on and the /ops switch is on. Only seen / not seen and the month leave it; missing data is “unknown”, never “not seen”."
+          >
+            <ListRow
+              label="Window"
+              detail={`Invoice date −${PAYMENT_MATCH_SETTINGS.windowDaysBefore} to +${PAYMENT_MATCH_SETTINGS.windowDaysAfter} days`}
+            />
+            <ListRow
+              label="Amount"
+              detail={`${PAYMENT_MATCH_SETTINGS.minShare * 100}–${PAYMENT_MATCH_SETTINGS.maxShare * 100}% of the invoice (net of plausible TDS)`}
+            />
+            <ListRow
+              label="Payer"
+              detail="A shared word with the billed party or brand, after removing legal suffixes and transfer codes"
+            />
+          </ListGroup>
+          <ListGroup
+            id="points-rules"
+            label={`Creator Points · ${POINTS_RULES_VERSION}`}
+            footer="Milestones and verified outcomes only. Never for applying for credit or for giving, renewing or keeping a consent; never scaled by money; the same whatever the confirmation method."
+          >
+            {EARN_GUIDE.flatMap((g) => g.rows).map((r) => (
+              <ListRow key={r.label} label={r.label} detail={r.frequency} value={String(r.points)} />
+            ))}
+            <ListRow
+              label="Staff tasks"
+              detail={`${TASK_POINTS_MIN}–${TASK_POINTS_MAX} points each, set on the task; four-eyes approval`}
             />
           </ListGroup>
         </div>

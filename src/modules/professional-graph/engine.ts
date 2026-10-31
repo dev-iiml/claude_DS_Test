@@ -12,8 +12,12 @@ import type { FeatureConfidence, FeatureSource } from "./domain";
  * Bump ENGINE_VERSION (and the affected FEATURE_VERSIONS) whenever a formula
  * changes; old runs stay reproducible under their recorded version.
  */
-/** 0.2.0 (Stage 11b): several accounts per platform — platforms counted once, concentration by platform. */
-export const ENGINE_VERSION = "pg-0.2.0";
+/**
+ * 0.2.0 (Stage 11b): several accounts per platform — platforms counted once, concentration by platform.
+ * 0.3.0 (Stage 18): brand portfolio features from VERIFIED brand-work records only (drafts, rejected and reversed
+ * records never count). Document-verified amounts are not bank-verified income and are never used for affordability.
+ */
+export const ENGINE_VERSION = "pg-0.3.0";
 
 export const FEATURE_VERSIONS = {
   professional_longevity_months: "1",
@@ -28,7 +32,39 @@ export const FEATURE_VERSIONS = {
   declared_not_connected: "1",
   handle_mismatches: "1",
   follower_spike_detected: "1",
+  verified_brand_count: "1",
+  verified_collaborations_12m: "1",
+  repeat_brand_count: "1",
+  brand_recurrence_rate: "1",
+  brand_tenure_months: "1",
+  brand_industry_count: "1",
+  brand_industry_concentration: "1",
+  top_brand_revenue_share_12m: "1",
+  highest_verified_deal: "1",
+  median_verified_deal_12m: "1",
+  verified_brand_billings_12m: "1",
+  deal_value_growth_12m: "1",
+  agency_mediated_share: "1",
+  payment_confirmation_rate: "1",
 } as const;
+
+/** Brand portfolio features (Stage 18). Never read by underwriting, eligibility, lending or Creator Status. */
+export const BRAND_FEATURE_KEYS = [
+  "verified_brand_count",
+  "verified_collaborations_12m",
+  "repeat_brand_count",
+  "brand_recurrence_rate",
+  "brand_tenure_months",
+  "brand_industry_count",
+  "brand_industry_concentration",
+  "top_brand_revenue_share_12m",
+  "highest_verified_deal",
+  "median_verified_deal_12m",
+  "verified_brand_billings_12m",
+  "deal_value_growth_12m",
+  "agency_mediated_share",
+  "payment_confirmation_rate",
+] as const;
 export type FeatureKey = keyof typeof FEATURE_VERSIONS;
 
 export interface SnapshotInput {
@@ -46,18 +82,33 @@ export interface AccountInput {
   snapshots: SnapshotInput[];
 }
 
+/** One VERIFIED brand-work record (ids, codes, months and the amount — never names). */
+export interface BrandWorkInput {
+  id: string;
+  brandId: string;
+  industry: string;
+  billedPartyType: "brand" | "agency" | "platform";
+  deliverables: string[];
+  workMonth: string; // YYYY-MM
+  amountPaise: number | null;
+  paymentConfirmed: boolean;
+  confirmationMonth: string | null; // YYYY-MM
+}
+
 export interface EngineInput {
   asOf: string; // ISO — part of the inputs, so runs are reproducible
   creatorSince: string | null; // YYYY-MM-DD, self-declared
   declaredPlatforms: string[];
   accounts: AccountInput[]; // connected accounts only
+  /** Verified brand work as of `asOf` (Stage 18). Optional so older stored inputs still reproduce. */
+  brandWork?: BrandWorkInput[];
 }
 
 export interface FeatureResult {
   key: FeatureKey;
   version: string;
   value: number | boolean | null;
-  unit: "months" | "count" | "people" | "ratio" | "percent" | "flag";
+  unit: "months" | "count" | "people" | "ratio" | "percent" | "flag" | "inr";
   source: FeatureSource;
   completeness: number;
   confidence: FeatureConfidence;
@@ -343,5 +394,221 @@ export function computeFeatures(input: EngineInput): FeatureResult[] {
     provenance: { platforms: spikes.sort() },
   });
 
+  out.push(...brandFeatures(input));
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// brand portfolio (Stage 18)
+// ---------------------------------------------------------------------------
+
+const monthIndex = (ym: string) => Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1;
+
+/** Confidence from how many verified records there are and how long they span. */
+function brandConfidence(n: number, spanMonths: number): FeatureConfidence {
+  if (n >= 5 && spanMonths >= 12) return "high";
+  if (n >= 2) return "medium";
+  return "low";
+}
+
+const medianOf = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m]! : Math.round((s[m - 1]! + s[m]!) / 2);
+};
+
+export function brandFeatures(input: EngineInput): FeatureResult[] {
+  const out: FeatureResult[] = [];
+  const records = [...(input.brandWork ?? [])].sort(
+    (a, b) => a.workMonth.localeCompare(b.workMonth) || a.id.localeCompare(b.id),
+  );
+  const asOfMonth = monthIndex(input.asOf.slice(0, 7));
+  const in12 = (r: BrandWorkInput) => asOfMonth - monthIndex(r.workMonth) < 12 && asOfMonth >= monthIndex(r.workMonth);
+  const prior12 = (r: BrandWorkInput) => {
+    const d = asOfMonth - monthIndex(r.workMonth);
+    return d >= 12 && d < 24;
+  };
+  const n = records.length;
+  const span = n ? monthIndex(records[n - 1]!.workMonth) - monthIndex(records[0]!.workMonth) : 0;
+  const confidence = brandConfidence(n, span);
+  const ids = (rs: BrandWorkInput[]) => rs.map((r) => r.id);
+  const f = (r: Omit<FeatureResult, "version">) => out.push({ ...r, version: FEATURE_VERSIONS[r.key] });
+  const base = { source: "verified" as const, confidence };
+
+  const perBrand = new Map<string, number>();
+  for (const r of records) perBrand.set(r.brandId, (perBrand.get(r.brandId) ?? 0) + 1);
+  const brands = perBrand.size;
+  const repeat = [...perBrand.values()].filter((c) => c >= 2).length;
+  const last12 = records.filter(in12);
+  const prev12 = records.filter(prior12);
+  const amounts12 = last12.map((r) => r.amountPaise).filter((a): a is number => a !== null);
+  const amountsPrev = prev12.map((r) => r.amountPaise).filter((a): a is number => a !== null);
+  const allAmounts = records.map((r) => r.amountPaise).filter((a): a is number => a !== null);
+
+  f({
+    key: "verified_brand_count",
+    value: brands,
+    unit: "count",
+    ...base,
+    completeness: 1,
+    provenance: { records: n, brands },
+  });
+  f({
+    key: "verified_collaborations_12m",
+    value: last12.length,
+    unit: "count",
+    ...base,
+    completeness: 1,
+    provenance: { record_ids: ids(last12) },
+  });
+  f({
+    key: "repeat_brand_count",
+    value: repeat,
+    unit: "count",
+    ...base,
+    completeness: 1,
+    provenance: { brands, repeat },
+  });
+  f({
+    key: "brand_recurrence_rate",
+    value: brands >= 2 ? round(repeat / brands) : null,
+    unit: "ratio",
+    ...base,
+    completeness: brands >= 2 ? 1 : 0,
+    provenance: { brands, repeat },
+  });
+  f({
+    key: "brand_tenure_months",
+    value: n ? span : null,
+    unit: "months",
+    ...base,
+    completeness: n ? 1 : 0,
+    provenance: { records: n, first: records[0]?.workMonth ?? "", last: records[n - 1]?.workMonth ?? "" },
+  });
+  const perIndustry = new Map<string, number>();
+  for (const r of records) perIndustry.set(r.industry, (perIndustry.get(r.industry) ?? 0) + 1);
+  f({
+    key: "brand_industry_count",
+    value: perIndustry.size,
+    unit: "count",
+    ...base,
+    completeness: 1,
+    provenance: { industries: [...perIndustry.keys()].sort() },
+  });
+  f({
+    key: "brand_industry_concentration",
+    value: n ? round([...perIndustry.values()].reduce((s, c) => s + (c / n) ** 2, 0)) : null,
+    unit: "ratio",
+    ...base,
+    completeness: n ? 1 : 0,
+    provenance: { records: n, industries: perIndustry.size },
+  });
+  // Client concentration: the largest single brand's share of verified invoice value in 12 months.
+  const valueByBrand12 = new Map<string, number>();
+  for (const r of last12)
+    if (r.amountPaise !== null) valueByBrand12.set(r.brandId, (valueByBrand12.get(r.brandId) ?? 0) + r.amountPaise);
+  const total12 = amounts12.reduce((s, a) => s + a, 0);
+  f({
+    key: "top_brand_revenue_share_12m",
+    value: total12 > 0 ? round(Math.max(...valueByBrand12.values()) / total12) : null,
+    unit: "ratio",
+    ...base,
+    completeness: last12.length ? amounts12.length / last12.length : 0,
+    provenance: { records_with_amount: amounts12.length, brands: valueByBrand12.size },
+  });
+  f({
+    key: "highest_verified_deal",
+    value: allAmounts.length ? Math.max(...allAmounts) / 100 : null,
+    unit: "inr",
+    ...base,
+    completeness: n ? allAmounts.length / n : 0,
+    provenance: { records_with_amount: allAmounts.length },
+  });
+  f({
+    key: "median_verified_deal_12m",
+    value: amounts12.length >= 3 ? medianOf(amounts12) / 100 : null,
+    unit: "inr",
+    ...base,
+    completeness: amounts12.length >= 3 ? amounts12.length / last12.length : 0,
+    provenance: { records_with_amount: amounts12.length },
+  });
+  f({
+    key: "verified_brand_billings_12m",
+    value: last12.length ? total12 / 100 : null,
+    unit: "inr",
+    ...base,
+    completeness: last12.length ? amounts12.length / last12.length : 0,
+    provenance: { record_ids: ids(last12.filter((r) => r.amountPaise !== null)) },
+  });
+  const totalPrev = amountsPrev.reduce((s, a) => s + a, 0);
+  const growthOk = amounts12.length >= 2 && amountsPrev.length >= 2 && totalPrev > 0;
+  f({
+    key: "deal_value_growth_12m",
+    value: growthOk ? round(((total12 - totalPrev) / totalPrev) * 100, 2) : null,
+    unit: "percent",
+    ...base,
+    completeness: growthOk ? 1 : 0,
+    provenance: { last_12m_records: amounts12.length, prior_12m_records: amountsPrev.length },
+  });
+  f({
+    key: "agency_mediated_share",
+    value: n ? round(records.filter((r) => r.billedPartyType !== "brand").length / n) : null,
+    unit: "ratio",
+    ...base,
+    completeness: n ? 1 : 0,
+    provenance: { records: n },
+  });
+  f({
+    key: "payment_confirmation_rate",
+    value: n ? round(records.filter((r) => r.paymentConfirmed).length / n) : null,
+    unit: "ratio",
+    ...base,
+    completeness: n ? 1 : 0,
+    provenance: { records: n, confirmed: records.filter((r) => r.paymentConfirmed).length },
+  });
+  return out;
+}
+
+/** Read model for "Brands you've worked with" (no amounts). Sorted by latest month, then collaborations. */
+export interface PortfolioBrand {
+  brandDirectoryId: string;
+  displayName: string;
+  industry: string;
+  collaborations: number;
+  firstMonth: string;
+  lastMonth: string;
+  paymentConfirmed: boolean;
+}
+
+export function brandPortfolio(
+  records: readonly (BrandWorkInput & { brandName: string; visibility?: "show_on_passport" | "private" })[],
+  opts: { includePrivate: boolean } = { includePrivate: false },
+): PortfolioBrand[] {
+  const by = new Map<string, PortfolioBrand>();
+  for (const r of records) {
+    if (!opts.includePrivate && r.visibility === "private") continue;
+    const cur = by.get(r.brandId);
+    if (!cur) {
+      by.set(r.brandId, {
+        brandDirectoryId: r.brandId,
+        displayName: r.brandName,
+        industry: r.industry,
+        collaborations: 1,
+        firstMonth: r.workMonth,
+        lastMonth: r.workMonth,
+        paymentConfirmed: r.paymentConfirmed,
+      });
+    } else {
+      cur.collaborations += 1;
+      if (r.workMonth < cur.firstMonth) cur.firstMonth = r.workMonth;
+      if (r.workMonth > cur.lastMonth) cur.lastMonth = r.workMonth;
+      cur.paymentConfirmed ||= r.paymentConfirmed;
+    }
+  }
+  return [...by.values()].sort(
+    (a, b) =>
+      b.lastMonth.localeCompare(a.lastMonth) ||
+      b.collaborations - a.collaborations ||
+      a.displayName.localeCompare(b.displayName),
+  );
 }

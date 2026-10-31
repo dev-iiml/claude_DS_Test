@@ -19,6 +19,7 @@ const GROUPS = [
   { key: "audience", label: "Audience" },
   { key: "consistency", label: "Consistency" },
   { key: "authenticity", label: "Authenticity" },
+  { key: "brand_work", label: "Brand work" },
 ] as const;
 
 const SOURCE_LABEL: Record<string, string> = { verified: "Verified", declared: "Self-declared", derived: "Calculated" };
@@ -75,6 +76,17 @@ export default async function SignalsPage({ searchParams }: PageProps<"/passport
             {GROUPS.map((g) => {
               const items = graph.features.filter((f) => FEATURE_COPY[f.key as FeatureKey]?.group === g.key);
               if (!items.length) return null;
+              if (g.key === "brand_work" && !graph.features.find((f) => f.key === "verified_brand_count")?.value) {
+                return (
+                  <ListGroup key={g.key} id={`group-${g.key}`} label={g.label}>
+                    <ListRow
+                      href="/passport/brand-work"
+                      label="No verified brand work yet"
+                      detail="Add collaborations with brands and back them with documents to see these signals."
+                    />
+                  </ListGroup>
+                );
+              }
               return (
                 <ListGroup key={g.key} id={`group-${g.key}`} label={g.label}>
                   {items.map((f) => {

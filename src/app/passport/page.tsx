@@ -100,6 +100,14 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
               />
             ))}
           </ListGroup>
+
+          <ListGroup id="brand-work" label="Verified brand work">
+            <ListRow
+              href="/passport/brand-work"
+              label="Brand collaborations"
+              detail="Add work with brands and back it with an invoice or agreement. Verified work earns Creator Points."
+            />
+          </ListGroup>
         </div>
 
         <div className="flex flex-col gap-8">

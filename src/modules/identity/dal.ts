@@ -14,6 +14,7 @@ import {
   canAccessInsights,
   canAccessOps,
   canAccessPartnerships,
+  canAccessBrandWork,
   homePathFor,
 } from "./policy";
 import { readSessionToken } from "./session-cookie";
@@ -65,6 +66,13 @@ export async function requireOpsAdmin(): Promise<SessionUser> {
 export async function requirePartnershipsAdmin(): Promise<SessionUser> {
   const user = await requireUser();
   if (!canAccessPartnerships(user.role)) notFound();
+  return user;
+}
+
+/** Verified brand work review (`/brand-work`): reviewers and super admins; 404 for everyone else. */
+export async function requireBrandWorkReviewer(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (!canAccessBrandWork(user.role)) notFound();
   return user;
 }
 

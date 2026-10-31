@@ -274,6 +274,20 @@
       "when": 1793431922062,
       "tag": "0038_points_v2_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793434502529,
+      "tag": "0039_stage18_brand_work",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793434503940,
+      "tag": "0040_stage18_guards",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,7 @@
  * that already exist (per-account sign-in lockout, OTP sends per number, bureau
  * checks per 30 days), which they never replace.
  */
-export const RATE_LIMIT_RULES_VERSION = "rl-0.1.0";
+export const RATE_LIMIT_RULES_VERSION = "rl-0.2.0";
 
 export type RateLimitSubject = "ip" | "user" | "partner";
 
@@ -68,6 +68,34 @@ export const RATE_LIMITS = {
     windowSeconds: DAY,
     onLimit: "reject",
     description: "Access requests per account per day.",
+  },
+  "brand_work.create": {
+    subject: "user",
+    limit: 30,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Brand-work records created per account per day.",
+  },
+  "brand_work.upload": {
+    subject: "user",
+    limit: 60,
+    windowSeconds: HOUR,
+    onLimit: "reject",
+    description: "Brand-work document uploads per account per hour.",
+  },
+  "brand_work.submit": {
+    subject: "user",
+    limit: 30,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Brand-work records submitted for verification per account per day.",
+  },
+  "brand_work.payment_check": {
+    subject: "user",
+    limit: 10,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Brand payment checks against shared bank data per account per day.",
   },
   "analytics.anonymous_view": {
     subject: "ip",

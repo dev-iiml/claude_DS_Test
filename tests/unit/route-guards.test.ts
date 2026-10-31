@@ -21,7 +21,7 @@ const ROOT = join(process.cwd(), "src/app");
 
 /** Calls that authorise (each verified by its own tests) or helpers that call one first. */
 const GUARD_NAME =
-  /^(require(Creator|Member|Admin|OpsAdmin|PartnershipsAdmin|InsightsViewer|ConsentCentreAccess|Partner|ApiUser|ApiCreator|ApiMember|User)|load(Application|Onboarding)Step|resumePath|handle(About|Profile|Business|Interests|Consent))$/;
+  /^(require(Creator|Member|Admin|OpsAdmin|PartnershipsAdmin|BrandWorkReviewer|InsightsViewer|ConsentCentreAccess|Partner|ApiUser|ApiCreator|ApiMember|User)|load(Application|Onboarding)Step|resumePath|handle(About|Profile|Business|Interests|Consent))$/;
 /** Text form, for the helper files. */
 const GUARD = new RegExp(`\\b${GUARD_NAME.source.slice(1, -1)}\\s*\\(`);
 

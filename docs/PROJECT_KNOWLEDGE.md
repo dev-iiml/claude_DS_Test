@@ -838,6 +838,19 @@ No real marketplace settlement is required.
 - not denominated as stored rupee value;
 - no P2P transfer.
 
+How points are earned (rules `pts-0.2.0`, decided with Aman, October 2026):
+
+- membership milestones (welcome, verified mobile, completed profile details, each membership anniversary);
+- Creator Status tiers;
+- verified brand work by **count** (1, 5, 10, 25 verified records; 1, 5, 10 confirmed payments) — never by amount,
+  and the same points whichever way a payment was confirmed;
+- taking part in an approved Access opportunity (marked completed by the partnerships desk);
+- staff-set tasks from a four-eyes-approved catalogue (fixed points, guardrailed wording, no self-completion).
+
+Never for giving, renewing or keeping a consent, sharing data, credit actions, or any rupee amount. Points earned are
+kept when a consent is withdrawn; they are taken back only when an approved four-eyes reversal removes the evidence
+(a `reverse` ledger entry; pending holds are cancelled first and the balance never goes below zero).
+
 ---
 
 ## 19. Build vs Buy
@@ -1296,6 +1309,14 @@ Claude should work in small, reviewable stages.
 ### Stage 16 — QA / security pass
 
 ### Stage 17 — deployment
+
+### Stage 18 — Verified brand work
+- creator brand-collaboration records with documents (invoices, POs, agreements, remittance advice)
+- private document storage + malware scan behind provider interfaces
+- reviewer console with four-eyes on flags, reversals and directory merges
+- canonical brand directory and industries
+- optional payment confirmation (agency, remittance advice, or an in-`fin` check of already-shared AA data)
+- brand portfolio features in the Professional Graph (never an underwriting input until validated)
 
 Do not jump directly to Stage 13 before building Stages 02–12 correctly.
 

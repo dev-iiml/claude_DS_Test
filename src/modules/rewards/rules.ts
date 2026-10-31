@@ -140,7 +140,8 @@ export function membershipYears(memberSince: Date, now: Date): number {
  */
 export function earnKeyFor(rule: EarnRule, ref?: string | number): string {
   const repeat = EARN_RULES[rule].repeat;
-  if (repeat === "once") return rule;
+  // A once-only milestone that was reversed can be earned again under a new key (`brand_work_verified_5:1`).
+  if (repeat === "once") return ref === undefined || ref === "" || ref === 0 ? rule : `${rule}:${ref}`;
   if (ref === undefined || ref === "") throw new Error(`${rule} needs a reference`);
   return `${rule}:${ref}`;
 }

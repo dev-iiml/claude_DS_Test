@@ -15,7 +15,9 @@ import type { ConsentKey, ConsentSource, ErasureScope, WithdrawalReason } from "
 import { pauseMembership, resumeMembership } from "@/modules/creator-profile/membership";
 import { closeOpenApplications } from "@/modules/financial-eligibility/application-service";
 import { cancelPendingAccessRequests, eraseAccessRequests } from "@/modules/access";
-import { eraseFinancialFunnelEvents, eraseOptionalEvents } from "@/modules/analytics/recorder";
+import { eraseBrandWorkEvents, eraseFinancialFunnelEvents, eraseOptionalEvents } from "@/modules/analytics/recorder";
+import { eraseBrandWorkRecords } from "@/modules/brand-work/erasure";
+import { resetBankMatchedPayments } from "@/modules/brand-work/payment-service";
 import { eraseFinancialInputs } from "@/modules/financial-eligibility/erasure";
 import { eraseUnderwritingRuns } from "@/modules/underwriting/erasure";
 import { withdrawUnsentProposals } from "@/modules/lending/proposal-service";
@@ -103,6 +105,13 @@ async function erase(
       return eraseOptionalEvents(tx, { userId: ids.userId, before });
     case "financial_funnel_events":
       return eraseFinancialFunnelEvents(tx, { userId: ids.userId, before });
+    case "brand_work_records":
+      return {
+        ...(await eraseBrandWorkRecords(tx, { userId: ids.userId, before })),
+        ...(await eraseBrandWorkEvents(tx, { userId: ids.userId, before })),
+      };
+    case "brand_payment_matches":
+      return resetBankMatchedPayments(tx, { userId: ids.userId });
   }
 }
 
@@ -236,10 +245,10 @@ export async function withdrawPurpose(
     return { withdrawalId, effects, erasures, profile };
   });
 
-  // Signals computed from withdrawn social data are rebuilt from what remains.
+  // Signals computed from withdrawn social data or brand work are rebuilt from what remains.
   let graphRecomputed = false;
   if (
-    policy.key === CONSENT_KEYS.socialAccountConnection &&
+    (policy.key === CONSENT_KEYS.socialAccountConnection || policy.key === CONSENT_KEYS.brandWorkRecords) &&
     result.profile?.status === "completed" &&
     (await hasValidConsent(deps.db, input.userId, CONSENT_KEYS.professionalAnalytics, now))
   ) {

@@ -69,6 +69,25 @@ export const providerConfigs = ops
   )
   .enableRLS();
 
+/**
+ * Control-plane feature switches (Stage 18), e.g. `brand_payment_match`.
+ * Changed only through `proposeChange` (`set_feature`): on needs a second ops
+ * admin, off applies at once. No creator data.
+ */
+export const featureSwitches = ops
+  .table(
+    "feature_switches",
+    {
+      key: text("key").primaryKey(),
+      enabled: boolean("enabled").notNull().default(false),
+      version: integer("version").notNull().default(1),
+      updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+      updatedAt: updatedAt(),
+    },
+    (t) => [check("feature_switches_key_format", sql`${t.key} ~ '^[a-z][a-z0-9_]{1,39}$'`)],
+  )
+  .enableRLS();
+
 export const providerRoutes = ops
   .table(
     "provider_routes",

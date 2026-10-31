@@ -31,6 +31,7 @@ describe("deterministic seed", () => {
       .groupBy(users.role);
     expect(Object.fromEntries(roles.map((r) => [r.role, r.n]))).toEqual({
       creator: 5,
+      brand_work_reviewer: 2,
       risk_admin: 2,
       ops_admin: 2,
       partnerships_admin: 1,

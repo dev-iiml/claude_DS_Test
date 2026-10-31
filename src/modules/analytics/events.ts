@@ -209,6 +209,35 @@ export const ANALYTICS_EVENTS = {
     props: z.object({ kind, min_tier: tier }).strict(),
     description: "The creator requested an Access opportunity.",
   }),
+  brand_work_record_created: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    props: none,
+    description: "The creator added a brand-work record (no brand, amount or document details).",
+  }),
+  brand_work_submitted: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    props: none,
+    description: "The creator submitted a brand-work record for verification.",
+  }),
+  brand_work_verified: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    props: none,
+    description: "A CreatorCo reviewer verified one of the creator's brand-work records.",
+  }),
+  brand_work_payment_confirmed: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    // No method: whether a creator used shared bank data must not outlive that consent in analytics.
+    props: none,
+    description: "A brand payment was confirmed for a verified record (no method, amount or month).",
+  }),
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
@@ -277,4 +306,20 @@ export const FUNNEL_STEPS: readonly { event: AnalyticsEvent; label: string }[] =
   { event: "offer_generated", label: "Offer shown" },
   { event: "simulated_offer_accepted", label: "Offer accepted (simulated)" },
   { event: "access_requested", label: "Access requested" },
+];
+
+/** Erased with the `brand_work_records` consent (Stage 18). */
+export const BRAND_WORK_EVENTS = [
+  "brand_work_record_created",
+  "brand_work_submitted",
+  "brand_work_verified",
+  "brand_work_payment_confirmed",
+] as const satisfies readonly AnalyticsEvent[];
+
+/** Verified brand work funnel (Stage 18): created → submitted → verified → payment confirmed. */
+export const BRAND_WORK_FUNNEL: readonly { event: AnalyticsEvent; label: string }[] = [
+  { event: "brand_work_record_created", label: "Records added" },
+  { event: "brand_work_submitted", label: "Submitted" },
+  { event: "brand_work_verified", label: "Verified" },
+  { event: "brand_work_payment_confirmed", label: "Payment confirmed" },
 ];

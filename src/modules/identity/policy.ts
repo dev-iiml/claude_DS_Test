@@ -1,4 +1,4 @@
-import { ADMIN_ROLES, ANALYTICS_ROLES, OPS_ROLES, PARTNERSHIPS_ROLES, type UserRole } from "./domain";
+import { ADMIN_ROLES, ANALYTICS_ROLES, BRAND_WORK_ROLES, OPS_ROLES, PARTNERSHIPS_ROLES, type UserRole } from "./domain";
 
 /**
  * Pure authorisation and routing policy. Kept free of framework and database
@@ -18,6 +18,11 @@ export function canAccessOps(role: UserRole): boolean {
 
 export function canAccessPartnerships(role: UserRole): boolean {
   return (PARTNERSHIPS_ROLES as readonly UserRole[]).includes(role);
+}
+
+/** Verified brand work review (`/brand-work`): brand-work reviewers and super admins. */
+export function canAccessBrandWork(role: UserRole): boolean {
+  return (BRAND_WORK_ROLES as readonly UserRole[]).includes(role);
 }
 
 /** Aggregate analytics (`/insights`): analysts, risk admins and super admins. */
@@ -56,6 +61,7 @@ export function homePathFor(subject: RoutingSubject): string {
   if (isAdminRole(subject.role)) return "/admin";
   if (canAccessOps(subject.role)) return "/ops";
   if (canAccessPartnerships(subject.role)) return "/partnerships";
+  if (canAccessBrandWork(subject.role)) return "/brand-work";
   if (canAccessInsights(subject.role)) return "/insights";
   return subject.onboardingComplete ? "/dashboard" : "/onboarding";
 }
@@ -76,6 +82,7 @@ export function safeNextPath(next: string | null | undefined, subject: RoutingSu
   if (path === "/insights" || path.startsWith("/insights/")) return canAccessInsights(subject.role) ? next : null;
   if (path === "/partnerships" || path.startsWith("/partnerships/"))
     return canAccessPartnerships(subject.role) ? next : null;
+  if (path === "/brand-work" || path.startsWith("/brand-work/")) return canAccessBrandWork(subject.role) ? next : null;
   if (path.startsWith("/onboarding")) return canAccessCreatorArea(subject.role) ? next : null;
   if (MEMBER_AREAS.some((area) => path === area || path.startsWith(`${area}/`))) {
     if (!canAccessCreatorArea(subject.role)) return null;

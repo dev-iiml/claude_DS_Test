@@ -11,7 +11,14 @@ export type CircuitState = (typeof CIRCUIT_STATES)[number];
 export const HEALTH_STATUSES = ["unknown", "ok", "degraded", "down"] as const;
 export type HealthStatus = (typeof HEALTH_STATUSES)[number];
 
-export const CHANGE_ACTIONS = ["create_config", "update_config", "set_route", "pause_kind", "resume_kind"] as const;
+export const CHANGE_ACTIONS = [
+  "create_config",
+  "update_config",
+  "set_route",
+  "pause_kind",
+  "resume_kind",
+  "set_feature",
+] as const;
 export type ChangeAction = (typeof CHANGE_ACTIONS)[number];
 
 export const CHANGE_STATUSES = ["pending", "applied", "rejected", "cancelled", "expired", "superseded"] as const;
@@ -48,7 +55,27 @@ export const PROVIDER_KIND_LABELS: Record<ProviderKind, string> = {
   bureau: "Credit bureau",
   financial_data: "Account Aggregator",
   lender: "Partner lender",
+  document_storage: "Document storage",
+  file_scan: "File scanning",
 };
+
+// ── Feature switches ────────────────────────────────────────────────────────
+
+/**
+ * Control-plane feature switches (Stage 18). Each belongs to the provider kind
+ * whose data it uses (the change request's `kind`). Turning one ON needs a
+ * second ops admin; turning one OFF applies at once (like a kill switch).
+ */
+export const FEATURE_SWITCHES = {
+  brand_payment_match: {
+    kind: "financial_data",
+    label: "Brand payment matching",
+    description:
+      "Lets a creator who chose it check Account Aggregator data CreatorCo already holds under an active eligibility check for a matching credit. Only seen / not seen and the month leave the financial domain. Turn on only after the partner lender / FIU confirms the AA consent artefact's purpose covers this use.",
+  },
+} as const satisfies Record<string, { kind: ProviderKind; label: string; description: string }>;
+export type FeatureSwitchKey = keyof typeof FEATURE_SWITCHES;
+export const FEATURE_SWITCH_KEYS = Object.keys(FEATURE_SWITCHES) as FeatureSwitchKey[];
 
 // ── Circuit breaker ─────────────────────────────────────────────────────────
 
@@ -171,6 +198,8 @@ export interface ApprovalContext {
   currentMode?: ProviderMode;
   /** Whether the config is currently a route's primary or fallback. */
   configIsRouted?: boolean;
+  /** set_feature: turning the switch on. */
+  enabling?: boolean;
 }
 
 /**
@@ -184,6 +213,8 @@ export function requiresApproval(ctx: ApprovalContext): boolean {
   switch (ctx.action) {
     case "pause_kind":
       return false;
+    case "set_feature":
+      return Boolean(ctx.enabling);
     case "resume_kind":
     case "set_route":
       return true;

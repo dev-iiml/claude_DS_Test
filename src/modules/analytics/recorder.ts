@@ -9,6 +9,7 @@ import { CONSENT_KEYS, findValidReceipt, hasValidConsent } from "@/modules/conse
 
 import {
   ANALYTICS_EVENTS,
+  BRAND_WORK_EVENTS,
   FINANCIAL_FUNNEL_EVENTS,
   parseEventProps,
   type AnalyticsEvent,
@@ -168,6 +169,13 @@ export async function eraseOptionalEvents(tx: DbExecutor, input: { userId: strin
  * Erases a creator's eligibility and offer funnel events — part of the
  * `financial_eligibility` withdrawal. Must run inside a transaction.
  */
+/** Brand-work funnel events go with the brand-work consent. */
+export async function eraseBrandWorkEvents(tx: DbExecutor, input: { userId: string; before?: Date }) {
+  return {
+    analytics_events: await eraseEvents(tx, input, inArray(analyticsEvents.event, [...BRAND_WORK_EVENTS])),
+  };
+}
+
 export async function eraseFinancialFunnelEvents(tx: DbExecutor, input: { userId: string; before?: Date }) {
   return {
     analytics_events: await eraseEvents(tx, input, inArray(analyticsEvents.event, [...FINANCIAL_FUNNEL_EVENTS])),

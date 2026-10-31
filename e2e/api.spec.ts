@@ -115,7 +115,7 @@ test.describe("API v1", () => {
 
     const graph = await (await request.get("/api/v1/professional-graph", { headers: bearer(token) })).json();
     expect(graph.enabled).toBe(true);
-    expect(graph.graph.features).toHaveLength(12);
+    expect(graph.graph.features).toHaveLength(26); // 12 social + 14 brand-work (Stage 18)
 
     const { accountId } = (await done.json()) as { accountId: string };
     expect((await request.delete(`/api/v1/social/accounts/${accountId}`, { headers: bearer(token) })).status()).toBe(
@@ -139,6 +139,8 @@ test.describe("API v1", () => {
       "lender_handoff",
       "brand_opportunities",
       "product_analytics",
+      "brand_work_records",
+      "brand_payment_match",
     ]);
     const analytics = centre.purposes.find((p: { key: string }) => p.key === "professional_analytics");
     const granted = await request.post("/api/v1/consents/professional_analytics", {
