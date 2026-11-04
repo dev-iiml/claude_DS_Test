@@ -220,6 +220,38 @@ export const CONSENT_DEFINITION_SEEDS = [
     ].join("\n\n"),
     activeFrom: new Date("2026-10-31T00:00:00.000Z"),
   },
+  {
+    id: "00000000-0000-4000-8000-00000000c015",
+    key: CONSENT_KEYS.publicPassport,
+    version: 1,
+    title: "Public Creator Passport",
+    purpose:
+      "To publish a public page about your professional work at a link you choose, showing only the fields you set to public.",
+    body: [
+      "CreatorCo will publish a page at creatorco/p/<your link> that anyone with the link can open. It shows only the fields you set to public. Fields that can be public: your display name, photo and short bio; your connected and verified handles; follower bands per platform (never exact counts); your categories, languages and city; how many years you've been creating; verification badges (yes or no); the industries you've worked with (not brand names); and your Creator Status.",
+      "Brand names, brand-work numbers, audience signals and deal-size bands are never public. You decide separately, with the Passport unlock consent, whether anyone can unlock them.",
+      "You control every field and can change them, change your link or unpublish at any time. Search engines are asked not to index the page unless you turn indexing on (it's off by default).",
+      "The page is professional evidence only. It never shows anything about credit, eligibility, offers, bank data or Creator Points, and it is not a rating or endorsement by CreatorCo.",
+      "If you withdraw this consent, the page stops working straight away and your bio and photo are deleted.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-11-04T00:00:00.000Z"),
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000c016",
+    key: CONSENT_KEYS.passportUnlock,
+    version: 1,
+    title: "Unlock your Passport details",
+    purpose:
+      "To show the detailed tier of your public Passport to people you give an access code to and, if you choose, to verified brand and agency organisations on CreatorCo.",
+    body: [
+      "You choose who can unlock: only people you give an access code to (the default), or code holders and verified brand and agency organisations on CreatorCo. Organisations are verified by CreatorCo staff (company registration and work email) before their members can unlock anything.",
+      "Unlockers see the fields you set to unlocked: brand names and approved logos with collaboration counts, brand-work numbers, audience signals and, only if you turn it on, deal-size bands. Never exact amounts, never your private brand work by name, never anything about credit, eligibility, offers, bank data or Creator Points.",
+      "You can also choose to be discoverable by verified organisations in a search (off by default).",
+      "You can see who unlocked your Passport: the code label and any name they gave (unverified), or the verified organisation's name, with the day and hour. You can revoke any code at any time.",
+      "If you withdraw this consent, all your codes are revoked and organisations lose access straight away. Your access log is kept for your own record until you close your account.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-11-04T00:00:00.000Z"),
+  },
 ] as const;
 
 /** The newest seeded version of a purpose (what a creator is asked to agree to now). */

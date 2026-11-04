@@ -110,6 +110,58 @@ export async function signUpCreator(
   }
 }
 
+/**
+ * Creates a credential identity + `brand_member` user (Stage 19). `onCreated` runs in the same transaction (the
+ * organisation and membership), so a failure leaves no account behind. Never used for staff or creators.
+ */
+export async function signUpBrandMember(
+  deps: AuthDeps,
+  input: {
+    email: string;
+    password: string;
+    client?: SessionClient;
+    onCreated: (tx: Parameters<Parameters<Database["transaction"]>[0]>[0], userId: string) => Promise<void>;
+  },
+): Promise<SignUpResult> {
+  const email = normaliseEmail(input.email);
+  const passwordHash = await hashPassword(input.password);
+  try {
+    const user = await deps.db.transaction(async (tx) => {
+      const [identity] = await tx
+        .insert(authIdentities)
+        .values({ email, passwordHash })
+        .returning({ id: authIdentities.id });
+      if (!identity) throw new Error("identity insert returned no row");
+      const [created] = await tx
+        .insert(users)
+        .values({ authUserId: identity.id, email, role: "brand_member", status: "active" })
+        .returning();
+      if (!created) throw new Error("user insert returned no row");
+      await recordAuditEvent(tx, {
+        actorType: "user",
+        actorId: created.id,
+        eventType: "auth.signed_up",
+        entityType: "user",
+        entityId: created.id,
+        metadata: { role: created.role },
+      });
+      await input.onCreated(tx, created.id);
+      return created;
+    });
+    const session = await issueSession(deps, user.authUserId, input.client ?? "web");
+    return {
+      ok: true,
+      session,
+      user: { userId: user.id, authUserId: user.authUserId, email: user.email, role: user.role, status: user.status },
+    };
+  } catch (error) {
+    if (isUniqueViolation(error, "identities_email_key") || isUniqueViolation(error, "users_email_key")) {
+      return { ok: false, reason: "email_taken" };
+    }
+    throw error;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Sign in
 // ---------------------------------------------------------------------------

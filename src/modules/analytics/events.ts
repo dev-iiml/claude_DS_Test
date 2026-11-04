@@ -40,6 +40,10 @@ interface EventDefinition<S extends z.ZodType = z.ZodType> {
   once?: boolean;
   /** May be sent by a client (web beacon / native app) rather than only by the server. */
   clientEmittable?: boolean;
+  /** Anonymous, but recorded by the server only — never accepted from a client (Stage 19). */
+  serverOnly?: boolean;
+  /** Whose events these are (`user` subject). Default: creators. Stage 19 adds brand-organisation members. */
+  audience?: "creator" | "brand_member";
   props: S;
   description: string;
 }
@@ -238,6 +242,68 @@ export const ANALYTICS_EVENTS = {
     props: none,
     description: "A brand payment was confirmed for a verified record (no method, amount or month).",
   }),
+  // Stage 19 — Verified Creator Passport. No slugs, names, organisation names or codes, ever.
+  passport_published: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    props: none,
+    description: "The creator published their public Passport.",
+  }),
+  passport_unpublished: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    props: none,
+    description: "The creator's public Passport was unpublished (by them or by withdrawing the consent).",
+  }),
+  passport_viewed: define({
+    version: 1,
+    tier: "essential",
+    subject: "anonymous",
+    serverOnly: true,
+    props: z.object({ tier: z.enum(["locked", "unlocked"]), via: z.enum(["direct", "code", "brand"]) }).strict(),
+    description: "A public Passport page was viewed (no viewer or passport identifier).",
+  }),
+  passport_code_created: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    props: z.object({ scoped: z.boolean() }).strict(),
+    description: "The creator created a Passport access code (scoped: for one verified organisation).",
+  }),
+  passport_unlock_attempted: define({
+    version: 1,
+    tier: "essential",
+    subject: "anonymous",
+    serverOnly: true,
+    props: z.object({ result: z.enum(["success", "wrong", "locked_out", "expired"]) }).strict(),
+    description: "Someone entered a Passport access code (no viewer or passport identifier).",
+  }),
+  brand_org_signed_up: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    audience: "brand_member",
+    props: z.object({ org_type: z.enum(["brand", "agency"]) }).strict(),
+    description: "A brand or agency organisation signed up (pending verification).",
+  }),
+  brand_org_verified: define({
+    version: 1,
+    tier: "essential",
+    subject: "anonymous",
+    serverOnly: true,
+    props: z.object({ org_type: z.enum(["brand", "agency"]) }).strict(),
+    description: "Two partnerships admins verified an organisation (no identifier).",
+  }),
+  brand_discovery_searched: define({
+    version: 1,
+    tier: "essential",
+    subject: "user",
+    audience: "brand_member",
+    props: z.object({ filtered: z.boolean() }).strict(),
+    description: "A verified organisation member searched discoverable creators (no filters' values).",
+  }),
 } as const;
 
 export type AnalyticsEvent = keyof typeof ANALYTICS_EVENTS;
@@ -273,7 +339,9 @@ export type AnalyticsTier = (typeof ANALYTICS_TIERS)[number];
 
 /** Events a client may send (anonymous views via the web beacon; consented views from native apps). */
 export const CLIENT_EVENTS = ANALYTICS_EVENT_NAMES.filter(
-  (e) => ANALYTICS_EVENTS[e].clientEmittable || ANALYTICS_EVENTS[e].subject === "anonymous",
+  (e) =>
+    ANALYTICS_EVENTS[e].clientEmittable ||
+    (ANALYTICS_EVENTS[e].subject === "anonymous" && !(ANALYTICS_EVENTS[e] as EventDefinition).serverOnly),
 );
 
 /** Keys that may never appear in event properties, whatever the schema says (defence in depth). */

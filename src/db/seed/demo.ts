@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { hashPassword } from "@/modules/identity/auth/password";
 import { hashApiKey } from "@/modules/partners/credentials";
 import { syncMilestonePoints } from "@/modules/rewards/ledger-service";
-import { seedBrandWorkDemo } from "./brand-work-demo";
+import { brandWorkDemoIds, seedBrandWorkDemo } from "./brand-work-demo";
+import { seedPassportDemo } from "./passport-demo";
 import { gstinCheckCharacter } from "@/modules/creator-profile/gstin";
 import { CONSENT_DEFINITION_SEEDS } from "@/modules/consent/definitions";
 import { SELF_DECLARED_PROVIDER } from "@/modules/social-data/domain";
@@ -173,6 +174,8 @@ export const DEMO_STAFF: { n: number; email: string; role: UserRole }[] = [
   { n: 103, email: "ops.approver@staff.creatorco.test", role: "ops_admin" },
   // Brand partnerships desk (Stage 14): reviews Access requests and manages opportunities.
   { n: 105, email: "partnerships.admin@staff.creatorco.test", role: "partnerships_admin" },
+  // A second partnerships admin (Stage 19): brand organisations, claims, logos and takedowns need four eyes.
+  { n: 109, email: "partnerships.approver@staff.creatorco.test", role: "partnerships_admin" },
   // Read-only aggregate analytics (Stage 15): /insights only.
   { n: 106, email: "analyst@staff.creatorco.test", role: "analyst" },
   // Verified brand work reviewers (Stage 18) — two, so flagged records, reversals and merges can use four eyes.
@@ -330,6 +333,12 @@ export async function seedDemoData(db: Database, password: string) {
       creatorId: demoIds.profile(2),
       reviewerA: demoIds.user(107),
       reviewerB: demoIds.user(108),
+    });
+    await seedPassportDemo(tx, {
+      passwordHash,
+      verifier: demoIds.user(105),
+      approver: demoIds.user(109),
+      directoryId: brandWorkDemoIds.directory(1),
     });
 
     if (createdProfiles > 0) {

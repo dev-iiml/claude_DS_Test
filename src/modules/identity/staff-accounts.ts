@@ -17,7 +17,11 @@ import { USER_ROLES, type UserRole } from "./domain";
  * this never creates a creator. Staff passwords must meet the policy and be at
  * least 14 characters.
  */
-export const STAFF_ROLES = USER_ROLES.filter((r) => r !== "creator") as Exclude<UserRole, "creator">[];
+/** Staff roles the CLI can create. Creators and brand members sign up themselves. */
+export const STAFF_ROLES = USER_ROLES.filter((r) => r !== "creator" && r !== "brand_member") as Exclude<
+  UserRole,
+  "creator" | "brand_member"
+>[];
 export type StaffRole = (typeof STAFF_ROLES)[number];
 export const STAFF_PASSWORD_MIN_LENGTH = 14;
 

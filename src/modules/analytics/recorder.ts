@@ -92,7 +92,8 @@ export async function recordEvent<E extends AnalyticsEvent>(
           .select({ role: users.role, email: users.email })
           .from(users)
           .where(eq(users.id, input.userId!));
-        if (!user || user.role !== "creator") throw new Skip("staff");
+        const audience = "audience" in def && def.audience ? def.audience : "creator";
+        if (!user || user.role !== audience) throw new Skip("staff");
         const email = user.email.toLowerCase();
         internal = internalSuffixes().some((s) => email.endsWith(s));
         if (def.tier === "optional") {

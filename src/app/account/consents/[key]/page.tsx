@@ -62,6 +62,20 @@ export default async function PurposePage({ params, searchParams }: PageProps<"/
           <Alert tone="neutral">This purpose isn&rsquo;t in use right now.</Alert>
         )}
 
+        {policy.key === "public_passport" || policy.key === "passport_unlock" ? (
+          <ListGroup id="manage" label="Manage">
+            <ListRow
+              href="/passport/sharing"
+              label="Passport sharing"
+              detail={
+                policy.key === "public_passport"
+                  ? "Publish your page, choose your link and what everyone sees."
+                  : "Choose who can unlock, and manage access codes and the access log."
+              }
+            />
+          </ListGroup>
+        ) : null}
+
         {view.deferredErasures.length ? (
           <Alert tone="info" title="Erasure on hold">
             Some data for this purpose is no longer used and will be erased once a financial relationship with a partner

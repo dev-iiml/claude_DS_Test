@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PROVIDER_KINDS, PROVIDER_MODES } from "@/providers/types";
 
-import { CONFIG_KEY_PATTERN, FEATURE_SWITCH_KEYS, SECRET_REF_PATTERN } from "./domain";
+import { CONFIG_KEY_PATTERN, FEATURE_SWITCH_KEYS, PLATFORM_LIMIT_KEYS, SECRET_REF_PATTERN } from "./domain";
 
 /** Inputs for control-plane changes. Adapter-specific settings are validated by the adapter's schema. */
 
@@ -57,6 +57,11 @@ export const changeInputSchema = z.discriminatedUnion("action", [
     action: z.literal("set_feature"),
     feature: z.enum(FEATURE_SWITCH_KEYS as [string, ...string[]]),
     enabled: z.boolean(),
+  }),
+  z.object({
+    action: z.literal("set_limit"),
+    limit: z.enum(PLATFORM_LIMIT_KEYS as [string, ...string[]]),
+    value: z.coerce.number().int().min(0).max(100000),
   }),
 ]);
 export type ChangeInput = z.infer<typeof changeInputSchema>;

@@ -34,7 +34,7 @@ describe("deterministic seed", () => {
       brand_work_reviewer: 2,
       risk_admin: 2,
       ops_admin: 2,
-      partnerships_admin: 1,
+      partnerships_admin: 2,
       analyst: 1,
     });
 

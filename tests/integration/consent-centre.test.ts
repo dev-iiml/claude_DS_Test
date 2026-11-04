@@ -138,6 +138,8 @@ describe("consent centre read model", () => {
       ["product_analytics", "never"],
       ["brand_work_records", "never"],
       ["brand_payment_match", "never"],
+      ["public_passport", "never"],
+      ["passport_unlock", "never"],
     ]);
     const profile = centre[0]!;
     expect(profile.current).toMatchObject({ version: 1 });

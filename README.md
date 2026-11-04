@@ -51,18 +51,20 @@ run when `APP_ENV` is staging or production.
 
 The password for every demo account is `SEED_DEMO_PASSWORD`, which defaults to `CreatorCo-demo-2026`.
 
-| Email                                     | Role               | State                                   |
-| ----------------------------------------- | ------------------ | --------------------------------------- |
-| `aarohi.menon@creators.creatorco.test`    | creator            | completed · beauty · not GST registered |
-| `kabir.sethi@creators.creatorco.test`     | creator            | completed · travel · GST registered     |
-| `ishita.rao@creators.creatorco.test`      | creator            | completed · food · GST unknown → review |
-| `dev.malhotra@creators.creatorco.test`    | creator            | completed · tech · not GST registered   |
-| `naina.kapoor@creators.creatorco.test`    | creator            | draft, resumes at Business status       |
-| `risk.admin@staff.creatorco.test`         | risk_admin         | risk console (`/admin`)                 |
-| `risk.approver@staff.creatorco.test`      | risk_admin         | second approver for lender policy       |
-| `ops.admin@staff.creatorco.test`          | ops_admin          | integration control plane (`/ops`)      |
-| `ops.approver@staff.creatorco.test`       | ops_admin          | second approver for `/ops` changes      |
-| `partnerships.admin@staff.creatorco.test` | partnerships_admin | Access requests (`/partnerships`)       |
+| Email                                        | Role               | State                                   |
+| -------------------------------------------- | ------------------ | --------------------------------------- |
+| `aarohi.menon@creators.creatorco.test`       | creator            | completed · beauty · not GST registered |
+| `kabir.sethi@creators.creatorco.test`        | creator            | completed · travel · GST registered     |
+| `ishita.rao@creators.creatorco.test`         | creator            | completed · food · GST unknown → review |
+| `dev.malhotra@creators.creatorco.test`       | creator            | completed · tech · not GST registered   |
+| `naina.kapoor@creators.creatorco.test`       | creator            | draft, resumes at Business status       |
+| `risk.admin@staff.creatorco.test`            | risk_admin         | risk console (`/admin`)                 |
+| `risk.approver@staff.creatorco.test`         | risk_admin         | second approver for lender policy       |
+| `ops.admin@staff.creatorco.test`             | ops_admin          | integration control plane (`/ops`)      |
+| `ops.approver@staff.creatorco.test`          | ops_admin          | second approver for `/ops` changes      |
+| `partnerships.admin@staff.creatorco.test`    | partnerships_admin | Access requests (`/partnerships`)       |
+| `partnerships.approver@staff.creatorco.test` | partnerships_admin | second approver: brand orgs, takedowns  |
+| `owner@wanderlane.test`                      | brand_member       | fictional verified brand (`/brands`)    |
 
 All seed identities are invented. Emails use the reserved `.test` TLD and handles end in `.demo`. The seeded GSTIN uses
 an impossible PAN holder-type character, so it cannot match a real registration.

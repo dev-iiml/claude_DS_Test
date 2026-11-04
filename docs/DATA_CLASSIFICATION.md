@@ -64,6 +64,7 @@ secrets (environment only; the database holds env var names).
 | `iam.identities` | restricted | identity | yes | email, password hash (scrypt) | kept while the account exists (account closure: open item) |
 | `iam.sessions` | restricted | identity | yes | session token hash, client, expiry | purged 180 days after the session ends (purge_auth_records) |
 | `ops.partner_api_keys` | restricted | control plane | no | API key SHA-256 hashes and prefixes | no personal data |
+| `public.brand_orgs` | restricted | brand network | no | brand/agency organisations: legal name, CIN/LLPIN, website, email domain, keyed GSTIN fingerprint + state code (never a GSTIN), registry lookup, review state | no personal data |
 | `public.brand_work_documents` | restricted | creator professional | yes | document metadata only (kind, opaque storage key, SHA-256, size, scan verdict); the bytes — which can contain PAN, GSTIN, bank details — live only in document storage | erased on withdrawal: brand_work_records |
 | `public.creator_gst_registrations` | restricted | creator professional | yes | GSTIN (embeds PAN), registered names, state | kept while the account exists (account closure: open item) |
 | `public.creator_profiles` | restricted | creator professional | yes | legal/display name, location, legal form, GST status, GSTIN | kept while the account exists (account closure: open item); withdrawing Creator Profile pauses membership |
@@ -75,6 +76,9 @@ secrets (environment only; the database holds env var names).
 | `ops.rate_limit_counters` | confidential | control plane | yes | keyed hash of IP/user/partner, window counts | purged after 48 hours (rate_limit_purge) |
 | `public.access_requests` | confidential | access | yes | requests, notes, points held, completion date | erased on withdrawal: access_requests |
 | `public.audit_events` | confidential | audit | yes | actor and entity ids, event type, small scalar metadata | append-only audit trail (period: counsel/RE) |
+| `public.brand_email_challenges` | confidential | brand network | yes | work-email one-time codes for brand sign-up (hash only) | purged after a day |
+| `public.brand_org_invites` | confidential | brand network | yes | member invitations: work email, hashed link token, expiry | purged 7 days after expiry |
+| `public.brand_org_members` | confidential | brand network | yes | organisation members: user, role, terms accepted | kept while the account exists (account closure: open item) |
 | `public.brand_work_records` | confidential | creator professional | yes | brand collaborations: brand, billed party, platforms, deliverables, dates, invoice amount, review state | erased on withdrawal: brand_work_records, brand_payment_matches |
 | `public.brand_work_reversals` | confidential | creator professional | yes | four-eyes reversal proposals and decisions | erased on withdrawal: brand_work_records |
 | `public.brand_work_reviews` | confidential | creator professional | yes | append-only reviewer actions (codes, short staff notes checked for identifiers) | erased on withdrawal: brand_work_records |
@@ -87,17 +91,21 @@ secrets (environment only; the database holds env var names).
 | `public.creator_social_accounts` | confidential | creator professional | yes | platform, handle, provider account id | erased on withdrawal: social_account_data |
 | `public.creator_social_snapshots` | confidential | creator professional | yes | follower, view, reach and engagement figures | erased on withdrawal: social_account_data |
 | `public.creator_status_runs` | confidential | creator professional | yes | Creator Status tier and criteria | erased on withdrawal: professional_graph |
+| `public.passport_access_codes` | confidential | creator professional | yes | creator-issued access codes: SHA-256 hash, last 4 characters, label, expiry, uses | revoked when the unlock consent is withdrawn; kept with the passport |
+| `public.passport_access_log` | confidential | creator professional | yes | who unlocked a passport: code label or verified organisation, unverified name/company, IP pseudonym, India day and hour | kept for the creator's own record until account erasure |
 | `public.points_task_completions` | confidential | creator professional | yes | which creator completed which task, when, and a short staff note (no identifiers) | kept while the account exists (account closure: open item) |
 | `public.professional_graph_runs` | confidential | creator professional | yes | graph run metadata | erased on withdrawal: professional_graph |
+| `public.public_passports` | confidential | creator professional | yes | the creator's sharing choices: link, field tiers, bio, photo reference, audience and toggles | erased on withdrawal: public_passport_content; settings (no bio or photo) kept unpublished so the creator can publish again |
 | `public.social_connection_requests` | confidential | creator professional | yes | hashed OAuth state, platform | erased on withdrawal: social_account_data |
 | `analytics.daily_counts` | internal | analytics | no | daily event and subject counts (no ids) | no personal data |
-| `ops.feature_switches` | internal | control plane | no | feature switches (e.g. brand payment matching), maker-checker | no personal data |
+| `ops.feature_switches` | internal | control plane | no | feature switches (e.g. brand payment matching, public passports), maker-checker | no personal data |
 | `ops.integration_change_requests` | internal | control plane | no | maker-checker changes (staff ids) | no personal data |
 | `ops.jobs` | internal | control plane | no | job queue (ids and counts only) | no personal data |
 | `ops.partner_events` | internal | control plane | no | event feed (ids only) | no personal data |
 | `ops.partner_webhook_deliveries` | internal | control plane | no | delivery attempts (ids, HTTP status) | no personal data |
 | `ops.partner_webhook_endpoints` | internal | control plane | no | webhook URLs, secret versions (no secrets) | no personal data |
 | `ops.partners` | internal | control plane | no | partner lenders and environments | no personal data |
+| `ops.platform_limits` | internal | control plane | no | numeric limits (e.g. daily passport unlocks per organisation), maker-checker | no personal data |
 | `ops.provider_call_stats` | internal | control plane | no | call counts and durations | no personal data |
 | `ops.provider_configs` | internal | control plane | no | adapter settings, env var names (no secrets) | no personal data |
 | `ops.provider_routes` | internal | control plane | no | routing, kill switch | no personal data |
@@ -106,10 +114,15 @@ secrets (environment only; the database holds env var names).
 | `public.brand_aliases` | internal | reference | no | normalised brand-name aliases | kept as reference data |
 | `public.brand_directory` | internal | reference | no | canonical brand names and industries (business data) | kept as reference data; merged, never deleted |
 | `public.brand_directory_merges` | internal | reference | no | four-eyes merges of duplicate brands | kept as an audit of reference data |
+| `public.brand_org_claims` | internal | brand network | no | brand directory claims and approved logos (opaque storage key), four-eyes review state | no personal data |
+| `public.brand_org_reviews` | internal | brand network | no | append-only staff decisions on organisations, claims and logos (reason codes) | no personal data |
 | `public.creator_notices` | internal | creator professional | yes | neutral in-app notices (kind and a date), refreshed daily | erased on withdrawal: brand_work_records; purged replaced by the daily reminder job |
 | `public.data_erasure_requests` | internal | consent | yes | erasure scope, status, hold reasons, counts | proof of erasure |
+| `public.passport_reports` | internal | creator professional | no | 'report this page' tickets: passport id and a reason code | no personal data |
+| `public.passport_takedowns` | internal | creator professional | no | staff takedowns of a passport (four eyes to make permanent) | no personal data |
 | `public.points_tasks` | internal | creator professional | no | staff-defined points tasks (title, description, points, four-eyes status) | kept while useful; retired, never deleted (completions point to them) |
 | `public.provider_requests` | internal | audit | yes | provider call metadata (no payloads) | audit of third-party data access (period: counsel/RE) |
+| `public.public_passport_slug_redirects` | internal | creator professional | no | old passport links redirecting for 30 days | erased on withdrawal: public_passport_content; purged after 30 days |
 | `public.access_opportunities` | public | reference | no | sample opportunities | no personal data |
 | `public.brand_industries` | public | reference | no | brand industry vocabulary | no personal data |
 | `public.brand_work_reasons` | public | reference | no | review reason vocabulary | no personal data |

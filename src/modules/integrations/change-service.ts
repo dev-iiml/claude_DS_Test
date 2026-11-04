@@ -2,6 +2,7 @@ import { and, eq, lte, or } from "drizzle-orm";
 
 import {
   featureSwitches,
+  platformLimits,
   integrationChangeRequests,
   providerConfigs,
   providerRoutes,
@@ -14,11 +15,13 @@ import type { ProviderKind, ProviderMode } from "@/providers/types";
 
 import {
   FEATURE_SWITCHES,
+  PLATFORM_LIMITS,
   changeExpiresAt,
   requiresApproval,
   type ApprovalContext,
   type ChangeAction,
   type FeatureSwitchKey,
+  type PlatformLimitKey,
 } from "./domain";
 import { invalidateRoutingCache } from "./router";
 import type { ChangeInput } from "./schemas";
@@ -201,13 +204,32 @@ async function prepare(deps: ChangeDeps, input: ChangeInput): Promise<PreparedCh
     case "set_feature": {
       const feature = input.feature as FeatureSwitchKey;
       const [row] = await db.select().from(featureSwitches).where(eq(featureSwitches.key, feature)).limit(1);
-      if ((row?.enabled ?? false) === input.enabled) throw invalid(input.enabled ? "Already on." : "Already off.");
+      if ((row?.enabled ?? FEATURE_SWITCHES[feature].defaultEnabled) === input.enabled)
+        throw invalid(input.enabled ? "Already on." : "Already off.");
       return {
         action: input.action,
         kind: FEATURE_SWITCHES[feature].kind,
         configId: null,
         payload: { feature, enabled: input.enabled },
         approval: { action: input.action, enabling: input.enabled },
+        baseRouteVersion: row?.version ?? 0,
+        baseConfigVersion: null,
+      };
+    }
+    case "set_limit": {
+      const key = input.limit as PlatformLimitKey;
+      const def = PLATFORM_LIMITS[key];
+      if (input.value < def.min || input.value > def.max)
+        throw invalid(`Choose a value from ${def.min} to ${def.max}.`);
+      const [row] = await db.select().from(platformLimits).where(eq(platformLimits.key, key)).limit(1);
+      const current = row?.value ?? def.default;
+      if (current === input.value) throw invalid("That's the current value.");
+      return {
+        action: input.action,
+        kind: def.kind,
+        configId: null,
+        payload: { limit: key, value: input.value },
+        approval: { action: input.action, raising: input.value > current },
         baseRouteVersion: row?.version ?? 0,
         baseConfigVersion: null,
       };
@@ -343,6 +365,23 @@ async function apply(
       }
       return { configId: null };
     }
+    case "set_limit": {
+      const key = String(p.limit);
+      const value = Number(p.value);
+      const [row] = await tx.select().from(platformLimits).where(eq(platformLimits.key, key)).for("update");
+      const current = row?.value ?? PLATFORM_LIMITS[key as PlatformLimitKey]?.default ?? 0;
+      // Lowering works mid-incident; raising re-checks the version it was based on.
+      if (value > current && (row?.version ?? 0) !== req.baseRouteVersion) return "superseded";
+      if (row) {
+        await tx
+          .update(platformLimits)
+          .set({ value, version: row.version + 1, updatedBy: req.requestedBy })
+          .where(eq(platformLimits.key, key));
+      } else {
+        await tx.insert(platformLimits).values({ key, value, version: 1, updatedBy: req.requestedBy });
+      }
+      return { configId: null };
+    }
     case "pause_kind":
     case "resume_kind": {
       const [route] = await tx.select().from(providerRoutes).where(eq(providerRoutes.kind, req.kind)).for("update");
@@ -368,14 +407,14 @@ function auditMeta(req: { action: ChangeAction; kind: ProviderKind; approvalRequ
   return { action: req.action, kind: req.kind, approval_required: req.approvalRequired };
 }
 
-/** Whether a control-plane feature switch is on (off when never set). */
+/** Whether a control-plane feature switch is on (its default when never set). */
 export async function isFeatureEnabled(db: DbExecutor, key: FeatureSwitchKey): Promise<boolean> {
   const [row] = await db
     .select({ enabled: featureSwitches.enabled })
     .from(featureSwitches)
     .where(eq(featureSwitches.key, key))
     .limit(1);
-  return row?.enabled ?? false;
+  return row?.enabled ?? FEATURE_SWITCHES[key].defaultEnabled;
 }
 
 export async function listFeatureSwitches(db: DbExecutor) {
@@ -383,7 +422,26 @@ export async function listFeatureSwitches(db: DbExecutor) {
   return (Object.keys(FEATURE_SWITCHES) as FeatureSwitchKey[]).map((key) => ({
     key,
     ...FEATURE_SWITCHES[key],
-    enabled: rows.find((r) => r.key === key)?.enabled ?? false,
+    enabled: rows.find((r) => r.key === key)?.enabled ?? FEATURE_SWITCHES[key].defaultEnabled,
+  }));
+}
+
+/** A control-plane limit (its default when never set). */
+export async function platformLimit(db: DbExecutor, key: PlatformLimitKey): Promise<number> {
+  const [row] = await db
+    .select({ value: platformLimits.value })
+    .from(platformLimits)
+    .where(eq(platformLimits.key, key))
+    .limit(1);
+  return row?.value ?? PLATFORM_LIMITS[key].default;
+}
+
+export async function listPlatformLimits(db: DbExecutor) {
+  const rows = await db.select().from(platformLimits);
+  return (Object.keys(PLATFORM_LIMITS) as PlatformLimitKey[]).map((key) => ({
+    key,
+    ...PLATFORM_LIMITS[key],
+    value: rows.find((r) => r.key === key)?.value ?? PLATFORM_LIMITS[key].default,
   }));
 }
 
@@ -438,7 +496,9 @@ export async function proposeChange(
       actorType: "user",
       actorId: input.actorId,
       eventType:
-        prepared.action === "pause_kind" || (prepared.action === "set_feature" && prepared.payload.enabled === false)
+        prepared.action === "pause_kind" ||
+        (prepared.action === "set_feature" && prepared.payload.enabled === false) ||
+        (prepared.action === "set_limit" && !approvalRequired)
           ? "integrations.kill_switch_engaged"
           : "integrations.change_applied",
       entityType: "integration_change_request",

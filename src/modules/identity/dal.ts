@@ -6,6 +6,7 @@ import { cache } from "react";
 import { getDb } from "@/db";
 import { getServerEnv } from "@/lib/env";
 import { isOnboardingComplete } from "@/modules/creator-profile/queries";
+import { getMembership, type Membership } from "@/modules/brand-orgs/org-service";
 
 import { resolveSession, type AuthDeps, type SessionUser } from "./auth/auth-service";
 import {
@@ -15,6 +16,7 @@ import {
   canAccessOps,
   canAccessPartnerships,
   canAccessBrandWork,
+  canAccessBrandApp,
   homePathFor,
 } from "./policy";
 import { readSessionToken } from "./session-cookie";
@@ -73,6 +75,25 @@ export async function requirePartnershipsAdmin(): Promise<SessionUser> {
 export async function requireBrandWorkReviewer(): Promise<SessionUser> {
   const user = await requireUser();
   if (!canAccessBrandWork(user.role)) notFound();
+  return user;
+}
+
+/**
+ * Brand app (`/brands`, Stage 19): a brand member with an active membership (any organisation status — they can
+ * see their sign-up's progress). Creators and staff are sent home; they never use brand pages.
+ */
+export async function requireBrandMember(): Promise<SessionUser & { membership: Membership }> {
+  const user = await requireUser();
+  if (!canAccessBrandApp(user.role)) redirect(homePathFor({ role: user.role, onboardingComplete: false }));
+  const membership = await getMembership(getDb(), user.userId);
+  if (!membership) redirect("/login");
+  return { ...user, membership };
+}
+
+/** A brand member whose organisation is VERIFIED and who accepted the current brand terms. */
+export async function requireVerifiedBrandMember(): Promise<SessionUser & { membership: Membership }> {
+  const user = await requireBrandMember();
+  if (user.membership.orgStatus !== "verified" || !user.membership.termsAccepted) redirect("/brands");
   return user;
 }
 

@@ -22,6 +22,7 @@ import {
   formatPaise,
 } from "@/modules/brand-work/presentation";
 import { CONSENT_KEYS } from "@/modules/consent";
+import { sharingSummary } from "@/modules/public-passport/settings-service";
 import { EARN_GUIDE } from "@/modules/rewards/presentation";
 
 import { requireMember } from "../../../_lib/member";
@@ -94,6 +95,8 @@ export default async function BrandWorkRecordPage({ params, searchParams }: Page
     "remittance_advice",
     ...(bankOn ? (["aa_match"] as const) : []),
   ];
+  // Stage 19 prompt: once work is verified, offer the public link (no points or perks attached).
+  const sharing = verified ? await sharingSummary(db, user.userId) : null;
   const bankConsent = bankOn ? await pendingConsent(user.userId, CONSENT_KEYS.brandPaymentMatch) : null;
   const paymentPoints = EARN_GUIDE.find((g) => g.key === "brand_work")!.rows.filter((row) =>
     row.label.includes("payment"),
@@ -118,6 +121,14 @@ export default async function BrandWorkRecordPage({ params, searchParams }: Page
         {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
         {uploadError ? <Alert tone="danger">{uploadError}</Alert> : null}
         {r.message ? <Alert tone="warning">{r.message}</Alert> : null}
+        {sharing && !sharing.published ? (
+          <Alert tone="info">
+            Verified work can appear on a public Passport you control — brand names only for people you let unlock it.{" "}
+            <Link href="/passport/sharing" className="text-gold underline-offset-2 hover:underline">
+              Get your public link
+            </Link>
+          </Alert>
+        ) : null}
 
         <ListGroup id="status" label="Status" footer={status.detail}>
           {r.submittedAt ? <ListRow label="Sent" value={day.format(r.submittedAt)} /> : null}

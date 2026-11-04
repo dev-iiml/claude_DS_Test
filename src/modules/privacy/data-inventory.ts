@@ -25,6 +25,7 @@ export type DataDomain =
   | "analytics"
   | "audit"
   | "control_plane"
+  | "brand_network"
   | "reference";
 
 export type Sensitivity = "restricted" | "confidential" | "internal" | "public";
@@ -569,7 +570,14 @@ export const DATA_INVENTORY: readonly TableEntry[] = [
     domain: "control_plane",
     sensitivity: "internal",
     personal: false,
-    holds: "feature switches (e.g. brand payment matching), maker-checker",
+    holds: "feature switches (e.g. brand payment matching, public passports), maker-checker",
+  },
+  {
+    table: "ops.platform_limits",
+    domain: "control_plane",
+    sensitivity: "internal",
+    personal: false,
+    holds: "numeric limits (e.g. daily passport unlocks per organisation), maker-checker",
   },
   {
     table: "ops.provider_runtime",
@@ -664,6 +672,102 @@ export const DATA_INVENTORY: readonly TableEntry[] = [
     sensitivity: "public",
     personal: false,
     holds: "platform vocabulary",
+  },
+  // Verified Creator Passport (Stage 19)
+  {
+    table: "public.public_passports",
+    domain: "creator_professional",
+    sensitivity: "confidential",
+    personal: true,
+    holds: "the creator's sharing choices: link, field tiers, bio, photo reference, audience and toggles",
+    erasedBy: ["public_passport_content"],
+    retained: "settings (no bio or photo) kept unpublished so the creator can publish again",
+  },
+  {
+    table: "public.public_passport_slug_redirects",
+    domain: "creator_professional",
+    sensitivity: "internal",
+    personal: false,
+    holds: "old passport links redirecting for 30 days",
+    erasedBy: ["public_passport_content"],
+    purge: "after 30 days",
+  },
+  {
+    table: "public.passport_access_codes",
+    domain: "creator_professional",
+    sensitivity: "confidential",
+    personal: true,
+    holds: "creator-issued access codes: SHA-256 hash, last 4 characters, label, expiry, uses",
+    retained: "revoked when the unlock consent is withdrawn; kept with the passport",
+  },
+  {
+    table: "public.passport_access_log",
+    domain: "creator_professional",
+    sensitivity: "confidential",
+    personal: true,
+    holds:
+      "who unlocked a passport: code label or verified organisation, unverified name/company, IP pseudonym, India day and hour",
+    retained: "kept for the creator's own record until account erasure",
+  },
+  {
+    table: "public.passport_reports",
+    domain: "creator_professional",
+    sensitivity: "internal",
+    personal: false,
+    holds: "'report this page' tickets: passport id and a reason code",
+  },
+  {
+    table: "public.passport_takedowns",
+    domain: "creator_professional",
+    sensitivity: "internal",
+    personal: false,
+    holds: "staff takedowns of a passport (four eyes to make permanent)",
+  },
+  {
+    table: "public.brand_orgs",
+    domain: "brand_network",
+    sensitivity: "restricted",
+    personal: false,
+    holds:
+      "brand/agency organisations: legal name, CIN/LLPIN, website, email domain, keyed GSTIN fingerprint + state code (never a GSTIN), registry lookup, review state",
+  },
+  {
+    table: "public.brand_org_members",
+    domain: "brand_network",
+    sensitivity: "confidential",
+    personal: true,
+    holds: "organisation members: user, role, terms accepted",
+    retained: KEPT_WITH_ACCOUNT,
+  },
+  {
+    table: "public.brand_org_invites",
+    domain: "brand_network",
+    sensitivity: "confidential",
+    personal: true,
+    holds: "member invitations: work email, hashed link token, expiry",
+    purge: "7 days after expiry",
+  },
+  {
+    table: "public.brand_email_challenges",
+    domain: "brand_network",
+    sensitivity: "confidential",
+    personal: true,
+    holds: "work-email one-time codes for brand sign-up (hash only)",
+    purge: "after a day",
+  },
+  {
+    table: "public.brand_org_claims",
+    domain: "brand_network",
+    sensitivity: "internal",
+    personal: false,
+    holds: "brand directory claims and approved logos (opaque storage key), four-eyes review state",
+  },
+  {
+    table: "public.brand_org_reviews",
+    domain: "brand_network",
+    sensitivity: "internal",
+    personal: false,
+    holds: "append-only staff decisions on organisations, claims and logos (reason codes)",
   },
 ];
 

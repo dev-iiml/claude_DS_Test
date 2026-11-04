@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getDb } from "@/db";
 import { listIndustries, listOpenMerges, searchDirectory } from "@/modules/brand-work";
+import { claimedDirectoryEntries } from "@/modules/brand-orgs/review-service";
 import { requireBrandWorkReviewer } from "@/modules/identity";
 
 import { BrandWorkShell } from "../../_components/creator-shell";
@@ -31,6 +32,11 @@ export default async function DirectoryPage({ searchParams }: PageProps<"/brand-
     listIndustries(db),
     listOpenMerges(db),
   ]);
+  // Stage 19: which verified organisation claimed each entry (read-only here; claims are decided on the brand-org desk).
+  const claimed = await claimedDirectoryEntries(
+    db,
+    brands.map((b) => b.id),
+  );
   const industryOptions = industries.map((i) => ({ value: i.code, label: i.label }));
   const industryLabel = new Map(industries.map((i) => [i.code, i.label]));
   const brandOptions = all.map((b) => ({ value: b.id, label: b.name }));
@@ -82,6 +88,9 @@ export default async function DirectoryPage({ searchParams }: PageProps<"/brand-
                     </summary>
                     <p className="mt-2 text-footnote text-ink-muted">
                       Aliases: {b.aliases.length ? b.aliases.join(", ") : "none"}
+                    </p>
+                    <p className="mt-1 text-footnote text-ink-muted">
+                      Claimed by: {claimed.get(b.id)?.orgName ?? "no organisation"}
                     </p>
                     <DirectoryEditForm
                       directoryId={b.id}

@@ -9,6 +9,7 @@ import {
   encodeAttribution,
   parseCampaigns,
 } from "@/modules/analytics/attribution";
+import { GONE_HTML, passportGate } from "@/modules/public-passport/gate";
 
 /**
  * Runs before every page request:
@@ -42,9 +43,14 @@ const PROTECTED_PREFIXES = [
   "/connect",
   "/paused",
   "/eligibility",
+  "/brands",
 ];
 
+/** Brand app pages anyone can open (sign-up, accepting an invite). */
+const PUBLIC_UNDER_PROTECTED = ["/brands/signup", "/brands/join"];
+
 export function isProtectedPath(pathname: string): boolean {
+  if (PUBLIC_UNDER_PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return false;
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
@@ -69,8 +75,30 @@ function rememberAttribution(request: NextRequest, response: NextResponse, appEn
   });
 }
 
-export function proxy(request: NextRequest) {
+const PASSPORT_PAGE = /^\/p\/([^/]+)\/?$/;
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // Public passports (Stage 19): not live → 410 Gone (identical for unknown links); a changed link → redirect.
+  const passport = PASSPORT_PAGE.exec(pathname);
+  if (passport && (request.method === "GET" || request.method === "HEAD")) {
+    const gate = await passportGate(decodeURIComponent(passport[1]!).toLowerCase());
+    if (gate === "gone")
+      return new NextResponse(GONE_HTML, {
+        status: 410,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "x-robots-tag": "noindex",
+          "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+        },
+      });
+    if (typeof gate === "object") {
+      const url = request.nextUrl.clone();
+      url.pathname = `/p/${gate.redirect}`;
+      return NextResponse.redirect(url, 308);
+    }
+  }
   if (isProtectedPath(pathname) && !SESSION_COOKIES.some((name) => request.cookies.has(name))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

@@ -288,6 +288,27 @@
       "when": 1793434503940,
       "tag": "0040_stage18_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793804569464,
+      "tag": "0041_stage19_public_passport",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793804570743,
+      "tag": "0042_stage19_guards",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793806491058,
+      "tag": "0043_stage19_job_types",
+      "breakpoints": true
     }
   ]
 }

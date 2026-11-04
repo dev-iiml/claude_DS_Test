@@ -25,6 +25,12 @@ import { eraseIdentityLookups } from "@/modules/identity/identity-erasure";
 import { eraseProfessionalGraph } from "@/modules/professional-graph/erasure";
 import { runProfessionalGraph } from "@/modules/professional-graph/graph-service";
 import { disconnectAllAccounts, eraseSocialAccountData } from "@/modules/social-data/erasure";
+import {
+  erasePublicPassportContent,
+  invalidatePassportCache,
+  stopPassportUnlocks,
+  stopPublicPassport,
+} from "@/modules/public-passport/erasure";
 
 import { purposeFor } from "./purposes";
 import { lendingRetentionHolds, type RetentionHoldChecker } from "./retention-holds";
@@ -112,6 +118,8 @@ async function erase(
       };
     case "brand_payment_matches":
       return resetBankMatchedPayments(tx, { userId: ids.userId });
+    case "public_passport_content":
+      return erasePublicPassportContent(tx, { userId: ids.userId });
   }
 }
 
@@ -170,6 +178,16 @@ export async function withdrawPurpose(
     if (policy.key === CONSENT_KEYS.lenderSharing) {
       effects.proposals_cancelled = await withdrawUnsentProposals(tx, { userId: input.userId });
     }
+    if (policy.key === CONSENT_KEYS.publicPassport || policy.core) {
+      // The public page stops at once (410); pausing membership takes it offline too (see isPassportLive).
+      if (policy.key === CONSENT_KEYS.publicPassport)
+        effects.passport_unpublished = await stopPublicPassport(tx, { userId: input.userId, now });
+    }
+    if (policy.key === CONSENT_KEYS.passportUnlock) {
+      effects.passport_codes_revoked = await stopPassportUnlocks(tx, { userId: input.userId, now });
+    }
+    // Any withdrawal can change what a public Passport may show (signals, accounts…): drop its cached locked render.
+    await invalidatePassportCache(tx, input.userId);
     if (policy.key === CONSENT_KEYS.brandOpportunities || policy.core) {
       // Brand consent withdrawn, or membership paused: pending Access requests are cancelled, points returned.
       effects.access_requests_cancelled = await cancelPendingAccessRequests(tx, { userId: input.userId, now });

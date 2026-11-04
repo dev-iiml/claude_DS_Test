@@ -25,6 +25,7 @@ export async function getProviders(): Promise<ProviderRegistry> {
     lender: p.lender,
     documentStorage: p.document_storage,
     fileScan: p.file_scan,
+    businessVerification: p.business_verification,
   };
 }
 

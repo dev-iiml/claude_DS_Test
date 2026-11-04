@@ -12,6 +12,7 @@ import {
 import { CREATOR_STATUS_TIERS } from "@/modules/creator-status/status";
 import { LEDGER_ENTRY_TYPES } from "@/modules/rewards/rules";
 
+import { brandOrgs } from "./brand-orgs";
 import { createdAt, sqlInList, updatedAt } from "./_shared";
 import { consentReceipts } from "./consent";
 import { creatorProfiles } from "./creator-profile";
@@ -31,6 +32,8 @@ export const brands = pgTable(
     description: text("description"),
     /** A fictional sample brand (all brands in the Phase 1 preview). */
     isSample: boolean("is_sample").notNull().default(true),
+    /** Stage 19: the verified brand organisation behind this Access brand, if staff have linked one. */
+    brandOrgId: uuid("brand_org_id").references(() => brandOrgs.id, { onDelete: "set null" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

@@ -12,7 +12,9 @@ import {
 } from "@/components/creatorco";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { getDb } from "@/db";
 import { FEATURE_COPY, formatFeatureValue } from "@/modules/professional-graph/presentation";
+import { sharingSummary } from "@/modules/public-passport/settings-service";
 
 import { requireMember } from "../_lib/member";
 import { CreatorShell } from "../_components/creator-shell";
@@ -51,7 +53,8 @@ function notice(q: Record<string, string | string[] | undefined>) {
 }
 
 export default async function PassportPage({ searchParams }: PageProps<"/passport">) {
-  const { passport } = await requireMember();
+  const { user, passport } = await requireMember();
+  const sharing = await sharingSummary(getDb(), user.userId);
   const banner = notice(await searchParams);
   const connected = passport.accounts.filter((a) => a.status === "connected");
   const graph = passport.graph;
@@ -99,6 +102,27 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
                 detail={v.detail}
               />
             ))}
+          </ListGroup>
+
+          <ListGroup
+            id="sharing"
+            label="Public Passport"
+            footer="You choose what everyone sees and what only people you trust can unlock."
+          >
+            {sharing.published && sharing.slug ? (
+              <ListRow
+                href="/passport/sharing"
+                label="Your public link"
+                detail={`/p/${sharing.slug}`}
+                accessory={<StatusBadge tone="success">Live</StatusBadge>}
+              />
+            ) : (
+              <ListRow
+                href="/passport/sharing"
+                label={<span className="text-gold">Get your public link</span>}
+                detail="A shareable page for your verified creator profile"
+              />
+            )}
           </ListGroup>
 
           <ListGroup id="brand-work" label="Verified brand work">

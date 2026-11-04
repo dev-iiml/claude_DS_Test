@@ -47,6 +47,7 @@ export const ACTION_LABEL: Record<string, string> = {
   pause_kind: "Kill switch",
   resume_kind: "Lift kill switch",
   set_feature: "Feature switch",
+  set_limit: "Platform limit",
 };
 
 export const STATUS_TONE: Record<ChangeRequestView["status"], Tone> = {
@@ -77,6 +78,8 @@ export function describeChange(c: ChangeRequestView, keys: Map<string, string>):
     }
     case "set_feature":
       return `${String(p.feature)} → ${p.enabled ? "on" : "off"}`;
+    case "set_limit":
+      return `${String(p.limit)} → ${Number(p.value)}`;
     case "set_route": {
       const primary = keys.get(String(p.primaryConfigId)) ?? "?";
       const fallback = p.fallbackConfigId ? (keys.get(String(p.fallbackConfigId)) ?? "?") : "none";

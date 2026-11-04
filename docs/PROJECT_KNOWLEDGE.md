@@ -1318,6 +1318,18 @@ Claude should work in small, reviewable stages.
 - optional payment confirmation (agency, remittance advice, or an in-`fin` check of already-shared AA data)
 - brand portfolio features in the Professional Graph (never an underwriting input until validated)
 
+### Stage 19 — Verified Creator Passport
+- public `/p/<slug>` page; per-field public / unlocked / hidden tiers chosen by the creator
+- server-side redaction (view model), fixed-size locked placeholders, bands instead of figures (`ppb-0.1.0`)
+- access codes (hashed, expiring, revocable, lockout) and an access log for the creator
+- verified brand and agency organisations (`brand_member`), four-eyes verification desk, daily unlock quota
+- separate `public_passport` and `passport_unlock` consents; never from the financial domain; no points for sharing
+
+**Stage 19 rule (spec default, pending Aman's confirmation):** brand members see creator-chosen bands only — never
+an exact amount, never private brand work by name, never anything from the financial domain. Deal-size bands are off
+by default; the unlock audience defaults to code holders only; brand discovery is off; the daily unlock quota is 50 per
+organisation; publishing does not require verified brand work.
+
 Do not jump directly to Stage 13 before building Stages 02–12 correctly.
 
 ---

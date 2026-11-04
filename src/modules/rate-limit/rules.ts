@@ -8,9 +8,9 @@
  * that already exist (per-account sign-in lockout, OTP sends per number, bureau
  * checks per 30 days), which they never replace.
  */
-export const RATE_LIMIT_RULES_VERSION = "rl-0.2.0";
+export const RATE_LIMIT_RULES_VERSION = "rl-0.3.0";
 
-export type RateLimitSubject = "ip" | "user" | "partner";
+export type RateLimitSubject = "ip" | "user" | "partner" | "passport";
 
 export interface RateLimitRule {
   subject: RateLimitSubject;
@@ -96,6 +96,85 @@ export const RATE_LIMITS = {
     windowSeconds: DAY,
     onLimit: "reject",
     description: "Brand payment checks against shared bank data per account per day.",
+  },
+  // Stage 19 — Verified Creator Passport and brand organisations.
+  "passport.public_view": {
+    subject: "ip",
+    limit: 300,
+    windowSeconds: HOUR,
+    onLimit: "reject",
+    description: "Public passport page views per network per hour (anti-scraping).",
+  },
+  "passport.code_attempt": {
+    subject: "ip",
+    limit: 20,
+    windowSeconds: 15 * MIN,
+    onLimit: "reject",
+    description:
+      "Access-code attempts per network per 15 minutes — the 15-minute lockout (the creator is told after 10 wrong codes on their passport).",
+  },
+  "passport.report": {
+    subject: "ip",
+    limit: 10,
+    windowSeconds: HOUR,
+    onLimit: "reject",
+    description: "'Report this page' submissions per network per hour.",
+  },
+  "passport.code_create": {
+    subject: "user",
+    limit: 50,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Access codes a creator creates per day.",
+  },
+  "passport.photo_upload": {
+    subject: "user",
+    limit: 20,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Passport photo uploads per creator per day.",
+  },
+  "brand.signup_code": {
+    subject: "ip",
+    limit: 10,
+    windowSeconds: HOUR,
+    onLimit: "reject",
+    description: "Brand sign-up email codes requested per network per hour.",
+  },
+  "brand.signup": {
+    subject: "ip",
+    limit: 10,
+    windowSeconds: HOUR,
+    onLimit: "reject",
+    description: "Brand sign-up attempts per network per hour.",
+  },
+  "brand.unlock": {
+    subject: "user",
+    limit: 200,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Passport unlock attempts per brand member per day (the organisation quota applies too).",
+  },
+  "brand.invite": {
+    subject: "user",
+    limit: 20,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Member invitations per owner per day.",
+  },
+  "brand.discovery": {
+    subject: "user",
+    limit: 100,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Discovery searches per brand member per day.",
+  },
+  "brand.logo_upload": {
+    subject: "user",
+    limit: 20,
+    windowSeconds: DAY,
+    onLimit: "reject",
+    description: "Logo uploads per brand owner per day.",
   },
   "analytics.anonymous_view": {
     subject: "ip",

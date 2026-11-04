@@ -77,10 +77,10 @@ infra/gcp/app-env.sh staging
 infra/gcp/app-env.sh production
 ```
 
-| Secret                          | Holds                                                                                                                                                                  | Read by                                                              |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `creatorco-<env>-app-env`       | `DATABASE_URL` (app login), `PAN_FINGERPRINT_SECRET`, `FI_DATA_ENCRYPTION_KEY`, `PARTNER_WEBHOOK_ROOT_KEY`, `ANALYTICS_PSEUDONYM_KEY`, `RATE_LIMIT_KEY`, `CRON_SECRET` | that environment's Cloud Run service (mounted at `/secrets/app.env`) |
-| `creatorco-<env>-migration-url` | `DATABASE_MIGRATION_URL` (owner), and for staging `SEED_DEMO_PASSWORD`                                                                                                 | that environment's deploy workflow                                   |
+| Secret                          | Holds                                                                                                                                                                                          | Read by                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `creatorco-<env>-app-env`       | `DATABASE_URL` (app login), `PAN_FINGERPRINT_SECRET`, `FI_DATA_ENCRYPTION_KEY`, `PARTNER_WEBHOOK_ROOT_KEY`, `ANALYTICS_PSEUDONYM_KEY`, `RATE_LIMIT_KEY`, `PASSPORT_SHARING_KEY`, `CRON_SECRET` | that environment's Cloud Run service (mounted at `/secrets/app.env`) |
+| `creatorco-<env>-migration-url` | `DATABASE_MIGRATION_URL` (owner), and for staging `SEED_DEMO_PASSWORD`                                                                                                                         | that environment's deploy workflow                                   |
 
 ## 5. GitHub (once)
 
@@ -136,7 +136,8 @@ Settings → Secrets and variables → Actions → **Variables** (not secrets �
   providers, so creator flows that need a provider stay unavailable until real vendors are configured in **/ops**.
 - **Secret rotation** — add a new secret version, then redeploy:
   - safe any time: the database passwords (change in Supabase first), `CRON_SECRET` (re-run `setup.sh publish <env>`),
-    `RATE_LIMIT_KEY` (counters restart);
+    `RATE_LIMIT_KEY` (counters restart), `PASSPORT_SHARING_KEY` (open passport unlocks end; access-log IP pseudonyms
+    and brand-org GSTIN fingerprints stop matching older ones);
   - **never casually:** `FI_DATA_ENCRYPTION_KEY` (sealed AA data becomes unreadable), `PAN_FINGERPRINT_SECRET`
     (duplicate checks stop matching), `ANALYTICS_PSEUDONYM_KEY` (use the versioned `_PREVIOUS_KEYS` procedure),
     `PARTNER_WEBHOOK_ROOT_KEY` (every partner's signing secret changes — coordinate first).

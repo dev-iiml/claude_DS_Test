@@ -1,4 +1,12 @@
-import { ADMIN_ROLES, ANALYTICS_ROLES, BRAND_WORK_ROLES, OPS_ROLES, PARTNERSHIPS_ROLES, type UserRole } from "./domain";
+import {
+  ADMIN_ROLES,
+  ANALYTICS_ROLES,
+  BRAND_MEMBER_ROLES,
+  BRAND_WORK_ROLES,
+  OPS_ROLES,
+  PARTNERSHIPS_ROLES,
+  type UserRole,
+} from "./domain";
 
 /**
  * Pure authorisation and routing policy. Kept free of framework and database
@@ -30,9 +38,19 @@ export function canAccessInsights(role: UserRole): boolean {
   return (ANALYTICS_ROLES as readonly UserRole[]).includes(role);
 }
 
-/** Staff never use creator areas. */
+/** Brand and agency members (Stage 19): their own class — never creators, never staff. */
+export function isBrandMemberRole(role: UserRole): boolean {
+  return (BRAND_MEMBER_ROLES as readonly UserRole[]).includes(role);
+}
+
+/** The brand app (`/brands`): brand members only. Staff and creators never use it. */
+export function canAccessBrandApp(role: UserRole): boolean {
+  return isBrandMemberRole(role);
+}
+
+/** CreatorCo staff: every role except creators and brand members. */
 export function isStaffRole(role: UserRole): boolean {
-  return role !== "creator";
+  return role !== "creator" && !isBrandMemberRole(role);
 }
 
 /** Creator-facing areas are for creators only; staff use the admin console. */
@@ -63,6 +81,7 @@ export function homePathFor(subject: RoutingSubject): string {
   if (canAccessPartnerships(subject.role)) return "/partnerships";
   if (canAccessBrandWork(subject.role)) return "/brand-work";
   if (canAccessInsights(subject.role)) return "/insights";
+  if (canAccessBrandApp(subject.role)) return "/brands";
   return subject.onboardingComplete ? "/dashboard" : "/onboarding";
 }
 
@@ -83,6 +102,7 @@ export function safeNextPath(next: string | null | undefined, subject: RoutingSu
   if (path === "/partnerships" || path.startsWith("/partnerships/"))
     return canAccessPartnerships(subject.role) ? next : null;
   if (path === "/brand-work" || path.startsWith("/brand-work/")) return canAccessBrandWork(subject.role) ? next : null;
+  if (path === "/brands" || path.startsWith("/brands/")) return canAccessBrandApp(subject.role) ? next : null;
   if (path.startsWith("/onboarding")) return canAccessCreatorArea(subject.role) ? next : null;
   if (MEMBER_AREAS.some((area) => path === area || path.startsWith(`${area}/`))) {
     if (!canAccessCreatorArea(subject.role)) return null;

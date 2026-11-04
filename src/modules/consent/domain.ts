@@ -11,6 +11,8 @@ export const CONSENT_KEYS = {
   productAnalytics: "product_analytics",
   brandWorkRecords: "brand_work_records",
   brandPaymentMatch: "brand_payment_match",
+  publicPassport: "public_passport",
+  passportUnlock: "passport_unlock",
 } as const;
 export type ConsentKey = (typeof CONSENT_KEYS)[keyof typeof CONSENT_KEYS];
 
@@ -35,6 +37,7 @@ export const ERASURE_SCOPES = [
   "financial_funnel_events",
   "brand_work_records",
   "brand_payment_matches",
+  "public_passport_content",
 ] as const;
 export type ErasureScope = (typeof ERASURE_SCOPES)[number];
 

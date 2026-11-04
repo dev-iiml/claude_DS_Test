@@ -17,4 +17,13 @@ export class MockNotificationProvider implements NotificationProvider {
   async sendOtpSms(input: { to: string; code: string; purpose: "mobile_verification" }) {
     return { reference: `sms_${stableHash(`${input.to}:${input.purpose}`).toString(36)}` };
   }
+
+  async sendOtpEmail(input: { to: string; code: string; purpose: "brand_signup" }) {
+    return { reference: `eml_${stableHash(`${input.to}:${input.purpose}`).toString(36)}` };
+  }
+
+  /** Sends nothing: in mock mode the invite link is shown to the inviting owner instead. */
+  async sendInviteEmail(input: { to: string; link: string; organisation: string }) {
+    return { reference: `inv_${stableHash(`${input.to}:${input.organisation}`).toString(36)}` };
+  }
 }

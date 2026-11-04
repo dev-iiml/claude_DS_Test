@@ -18,3 +18,5 @@ export * from "./access";
 export * from "./analytics";
 export * from "./rewards";
 export * from "./brand-work";
+export * from "./brand-orgs";
+export * from "./public-passport";

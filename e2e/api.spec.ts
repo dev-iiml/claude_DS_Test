@@ -141,6 +141,8 @@ test.describe("API v1", () => {
       "product_analytics",
       "brand_work_records",
       "brand_payment_match",
+      "public_passport",
+      "passport_unlock",
     ]);
     const analytics = centre.purposes.find((p: { key: string }) => p.key === "professional_analytics");
     const granted = await request.post("/api/v1/consents/professional_analytics", {

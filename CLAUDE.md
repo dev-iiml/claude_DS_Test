@@ -9,7 +9,7 @@ loads it. Read it before any product, architecture, data, underwriting, regulato
 
 ## Build status
 
-Stages 00–18 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
+Stages 00–19 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
 self-managed auth and roles, Cohort A0 onboarding, Creator Passport, social connection (mock provider), the
 Professional Graph feature engine, the consent centre (receipts, withdrawal, hold-aware erasure, paused membership),
 financial eligibility (separate `fin` schema, Financial Capacity features), Underwriting Engine v0 (Traditional vs
@@ -30,7 +30,9 @@ record purges, the data inventory and first-party sign-up attribution (16), depl
 in Mumbai with staging and production, CI/CD and infra scripts (17), the QA follow-ups (points `pts-0.2.0`: profile,
 anniversary, Access participation and four-eyes staff tasks; Access browse/filter; activity page), Verified brand work —
 records + documents, scanning, the `/brand-work` reviewer desk, brand directory, optional payment confirmation and
-brand portfolio features `pg-0.3.0` (18), plus API v1 for future native apps.
+brand portfolio features `pg-0.3.0` (18), the Verified Creator Passport — a public `/p/<slug>` page with per-field
+public / unlocked / hidden tiers, access codes, verified brand organisations (`brand_member` role, `/brands`, four-eyes
+desk), passport bands `ppb-0.1.0` (19), plus API v1 for future native apps.
 
 ## Implementation conventions (established in Stages 00–04)
 
@@ -140,4 +142,15 @@ brand portfolio features `pg-0.3.0` (18), plus API v1 for future native apps.
   month; it is gated by the `brand_payment_match` consent and the `/ops` feature switch (off by default; turning on is
   maker-checker; needs FIU/partner confirmation first). Reviewer rules (own records, four eyes on flags, reversals and
   merges, audited signed URLs) are enforced in the service and by DB CHECKs.
+- Verified Creator Passport (Stage 19, `modules/public-passport` + `modules/brand-orgs`, READMEs there): `view.ts` is
+  the redaction boundary — locked values, brand names, logo ids and amounts never reach HTML, JSON, RSC, OG images or
+  alt/aria; locked sections are fixed-size placeholders. Amounts only as bands (`bands.ts`, any change bumps
+  `PASSPORT_BANDS_VERSION`), only unlocked, only with the creator's deal-bands field on. **Brand members see
+  creator-chosen bands only — never an exact amount.** Private brand work never appears by name. These modules never
+  import `financial-eligibility`, `underwriting`, `lending`, `offers` or `rewards` (unit-tested); no points or perks
+  for publishing or unlocking. Logos only from a verified organisation's approved claim. `public_passport` withdrawal
+  → 410 at once; `passport_unlock` withdrawal → codes revoked, access log kept. Brand GSTIN: keyed fingerprint + state
+  code only. Brand-org verification, claims, logos, suspension/reinstatement and permanent takedowns are four eyes.
+  Unknown and offline `/p` links answer the same 410 (proxy gate). New anonymous server-recorded analytics events set
+  `serverOnly: true` so clients can't send them.
 - Before handing off, run `npm run check`, then `npm run build && npm run test:e2e`.

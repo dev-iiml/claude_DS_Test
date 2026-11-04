@@ -15,6 +15,8 @@ import {
 import type { AccessDeclineReason } from "@/modules/access/domain";
 import { CONSENT_KEYS, getActiveDefinition, hasValidConsent } from "@/modules/consent";
 import { CREATOR_STATUS_LABELS } from "@/modules/creator-status/status";
+import { verifiedOrgForOpportunity } from "@/modules/brand-orgs/access-service";
+import { sharingSummary } from "@/modules/public-passport/settings-service";
 import { pointsBalance } from "@/modules/rewards/ledger-service";
 import { formatPoints } from "@/modules/rewards/rules";
 
@@ -25,6 +27,7 @@ import { PageTitle } from "../../_components/page-title";
 import { availabilityBadge, costLabel, fullDate } from "../_lib/present";
 
 import { CancelRequestForm, RequestAccessForm } from "./forms";
+import { SharePassportWithOrg } from "./share-passport";
 
 export const metadata: Metadata = { title: "Opportunity" };
 
@@ -54,6 +57,11 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
   const definition =
     o.availability === "open" && !consented ? await getActiveDefinition(db, CONSENT_KEYS.brandOpportunities) : null;
   const badge = availabilityBadge(o);
+  // Stage 19 prompt: after a request, offer a code scoped to the brand's verified organisation (if linked).
+  const requested = o.request?.status === "requested" || o.request?.status === "approved";
+  const org = requested ? await verifiedOrgForOpportunity(db, o.id) : null;
+  const sharing = org ? await sharingSummary(db, user.userId) : null;
+  const unlocking = org ? await hasValidConsent(db, user.userId, CONSENT_KEYS.passportUnlock) : false;
   const notice = typeof q.notice === "string" ? NOTICES[q.notice] : undefined;
 
   return (
@@ -170,6 +178,25 @@ export default async function OpportunityPage({ params, searchParams }: PageProp
             )}
           </>
         )}
+
+        {org ? (
+          <section aria-labelledby="share-heading" className="flex flex-col gap-3">
+            <h2 id="share-heading" className="text-title-3 font-semibold tracking-tight">
+              Share your Passport with {org.name}
+            </h2>
+            {sharing?.published && unlocking ? (
+              <SharePassportWithOrg opportunityId={o.id} orgName={org.name} />
+            ) : (
+              <p className="text-subhead text-ink-muted">
+                {org.name} is verified on CreatorCo. Publish your Passport and choose who can unlock it to share the
+                details you choose with its team.{" "}
+                <Link href="/passport/sharing" className="text-gold underline-offset-2 hover:underline">
+                  Go to Sharing
+                </Link>
+              </p>
+            )}
+          </section>
+        ) : null}
 
         <p className="text-footnote text-ink-subtle">
           Preview: {o.brand.name} is a sample brand. Nothing is sent to a brand and nothing is fulfilled. Creator Points

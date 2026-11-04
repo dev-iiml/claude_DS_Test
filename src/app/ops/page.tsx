@@ -9,6 +9,7 @@ import { getDb } from "@/db";
 import { getServerEnv } from "@/lib/env";
 import { requireOpsAdmin } from "@/modules/identity";
 import { countPendingChanges, getIntegrationsOverview, listFeatureSwitches } from "@/modules/integrations";
+import { listPlatformLimits } from "@/modules/integrations/change-service";
 import { countJobsByStatus } from "@/modules/jobs";
 
 import { OpsShell } from "../_components/creator-shell";
@@ -16,7 +17,7 @@ import { clientIp } from "../_lib/rate-limit";
 
 import { runHealthChecksAction } from "./actions";
 import { kindStatus } from "./_lib/present";
-import { FeatureSwitchForm } from "./_components/forms";
+import { FeatureSwitchForm, PlatformLimitForm } from "./_components/forms";
 
 export const metadata: Metadata = { title: "Integrations" };
 
@@ -25,11 +26,12 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
   const q = await searchParams;
   const db = getDb();
   const env = getServerEnv();
-  const [kinds, pending, jobs, features] = await Promise.all([
+  const [kinds, pending, jobs, features, limits] = await Promise.all([
     getIntegrationsOverview(db, { production: env.APP_ENV === "production" }),
     countPendingChanges(db),
     countJobsByStatus(db),
     listFeatureSwitches(db),
+    listPlatformLimits(db),
   ]);
   const degraded = kinds.filter((k) => kindStatus(k).tone !== "success").length;
   // Deployment check (Stage 17): the address rate limits count for THIS request (the viewer's own), so ops can
@@ -134,6 +136,24 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
         <p className="px-4 text-footnote text-ink-subtle">
           The brand-work upload kill switch is the Document storage capability&apos;s kill switch above.
         </p>
+      </section>
+
+      <section id="limits" aria-labelledby="limits-heading" className="mt-8 flex flex-col gap-3">
+        <h2 id="limits-heading" className="px-4 text-footnote font-medium tracking-[0.02em] text-ink-subtle uppercase">
+          Platform limits
+        </h2>
+        {limits.map((l) => (
+          <div key={l.key} className="flex flex-col gap-4 rounded-lg bg-surface p-4 ring-1 ring-line ring-inset">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-body font-medium">{l.label}</p>
+                <p className="mt-1 text-footnote text-ink-muted">{l.description}</p>
+              </div>
+              <StatusBadge>{String(l.value)}</StatusBadge>
+            </div>
+            <PlatformLimitForm limit={l.key} value={l.value} min={l.min} max={l.max} />
+          </div>
+        ))}
       </section>
 
       <ListGroup

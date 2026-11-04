@@ -18,6 +18,7 @@ export const CHANGE_ACTIONS = [
   "pause_kind",
   "resume_kind",
   "set_feature",
+  "set_limit",
 ] as const;
 export type ChangeAction = (typeof CHANGE_ACTIONS)[number];
 
@@ -57,6 +58,7 @@ export const PROVIDER_KIND_LABELS: Record<ProviderKind, string> = {
   lender: "Partner lender",
   document_storage: "Document storage",
   file_scan: "File scanning",
+  business_verification: "Company verification",
 };
 
 // ── Feature switches ────────────────────────────────────────────────────────
@@ -72,10 +74,63 @@ export const FEATURE_SWITCHES = {
     label: "Brand payment matching",
     description:
       "Lets a creator who chose it check Account Aggregator data CreatorCo already holds under an active eligibility check for a matching credit. Only seen / not seen and the month leave the financial domain. Turn on only after the partner lender / FIU confirms the AA consent artefact's purpose covers this use.",
+    defaultEnabled: false,
   },
-} as const satisfies Record<string, { kind: ProviderKind; label: string; description: string }>;
+  // Stage 19 — Verified Creator Passport. On by default: turning one off is an instant kill switch.
+  public_passports: {
+    kind: "social",
+    label: "Public Creator Passports",
+    description: "Public passport pages at /p/<link>. Off: every passport answers 410 Gone until it's turned back on.",
+    defaultEnabled: true,
+  },
+  passport_code_unlocks: {
+    kind: "social",
+    label: "Passport unlocks with access codes",
+    description: "Creators' access codes unlock the detailed tier. Off: codes stop working and open unlocks end.",
+    defaultEnabled: true,
+  },
+  passport_brand_unlocks: {
+    kind: "business_verification",
+    label: "Passport unlocks by verified brands",
+    description: "Members of verified brand and agency organisations can unlock passports whose creators allow it.",
+    defaultEnabled: true,
+  },
+  brand_discovery: {
+    kind: "business_verification",
+    label: "Brand discovery search",
+    description:
+      "Verified organisations can search creators who chose to be discoverable. Results show the public tier only; opening one counts against the organisation's daily unlocks.",
+    defaultEnabled: false,
+  },
+} as const satisfies Record<
+  string,
+  { kind: ProviderKind; label: string; description: string; defaultEnabled: boolean }
+>;
 export type FeatureSwitchKey = keyof typeof FEATURE_SWITCHES;
 export const FEATURE_SWITCH_KEYS = Object.keys(FEATURE_SWITCHES) as FeatureSwitchKey[];
+
+// ── Numeric limits ──────────────────────────────────────────────────────────
+
+/**
+ * Control-plane limits (Stage 19). Raising one needs a second ops admin;
+ * lowering one applies at once.
+ */
+export const PLATFORM_LIMITS = {
+  brand_unlock_daily_quota: {
+    kind: "business_verification",
+    label: "Daily passport unlocks per organisation",
+    description:
+      "How many creator passports one verified organisation can unlock per day (India time). Partnerships admins can set a lower or equal number for a single organisation.",
+    default: 50,
+    min: 0,
+    max: 500,
+  },
+} as const satisfies Record<
+  string,
+  { kind: ProviderKind; label: string; description: string; default: number; min: number; max: number }
+>;
+export type PlatformLimitKey = keyof typeof PLATFORM_LIMITS;
+export const PLATFORM_LIMIT_KEYS = Object.keys(PLATFORM_LIMITS) as PlatformLimitKey[];
 
 // ── Circuit breaker ─────────────────────────────────────────────────────────
 
@@ -200,6 +255,8 @@ export interface ApprovalContext {
   configIsRouted?: boolean;
   /** set_feature: turning the switch on. */
   enabling?: boolean;
+  /** set_limit: raising the limit. */
+  raising?: boolean;
 }
 
 /**
@@ -215,6 +272,8 @@ export function requiresApproval(ctx: ApprovalContext): boolean {
       return false;
     case "set_feature":
       return Boolean(ctx.enabling);
+    case "set_limit":
+      return Boolean(ctx.raising);
     case "resume_kind":
     case "set_route":
       return true;

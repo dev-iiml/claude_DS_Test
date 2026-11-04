@@ -39,6 +39,8 @@ const serverEnvSchema = z.object({
   ANALYTICS_PSEUDONYM_KEY: z.string().min(32, "ANALYTICS_PSEUDONYM_KEY must be at least 32 characters").optional(),
   /** Key for hashed rate-limit subjects (IP / user / partner). Required outside dev/test. */
   RATE_LIMIT_KEY: z.string().min(32, "RATE_LIMIT_KEY must be at least 32 characters").optional(),
+  /** Passport sharing (Stage 19): unlock cookies, access-log IP pseudonyms, brand-org GSTIN fingerprints. */
+  PASSPORT_SHARING_KEY: z.string().min(32, "PASSPORT_SHARING_KEY must be at least 32 characters").optional(),
   /** Loosens rate limits in development/test only (e.g. 50 for E2E runs). Ignored elsewhere. */
   RATE_LIMIT_MULTIPLIER: z.coerce.number().positive().max(1000).default(1),
   /**
@@ -67,6 +69,7 @@ function requiredOutsideDev(env: ServerEnv): string[] {
       "PARTNER_WEBHOOK_ROOT_KEY",
       "ANALYTICS_PSEUDONYM_KEY",
       "RATE_LIMIT_KEY",
+      "PASSPORT_SHARING_KEY",
     ] as const
   ).filter((k) => !env[k]);
 }

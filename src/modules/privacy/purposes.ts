@@ -151,6 +151,30 @@ export const PURPOSES: readonly PurposePolicy[] = [
     ],
     erasure: ["brand_payment_matches"],
   },
+  {
+    key: CONSENT_KEYS.publicPassport,
+    label: "Public Creator Passport",
+    summary: "Publishing a public page about your professional work, with only the fields you choose.",
+    core: false,
+    onWithdraw: [
+      "Your public page stops working straight away (the link shows that the page is gone).",
+      "Your bio and photo are deleted, and search engines are asked to drop the page.",
+      "Your access codes stop working too, because there's no page to unlock.",
+    ],
+    erasure: ["public_passport_content"],
+  },
+  {
+    key: CONSENT_KEYS.passportUnlock,
+    label: "Unlock your Passport details",
+    summary: "Letting code holders and, if you choose, verified brands see the detailed tier of your public Passport.",
+    core: false,
+    onWithdraw: [
+      "Every access code is revoked and organisations lose access straight away.",
+      "You're no longer discoverable by verified brands.",
+      "Your access log is kept for your own record until you close your account.",
+    ],
+    erasure: [],
+  },
 ];
 
 /** Shown wherever erasure is mentioned: credit records follow the partner lender's retention rules. */

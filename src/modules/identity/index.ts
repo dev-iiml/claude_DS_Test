@@ -6,6 +6,8 @@ export {
   requireOpsAdmin,
   requirePartnershipsAdmin,
   requireBrandWorkReviewer,
+  requireBrandMember,
+  requireVerifiedBrandMember,
   requireInsightsViewer,
   requireUser,
   homePathForUser,

@@ -125,6 +125,34 @@ and reviewer notes are never returned.
 | `GET /brand-work/{id}/confirmation`     | `{ methods }` — `agency_confirmation`, `remittance_advice`, and `aa_match` only while the `/ops` switch is on. All earn the same points.                                                                                                                                                                                                                                      |
 | `POST /brand-work/{id}/confirmation`    | `{ method, consentDefinitionId?, agree? }`. `aa_match` needs the optional `brand_payment_match` consent and returns `match: seen\|not_seen\|unknown` (only "seen" and a month are kept). `409 feature_off`; rate limited.                                                                                                                                                     |
 
+### Public Passport sharing (Stage 19)
+
+The creator's public Passport (`/p/{slug}`) settings. Publishing needs the `public_passport` consent and unlocking
+(codes, verified brands, discoverability) needs `passport_unlock` — send the active definition id with `agree: true`
+the first time. Views are the same redacted view model the web page renders: locked sections carry a title and a fixed
+number of placeholders only; amounts appear only as bands (`bandsVersion`).
+
+| Endpoint                                  | Notes                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /passport/sharing`                   | Settings: `published`, `slug`, `url`, `bio`, `hasPhoto`, `fields` (field, label, allowed tiers, tier), `indexable`, `includePrivateInTotals`, `audience`, `discoverable`, `canPublish`, `consents`.                                                                                           |
+| `PATCH /passport/sharing`                 | Any of `publish` (true/false), `slug`, `bio`, `fields` (`{ field: "public" \| "unlocked" \| "hidden" }`), `indexable`, `includePrivateInTotals`, `audience`, `discoverable`, `publicPassportConsent`, `passportUnlockConsent` (`{ consentDefinitionId, agree: true }`). Returns the settings. |
+| `GET /passport/sharing/preview?as=locked` | The creator's own page as a stranger (`locked`) or an unlocker (`unlocked`) sees it.                                                                                                                                                                                                          |
+| `GET /passport/sharing/codes`             | Codes with status, uses, last used, expiry and a 4-character hint — never the code.                                                                                                                                                                                                           |
+| `POST /passport/sharing/codes`            | `{ label, expiresInDays: 7 \| 30 \| 90, maxUses? }` → `{ id, code, expiresAt }`. The code is returned **once**. Rate limited.                                                                                                                                                                 |
+| `DELETE /passport/sharing/codes/{id}`     | Revoke (anyone using it is locked out at once).                                                                                                                                                                                                                                               |
+| `GET /passport/sharing/access-log`        | Unlocks: kind (`code` · `brand` · `lockout`), code label, India day + hour, typed (unverified) name/company, or the verified organisation's name.                                                                                                                                             |
+
+### Brand organisations (Stage 19)
+
+For `brand_member` accounts (sign-up is web-only: work-email code and organisation details). Unlocks need a verified
+organisation and accepted brand terms; brand members only ever see bands the creator chose to share.
+
+| Endpoint              | Notes                                                                                                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /brand/status`   | Organisation name, type, status and role; `termsAccepted`; today's unlocks and the daily quota; whether discovery is on.                                                           |
+| `POST /brand/unlock`  | `{ slug }` → `{ alreadyUnlocked, view }` (the unlocked view model). Counts once per passport per India day against the quota; the creator sees it in their access log.             |
+| `GET /brand/discover` | Only while the `/ops` discovery switch is on. Optional `category`, `platform`, `followerBand`, `industry`, `city` — matched against public values only. Returns public-tier views. |
+
 ### Analytics (Stage 15)
 
 | Endpoint        | Notes                                                                                                                                                                                                                                                      |

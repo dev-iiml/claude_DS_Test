@@ -18,6 +18,8 @@ import { MockDocumentStorageProvider } from "./document-storage/mock-document-st
 import type { DocumentStorageProvider } from "./document-storage/types";
 import { MockFileScanProvider } from "./file-scan/mock-file-scan-provider";
 import type { FileScanProvider } from "./file-scan/types";
+import { MockBusinessVerificationProvider } from "./business-verification/mock-business-verification-provider";
+import type { BusinessVerificationProvider } from "./business-verification/types";
 
 /**
  * The set of capabilities business code depends on. Live instances come from
@@ -35,6 +37,7 @@ export interface ProviderRegistry {
   lender: LenderProvider;
   documentStorage: DocumentStorageProvider;
   fileScan: FileScanProvider;
+  businessVerification: BusinessVerificationProvider;
 }
 
 /** Direct mocks, bypassing routing — for unit tests and scripts only. */
@@ -50,5 +53,6 @@ export function createMockProviderRegistry(): ProviderRegistry {
     lender: new MockLenderProvider(),
     documentStorage: new MockDocumentStorageProvider(),
     fileScan: new MockFileScanProvider(),
+    businessVerification: new MockBusinessVerificationProvider(),
   };
 }

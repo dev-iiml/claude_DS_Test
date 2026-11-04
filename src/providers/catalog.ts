@@ -24,6 +24,8 @@ import type { DocumentStorageProvider } from "./document-storage/types";
 import { MockDocumentStorageProvider } from "./document-storage/mock-document-storage-provider";
 import type { FileScanProvider } from "./file-scan/types";
 import { MockFileScanProvider } from "./file-scan/mock-file-scan-provider";
+import type { BusinessVerificationProvider } from "./business-verification/types";
+import { MockBusinessVerificationProvider } from "./business-verification/mock-business-verification-provider";
 
 /**
  * The adapters this build can run, per capability. A vendor integration is
@@ -42,6 +44,7 @@ export interface ProviderByKind {
   lender: LenderProvider;
   document_storage: DocumentStorageProvider;
   file_scan: FileScanProvider;
+  business_verification: BusinessVerificationProvider;
 }
 
 /** Settings every adapter accepts. Settings are non-secret; secrets are env references. */
@@ -140,6 +143,7 @@ export const ADAPTERS: readonly AdapterDefinition[] = [
   // Stage 18: a real vendor (planned: a private bucket in Mumbai) is added here once Aman confirms it.
   mockAdapter("document_storage", "Mock document storage", () => new MockDocumentStorageProvider()),
   mockAdapter("file_scan", "Mock file scanning", () => new MockFileScanProvider()),
+  mockAdapter("business_verification", "Mock company registry", () => new MockBusinessVerificationProvider()),
   {
     kind: "lender",
     adapter: "mock",
@@ -196,4 +200,5 @@ export const DEFAULT_CONFIG_KEYS: Record<ProviderKind, string> = {
   lender: "mock_re",
   document_storage: "mock",
   file_scan: "mock",
+  business_verification: "mock",
 };

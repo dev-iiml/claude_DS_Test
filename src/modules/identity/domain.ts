@@ -10,6 +10,7 @@ export const USER_ROLES = [
   "analyst",
   "brand_work_reviewer",
   "super_admin",
+  "brand_member",
 ] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
@@ -30,6 +31,12 @@ export const PARTNERSHIPS_ROLES = ["partnerships_admin", "super_admin"] as const
  * bank details, so this is its own least-privilege role — never `partnerships_admin`. No financial-domain data.
  */
 export const BRAND_WORK_ROLES = ["brand_work_reviewer", "super_admin"] as const satisfies readonly UserRole[];
+
+/**
+ * Brand app (`/brands`, Stage 19): members of a brand or agency organisation. NOT staff and NOT a creator — they
+ * reach only their own organisation's pages, and unlocked passports only once the organisation is verified.
+ */
+export const BRAND_MEMBER_ROLES = ["brand_member"] as const satisfies readonly UserRole[];
 
 /** Insights (`/insights`): aggregate funnel and model analytics only — no creator detail, no actions. */
 export const ANALYTICS_ROLES = ["analyst", "risk_admin", "super_admin"] as const satisfies readonly UserRole[];

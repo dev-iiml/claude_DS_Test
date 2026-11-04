@@ -69,6 +69,9 @@ describe("analytics event catalogue", () => {
     expect(CLIENT_EVENTS.sort()).toEqual(
       ["access_opportunity_viewed", "application_started", "landing_viewed", "offer_viewed"].sort(),
     );
+    // Stage 19: anonymous server events (passport views, code attempts, org verification) can't be sent by a client.
+    for (const e of ["passport_viewed", "passport_unlock_attempted", "brand_org_verified"])
+      expect(CLIENT_EVENTS).not.toContain(e);
   });
 });
 

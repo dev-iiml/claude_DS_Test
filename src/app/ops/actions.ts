@@ -86,6 +86,8 @@ function rawChange(form: FormData) {
       };
     case "set_feature":
       return { action, feature: readText(form, "feature"), enabled: readText(form, "enabled") === "true" };
+    case "set_limit":
+      return { action, limit: readText(form, "limit"), value: readText(form, "value") };
     default:
       return { action, kind };
   }
@@ -124,9 +126,11 @@ export async function proposeChangeAction(_prev: FormState, form: FormData): Pro
     target =
       change.data.action === "set_feature"
         ? `/ops?notice=${result.status}#features`
-        : kind
-          ? `/ops/providers/${kind}?notice=${result.status}`
-          : `/ops/changes`;
+        : change.data.action === "set_limit"
+          ? `/ops?notice=${result.status}#limits`
+          : kind
+            ? `/ops/providers/${kind}?notice=${result.status}`
+            : `/ops/changes`;
   } catch (error) {
     if (error instanceof IntegrationChangeError) return formError(error.message, { values });
     logger.error("ops.propose_failed", describeError(error));

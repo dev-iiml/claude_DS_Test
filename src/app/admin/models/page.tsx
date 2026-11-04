@@ -17,6 +17,7 @@ import {
   PAYMENT_MATCH_RULES_VERSION,
   PAYMENT_MATCH_SETTINGS,
 } from "@/modules/financial-eligibility/payment-match-rules";
+import { PASSPORT_BAND_LABELS, PASSPORT_BANDS_VERSION } from "@/modules/public-passport/bands";
 import { EARN_GUIDE } from "@/modules/rewards/presentation";
 import { POINTS_RULES_VERSION, TASK_POINTS_MAX, TASK_POINTS_MIN } from "@/modules/rewards/rules";
 import { FRAUD_CHECK_CODES, FRAUD_RULES_VERSION, FRAUD_THRESHOLDS } from "@/modules/fraud/rules";
@@ -162,6 +163,15 @@ export default async function ModelsPage() {
               label="Bands"
               detail={`₹${RULE_SETTINGS.minPlausiblePaise / 100}–₹${(RULE_SETTINGS.maxPlausiblePaise / 100).toLocaleString("en-IN")} per record · ${RULE_SETTINGS.medianMultiple}× own median after ${RULE_SETTINGS.medianMinRecords} records · ${RULE_SETTINGS.newBrandsThreshold}+ new brands in ${RULE_SETTINGS.newBrandsWindowDays} days`}
             />
+          </ListGroup>
+          <ListGroup
+            id="passport-bands"
+            label={`Public Passport bands · ${PASSPORT_BANDS_VERSION}`}
+            footer="What a public Passport shows instead of exact figures. Deal-size bands appear only to unlockers, only if the creator turns them on. Not an underwriting input."
+          >
+            <ListRow label="Followers" detail={PASSPORT_BAND_LABELS.followers.join(" · ")} />
+            <ListRow label="Deal size" detail={PASSPORT_BAND_LABELS.deals.join(" · ")} />
+            <ListRow label="12-month billings" detail={PASSPORT_BAND_LABELS.billings.join(" · ")} />
           </ListGroup>
           <ListGroup
             id="payment-match-rules"

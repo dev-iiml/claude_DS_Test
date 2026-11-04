@@ -10,6 +10,7 @@ import { processDeferredErasures } from "@/modules/privacy";
 import { purgeRateLimitCounters } from "@/modules/rate-limit";
 import { purgeAuthRecords } from "@/modules/identity/housekeeping";
 import { grantMembershipMilestones } from "@/modules/rewards/ledger-service";
+import { passportHousekeeping } from "@/modules/public-passport/erasure";
 import { eraseStoredDocument, getDocumentStorageKey, scanDocument } from "@/modules/brand-work/documents-service";
 import { storeNotices } from "@/modules/brand-work/notices";
 import { bankDataPermissionNotices } from "@/modules/financial-eligibility/brand-payment-match";
@@ -64,6 +65,17 @@ export const JOB_HANDLERS: JobHandlers = {
   },
   // The financial domain finds who needs a notice (dates only); brand-work stores the neutral text's inputs.
   brand_work_consent_reminders: async ({ db, now }) => storeNotices(db, await bankDataPermissionNotices(db, now)),
+  // Deletes a passport photo or brand logo object (opaque key) from the storage config that holds it.
+  public_passport_purge: async ({ db, payload }) => {
+    const routing = { db, production: process.env.APP_ENV === "production" };
+    const key = String(payload.key ?? "");
+    if (!/^(pp|lg)\/[0-9a-f]{32}$/.test(key)) return { deleted: 0 };
+    const storage = await resolveProviderByKey(routing, "document_storage", String(payload.provider ?? "mock"));
+    if (!storage) throw new Error("document storage unavailable");
+    await storage.delete({ key });
+    return { deleted: 1 };
+  },
+  passport_housekeeping: async ({ db, now }) => passportHousekeeping(db, now),
   provider_health_check: async ({ db, now }) => {
     const health = await runHealthChecks({ db, now, production: process.env.APP_ENV === "production" });
     return { ...health, expired_changes: await expireStaleChanges({ db, now }) };

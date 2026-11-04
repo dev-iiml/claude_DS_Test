@@ -312,3 +312,45 @@ export function FeatureSwitchForm({ feature, enabled, label }: { feature: string
     </form>
   );
 }
+
+/** A platform limit (Stage 19): lowering applies at once (a kill switch); raising needs a second ops admin. */
+export function PlatformLimitForm({
+  limit,
+  value,
+  min,
+  max,
+}: {
+  limit: string;
+  value: number;
+  min: number;
+  max: number;
+}) {
+  const [state, action] = useActionState(proposeChangeAction, initialFormState);
+  return (
+    <form action={action} className="flex flex-col gap-4" noValidate>
+      <FormMessage state={state} />
+      <input type="hidden" name="action" value="set_limit" />
+      <input type="hidden" name="limit" value={limit} />
+      <FormField
+        id={`limit-${limit}`}
+        label="New value"
+        required
+        description={`${min}–${max}. Currently ${value}.`}
+        errors={state.fieldErrors?.value}
+      >
+        {(a11y) => (
+          <Input {...a11y} name="value" inputMode="numeric" defaultValue={String(value)} className="max-w-32" />
+        )}
+      </FormField>
+      <ReasonField state={state} placeholder="e.g. Lowering while we look into unusual unlock volume" />
+      <p className="text-footnote leading-snug text-ink-subtle">
+        Lowering takes effect immediately and is recorded. Raising needs approval from a second ops admin.
+      </p>
+      <div>
+        <SubmitButton variant="secondary" pendingLabel="Submitting…">
+          Change limit
+        </SubmitButton>
+      </div>
+    </form>
+  );
+}

@@ -88,6 +88,28 @@ export const featureSwitches = ops
   )
   .enableRLS();
 
+/**
+ * Control-plane numeric limits (Stage 19), e.g. `brand_unlock_daily_quota`.
+ * Changed only through `proposeChange` (`set_limit`): raising one needs a
+ * second ops admin, lowering applies at once. No creator data.
+ */
+export const platformLimits = ops
+  .table(
+    "platform_limits",
+    {
+      key: text("key").primaryKey(),
+      value: integer("value").notNull(),
+      version: integer("version").notNull().default(1),
+      updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+      updatedAt: updatedAt(),
+    },
+    (t) => [
+      check("platform_limits_key_format", sql`${t.key} ~ '^[a-z][a-z0-9_]{1,39}$'`),
+      check("platform_limits_value_bound", sql`${t.value} between 0 and 100000`),
+    ],
+  )
+  .enableRLS();
+
 export const providerRoutes = ops
   .table(
     "provider_routes",

@@ -11,6 +11,22 @@ export const CREATOR_NAV: NavItem[] = [
   { href: "/account", label: "Account", icon: "account" },
 ];
 
+/** The brand app (Stage 19): verified brand and agency members. Existing icons reused (design system pinned v2.0.0). */
+export const BRAND_NAV: NavItem[] = [
+  { href: "/brands", label: "Home", icon: "home" },
+  { href: "/brands/discover", label: "Discover", icon: "access" },
+  { href: "/brands/unlocks", label: "Unlocks", icon: "passport" },
+  { href: "/brands/organisation", label: "Organisation", icon: "account" },
+];
+
+export function BrandShell({ children }: { children: React.ReactNode }) {
+  return (
+    <AppShell nav={BRAND_NAV} sidebarFooter={<SignOutForm />} topBarAction={<SignOutForm />}>
+      {children}
+    </AppShell>
+  );
+}
+
 export function CreatorShell({ children }: { children: React.ReactNode }) {
   return (
     <AppShell nav={CREATOR_NAV} sidebarFooter={<SignOutForm />}>
@@ -41,6 +57,9 @@ export const PARTNERSHIPS_NAV: NavItem[] = [
   { href: "/partnerships/opportunities", label: "Opportunities", icon: "access" },
   // Reuses an existing icon: a dedicated one would be a design-system change (pinned v2.0.0).
   { href: "/partnerships/tasks", label: "Points tasks", icon: "approvals" },
+  // Stage 19. Existing icons reused (design system pinned v2.0.0).
+  { href: "/partnerships/brand-orgs", label: "Brand organisations", icon: "console" },
+  { href: "/partnerships/passports", label: "Public passports", icon: "passport" },
 ];
 
 /** How other consoles link to the brand-work review desk (super admins only). */
@@ -99,6 +118,7 @@ export function BrandWorkShell({ children, role }: { children: React.ReactNode; 
 export const INSIGHTS_NAV: NavItem[] = [
   { href: "/insights", label: "Funnel", icon: "console" },
   { href: "/insights/brand-work", label: "Brand work", icon: "console" },
+  { href: "/insights/passports", label: "Passports", icon: "passport" },
   // Reuses an existing icon: a dedicated one would be a design-system change (pinned v2.0.0).
   { href: "/insights/models", label: "Models", icon: "underwriting" },
 ];

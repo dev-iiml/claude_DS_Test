@@ -21,7 +21,7 @@ const ROOT = join(process.cwd(), "src/app");
 
 /** Calls that authorise (each verified by its own tests) or helpers that call one first. */
 const GUARD_NAME =
-  /^(require(Creator|Member|Admin|OpsAdmin|PartnershipsAdmin|BrandWorkReviewer|InsightsViewer|ConsentCentreAccess|Partner|ApiUser|ApiCreator|ApiMember|User)|load(Application|Onboarding)Step|resumePath|handle(About|Profile|Business|Interests|Consent))$/;
+  /^(require(Creator|Member|Admin|OpsAdmin|PartnershipsAdmin|BrandWorkReviewer|BrandMember|VerifiedBrandMember|InsightsViewer|ConsentCentreAccess|Partner|ApiUser|ApiCreator|ApiMember|ApiBrandMember|User)|load(Application|Onboarding)Step|resumePath|handle(About|Profile|Business|Interests|Consent))$/;
 /** Text form, for the helper files. */
 const GUARD = new RegExp(`\\b${GUARD_NAME.source.slice(1, -1)}\\s*\\(`);
 
@@ -40,6 +40,28 @@ const PUBLIC: Record<string, Record<string, string>> = {
   "api/v1/auth/sign-up/route.ts": { POST: "native sign-up (rate limited)" },
   "_actions/appearance.ts": { setAppearanceAction: "stores the caller's light/dark preference cookie only" },
   "api/internal/cron/tick/route.ts": { GET: "CRON_SECRET bearer, constant-time compare; 404 when unset" },
+  // Stage 19: the public Verified Creator Passport. The server decides the tier per request (view-model redaction).
+  "p/[slug]/page.tsx": {
+    default: "public passport — public tier for anyone; unlocked tier only for a server-verified viewer (rate limited)",
+  },
+  "p/[slug]/photo/route.ts": { GET: "passport photo, only while live and only if the viewer's tier shows the profile" },
+  "p/[slug]/logo/[brandId]/route.ts": {
+    GET: "approved brand logo, only while live and only if the viewer's tier shows brands",
+  },
+  "p/[slug]/actions.ts": {
+    unlockWithCodeAction:
+      "redeems an access code (rate limited per IP and per passport, lockout, constant-time compare)",
+    reportPassportAction: "reports a page to CreatorCo with ids only (rate limited)",
+  },
+  // Stage 19: brand and agency sign-up / invitation acceptance.
+  "brands/signup/page.tsx": { default: "brand sign-up form (work email)" },
+  "brands/signup/details/page.tsx": { default: "brand sign-up step 2 (needs a live email challenge)" },
+  "brands/join/[token]/page.tsx": { default: "accept an invitation (the token is the credential)" },
+  "brands/actions.ts": {
+    requestBrandCodeAction: "sends a work-email code (free-mail refused, rate limited)",
+    completeBrandSignupAction: "creates the account + pending organisation after the email code (rate limited)",
+    acceptInviteAction: "joins an organisation with a valid invitation token (rate limited)",
+  },
 };
 
 const HANDLER_NAMES = new Set(["default", "GET", "POST", "PUT", "PATCH", "DELETE"]);

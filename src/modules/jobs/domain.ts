@@ -19,6 +19,8 @@ export const JOB_TYPES = [
   "brand_work_scan_document",
   "brand_work_erase_documents",
   "brand_work_consent_reminders",
+  "public_passport_purge",
+  "passport_housekeeping",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -38,6 +40,13 @@ export interface JobSchedule {
 }
 
 export const JOB_SCHEDULES: readonly JobSchedule[] = [
+  {
+    type: "passport_housekeeping",
+    label: "Passport housekeeping",
+    description:
+      "Frees passport links whose 30-day redirect ended and deletes old brand sign-up codes and expired invites.",
+    everyMinutes: 1440,
+  },
   {
     type: "expire_stale_applications",
     label: "Expire stale eligibility checks",

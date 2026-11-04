@@ -1,7 +1,9 @@
 import "server-only";
 
 import { AccessError } from "@/modules/access";
+import { BrandOrgError, BRAND_ORG_ERROR_STATUS } from "@/modules/brand-orgs/errors";
 import { BrandWorkError } from "@/modules/brand-work/errors";
+import { PassportError, PASSPORT_ERROR_STATUS } from "@/modules/public-passport/errors";
 import { ConsentError } from "@/modules/consent";
 import { OnboardingError } from "@/modules/creator-profile/onboarding-service";
 import { SocialConnectionError } from "@/modules/social-data/connection-service";
@@ -65,6 +67,20 @@ export function toApiError(error: unknown): never {
     }[error.code];
     throw new ApiError(
       status,
+      error.code,
+      error.message !== error.code ? error.message : "This can't be done right now.",
+    );
+  }
+  if (error instanceof PassportError) {
+    throw new ApiError(
+      PASSPORT_ERROR_STATUS[error.code],
+      error.code,
+      error.message !== error.code ? error.message : "This can't be done right now.",
+    );
+  }
+  if (error instanceof BrandOrgError) {
+    throw new ApiError(
+      BRAND_ORG_ERROR_STATUS[error.code],
       error.code,
       error.message !== error.code ? error.message : "This can't be done right now.",
     );
