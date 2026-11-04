@@ -146,6 +146,10 @@ Settings → Secrets and variables → Actions → **Variables** (not secrets �
 
 ## 9. Known limitations of this setup
 
+- **Brand-work documents on staging (Stage 18):** staging uses the mock document storage, which keeps uploaded files in
+  the instance's memory. Staging is therefore limited to one instance, and uploads disappear when the instance scales
+  to zero or a new revision is deployed (the seeded sample documents are regenerated, so the demo still works). A real
+  `DocumentStorageProvider` adapter (Google Cloud Storage is the likely choice) removes this limit.
 - **Cold starts:** instances scale to zero; the first request after idle takes a few seconds.
 - **`after()` work** (signed-out page-view counts) runs with throttled CPU once the response is sent (request-based
   billing), so those counts can land late or, rarely, be lost when an instance stops.
