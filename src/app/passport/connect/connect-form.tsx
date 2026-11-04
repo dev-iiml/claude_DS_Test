@@ -83,11 +83,11 @@ export function ConnectForm({
             <SwitchRow
               name="analytics"
               label="Also turn on professional signals"
-              description="Optional and separate. You can turn this on or off later."
+              description="See how your creator business is trending — longevity, consistency and platform mix on your Passport — and be considered for Onyx and Icon. Optional, never a credit score, and you can turn it off any time."
               aria-describedby="analytics-consent"
             />
             <details className="group">
-              <summary className="cursor-pointer py-1 text-subhead text-gold">Read what this means</summary>
+              <summary className="cursor-pointer py-1 text-subhead text-gold">Read the full consent</summary>
               <ConsentText id="analytics-consent" definition={analyticsConsent} className="mt-3" />
             </details>
           </CardContent>

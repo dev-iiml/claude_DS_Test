@@ -23,6 +23,8 @@ export async function getProviders(): Promise<ProviderRegistry> {
     bureau: p.bureau,
     financialData: p.financial_data,
     lender: p.lender,
+    documentStorage: p.document_storage,
+    fileScan: p.file_scan,
   };
 }
 

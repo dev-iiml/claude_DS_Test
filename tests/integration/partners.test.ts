@@ -426,7 +426,7 @@ describe("partner lender flow (pull + thin webhooks)", () => {
     await expect(post({}, "decision-0002", "b".repeat(64))).rejects.toMatchObject({ code: "wrong_state" });
 
     // The creator sees nothing until a reviewer acts; staff can't override a partner decision.
-    expect(await getCreatorLenderView(db, c)).toEqual({ stage: "with_lender" });
+    expect(await getCreatorLenderView(db, c)).toEqual({ stage: "with_lender", simulated: false });
     const reviewer = await staff("reviewer");
     await expect(
       reviewDecision(db, {

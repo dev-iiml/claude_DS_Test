@@ -24,7 +24,7 @@ const fmt = (n: number | null) => (n === null ? null : n.toLocaleString("en-IN")
 
 function RupeeInput(props: React.ComponentProps<typeof Input>) {
   return (
-    <div className="relative">
+    <div className="relative w-full sm:max-w-xs">
       <span
         aria-hidden="true"
         className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[17px] text-ink-muted"
@@ -70,7 +70,7 @@ export function DetailsForm({
 
       <ChoiceFieldset
         id="purposes"
-        legend="What is it for?"
+        legend="What would you use the funds for?"
         description={`Choose up to ${maxPurposes}. The first you pick is treated as the main one.`}
         errors={e.purposes}
         required
@@ -149,7 +149,13 @@ export function DetailsForm({
         )}
       </FormField>
 
-      <ChoiceFieldset id="incomeSources" legend="Where does it come from?" errors={e.incomeSources} required>
+      <ChoiceFieldset
+        id="incomeSources"
+        legend="Where does it come from?"
+        description="Choose all that apply."
+        errors={e.incomeSources}
+        required
+      >
         <div className="flex flex-wrap gap-2">
           {sources.map((s) => (
             <CheckboxChip

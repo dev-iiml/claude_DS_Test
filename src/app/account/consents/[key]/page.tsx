@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { BackLink, ConsentText, ListGroup, ListRow, PageHeader } from "@/components/creatorco";
+import { BackLink, ConsentText, ListGroup, ListRow } from "@/components/creatorco";
+import { PageTitle } from "@/app/_components/page-title";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +33,7 @@ export default async function PurposePage({ params, searchParams }: PageProps<"/
   return (
     <ConsentFrame paused={paused}>
       <BackLink href="/account/consents" label="Consent centre" />
-      <PageHeader title={policy.label} description={policy.summary} action={<PurposeStatusBadge status={status} />} />
+      <PageTitle title={policy.label} description={policy.summary} status={<PurposeStatusBadge status={status} />} />
 
       <div className="flex max-w-2xl flex-col gap-8">
         {q.granted ? <Alert tone="success">Consent recorded. Your receipt is below.</Alert> : null}
@@ -51,7 +52,7 @@ export default async function PurposePage({ params, searchParams }: PageProps<"/
                 <GrantForm
                   purposeKey={policy.key}
                   definitionId={current.id}
-                  agreeLabel={`I agree to this consent (version ${current.version})`}
+                  agreeLabel="I agree to this consent"
                   submitLabel={policy.core && paused ? "Resume membership" : "Give consent"}
                 />
               )}

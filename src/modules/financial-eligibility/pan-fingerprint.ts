@@ -1,4 +1,5 @@
 import { createHmac } from "node:crypto";
+import { appEnvOf } from "@/lib/app-env";
 
 /**
  * Keyed PAN fingerprint for duplicate-identity detection (Stage 11, user
@@ -16,7 +17,7 @@ function secret(): string {
     if (configured.length < 32) throw new Error("PAN_FINGERPRINT_SECRET must be at least 32 characters");
     return configured;
   }
-  const env = process.env.APP_ENV ?? "development";
+  const env = appEnvOf();
   if (env === "development" || env === "test") return DEV_ONLY_SECRET;
   throw new Error("PAN_FINGERPRINT_SECRET must be set outside development and test");
 }

@@ -1,16 +1,19 @@
 import { z } from "zod";
 
+import { clientIpFrom, rateLimit } from "@/app/_lib/rate-limit";
 import { authDeps } from "@/modules/identity";
 import { LOGIN_WINDOW_MINUTES, signIn } from "@/modules/identity/auth/auth-service";
 import { signInSchema } from "@/modules/identity/auth/schemas";
 
 import { API_CLIENTS } from "../../_lib/auth";
-import { ApiError, json, readJson, route } from "../../_lib/http";
+import { ApiError, json, rateLimited, readJson, route } from "../../_lib/http";
 
 const body = signInSchema.extend({ client: z.enum(API_CLIENTS) });
 
 export const POST = route("auth.sign_in", async (request) => {
   const input = await readJson(request, body);
+  const limited = await rateLimit("auth.sign_in", clientIpFrom(request.headers));
+  if (!limited.ok) throw rateLimited(limited.retryAfterSeconds);
   const result = await signIn(authDeps(), input);
   if (!result.ok) {
     if (result.reason === "locked") {

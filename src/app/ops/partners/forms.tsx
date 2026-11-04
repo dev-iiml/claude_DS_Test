@@ -52,7 +52,7 @@ export function CreatePartnerForm() {
         <FormField id="name" label="Name" required>
           {(a11y) => <Input {...a11y} name="name" maxLength={80} defaultValue={String(state.values?.name ?? "")} />}
         </FormField>
-        <FormField id="key" label="Partner key" required description="Lowercase, e.g. partner_hdfc_pilot.">
+        <FormField id="key" label="Partner key" required description="Lowercase, e.g. partner_bank_pilot.">
           {(a11y) => <Input {...a11y} name="key" maxLength={40} defaultValue={String(state.values?.key ?? "")} />}
         </FormField>
         <FormField

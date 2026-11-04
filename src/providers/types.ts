@@ -11,6 +11,8 @@ export const PROVIDER_KINDS = [
   "bureau",
   "financial_data",
   "lender",
+  "document_storage",
+  "file_scan",
 ] as const;
 export type ProviderKind = (typeof PROVIDER_KINDS)[number];
 

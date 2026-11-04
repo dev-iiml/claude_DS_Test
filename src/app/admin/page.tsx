@@ -6,6 +6,8 @@ import { getDb } from "@/db";
 import { requireAdmin } from "@/modules/identity";
 import { getAdminOverview } from "@/modules/risk-console/admin-overview";
 import { getIntegrationsOverview } from "@/modules/integrations";
+import { PROVIDER_KIND_LABELS } from "@/modules/integrations/domain";
+import { purposeFor } from "@/modules/privacy";
 
 import { AdminShell } from "../_components/creator-shell";
 
@@ -19,6 +21,17 @@ const GST_LABELS: Record<string, string> = {
 };
 
 const HEALTH_TONE = { ok: "success", degraded: "warning", down: "danger", unknown: "neutral" } as const;
+const HEALTH_LABEL = { ok: "Healthy", degraded: "Degraded", down: "Down", unknown: "Not checked yet" } as const;
+
+const APPLICATION_STATUS: Record<string, string> = {
+  draft: "In progress",
+  inputs_ready: "Confirmed, not sent",
+  submitted: "Sent to a partner lender",
+  withdrawn: "Closed",
+  expired: "Expired",
+};
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 const utc = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
@@ -33,7 +46,7 @@ export default async function AdminPage() {
       <PageHeader
         eyebrow={`Internal · ${admin.role === "super_admin" ? "Super admin" : "Risk admin"}`}
         title="Risk console"
-        description="Aggregates only. Applications, underwriting comparison and simulated partner decisions arrive in a later stage."
+        description="Aggregates at a glance. Checks, Traditional vs Creator-Enhanced comparisons and fraud flags are under Underwriting; partner-lender decisions under Proposals."
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -63,9 +76,9 @@ export default async function AdminPage() {
                 detail={serving ? `${serving.key} · ${serving.mode}` : k.route?.paused ? "Paused" : "Unavailable"}
                 accessory={
                   serving ? (
-                    <StatusBadge tone={HEALTH_TONE[serving.health]}>{serving.health}</StatusBadge>
+                    <StatusBadge tone={HEALTH_TONE[serving.health]}>{HEALTH_LABEL[serving.health]}</StatusBadge>
                   ) : (
-                    <StatusBadge tone="danger">off</StatusBadge>
+                    <StatusBadge tone="danger">Off</StatusBadge>
                   )
                 }
               />
@@ -87,7 +100,7 @@ export default async function AdminPage() {
               overview.providerCalls.map((c) => (
                 <ListRow
                   key={`${c.kind}-${c.key}-${c.outcome}`}
-                  label={c.kind}
+                  label={PROVIDER_KIND_LABELS[c.kind as keyof typeof PROVIDER_KIND_LABELS] ?? c.kind}
                   detail={`${c.key} · ${c.outcome}`}
                   value={<span className="tabular-nums">{c.n}</span>}
                 />
@@ -123,7 +136,7 @@ export default async function AdminPage() {
             overview.applications.map((a) => (
               <ListRow
                 key={a.status}
-                label={<span className="font-mono text-[14px]">{a.status}</span>}
+                label={APPLICATION_STATUS[a.status] ?? a.status}
                 value={<span className="tabular-nums">{a.n}</span>}
               />
             ))
@@ -132,12 +145,12 @@ export default async function AdminPage() {
         <ListGroup
           id="consents"
           label="Consents"
-          footer={`Receipts per purpose. ${overview.profilesPaused} membership(s) paused.`}
+          footer={`Receipts per purpose. ${plural(overview.profilesPaused, "membership", "memberships")} paused.`}
         >
           {overview.consents.map((c) => (
             <ListRow
               key={c.key}
-              label={<span className="font-mono text-[14px]">{c.key}</span>}
+              label={purposeFor(c.key)?.label ?? c.key}
               value={<span className="tabular-nums">{`${c.granted} on · ${c.withdrawn} withdrawn`}</span>}
             />
           ))}

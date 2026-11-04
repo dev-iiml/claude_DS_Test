@@ -13,3 +13,8 @@ export * from "./professional-graph";
 export * from "./financial";
 export * from "./ops";
 export * from "./partners";
+export * from "./creator-status";
+export * from "./access";
+export * from "./analytics";
+export * from "./rewards";
+export * from "./brand-work";

@@ -9,7 +9,7 @@ loads it. Read it before any product, architecture, data, underwriting, regulato
 
 ## Build status
 
-Stages 00–13 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
+Stages 00–18 are complete: foundations, design system (mobile-first, iOS/macOS patterns, dark default), core schema,
 self-managed auth and roles, Cohort A0 onboarding, Creator Passport, social connection (mock provider), the
 Professional Graph feature engine, the consent centre (receipts, withdrawal, hold-aware erasure, paused membership),
 financial eligibility (separate `fin` schema, Financial Capacity features), Underwriting Engine v0 (Traditional vs
@@ -21,8 +21,16 @@ Account Aggregator sharing with an explicit Review → confirm step and bank-ver
 a "Share with a partner lender" consent, the Models & rules page and a maker-checker simulated lender policy (12),
 the partner API with hashed maker-checker API keys, thin HMAC-signed webhooks, a vendor-neutral `partner_api` lender
 adapter and confirm-or-query review of partner decisions (12b), the creator's offer screen with partner-provided terms
-and KFS, accept/decline with a purpose-specific handoff consent and per-check retention holds (13), plus API v1 for
-future native apps.
+and KFS, accept/decline with a purpose-specific handoff consent and per-check retention holds (13), Creator Status
+(`cs-0.1.0`), the Access preview with sample brands, Creator Points and the `/partnerships` desk (14), first-party
+pseudonymous analytics with the §26 funnel, an optional Product analytics consent, 24-month retention and the
+`/insights` dashboards for risk admins and a read-only `analyst` role (15), the QA/security pass — route-guard
+inventory, Postgres rate limits, strict nonce CSP, log redaction, a least-privilege `creatorco_app` DB role, security
+record purges, the data inventory and first-party sign-up attribution (16), deployment to Google Cloud Run + Supabase
+in Mumbai with staging and production, CI/CD and infra scripts (17), the QA follow-ups (points `pts-0.2.0`: profile,
+anniversary, Access participation and four-eyes staff tasks; Access browse/filter; activity page), Verified brand work —
+records + documents, scanning, the `/brand-work` reviewer desk, brand directory, optional payment confirmation and
+brand portfolio features `pg-0.3.0` (18), plus API v1 for future native apps.
 
 ## Implementation conventions (established in Stages 00–04)
 
@@ -92,4 +100,44 @@ future native apps.
   are illustrative (policy pricing). Creators accept the exact terms shown (`termsHash`); the `lender_handoff`
   consent is granted inside `acceptOffer`. Retention holds are per check (`heldLenderCheckIds`); declined/expired
   offers are kept until withdrawal and then erased via the hold checker's `releasedApplications`.
+- Creator Status / Access / points (Stage 14): Status rules live in `modules/creator-status/rules.ts` (pure); any
+  change bumps `STATUS_RULES_VERSION`. Status is evaluated after each graph run and erased with it, and is never imported
+  by credit modules (a unit test enforces this). Points rules live in `modules/rewards/rules.ts` (`POINTS_RULES_VERSION`):
+  milestones, tiers, Access participation, verified brand-work counts and four-eyes staff tasks — never credit
+  actions, consents (giving, renewing or keeping one), data sharing or amounts; never shown as money. Points are taken
+  back only by an approved reversal (`reverse` entries, holds cancelled first, floor at zero). Balance changes
+  take `lockPointsAccount` (`FOR NO KEY UPDATE`). Access requests need `brand_opportunities`, granted inside
+  `requestAccess`; consent withdrawal locks receipts before effects. Partnerships staff see creator-professional data
+  only (`requirePartnershipsAdmin`).
+- Analytics (Stage 15, `modules/analytics`, schema `analytics`): record events only with `recordEvent(tx, …)` inside
+  the transaction that makes the change (page views: `recordAfterResponse` in `src/app/_lib/analytics.ts`). Every
+  event is declared in `events.ts` with a strict props schema — small enums/booleans only, never personal data,
+  amounts, terms, scores, grades or reasons; changing props bumps the event `version`. `essential` = pseudonymous
+  service measurement; `optional` = needs `product_analytics`. Events keep the India-time day only (no timestamp) and a
+  keyed pseudonym (`analyticsSubject`). Eligibility/offer steps are in `FINANCIAL_FUNNEL_EVENTS` and are erased with
+  the financial-eligibility consent. Analytics never imports or reads `fin`; risk/model aggregates are computed by the
+  owning module (`underwriting/model-analytics.ts`, `lending/decision-analytics.ts`) with small-cell suppression
+  (`MIN_CELL` = 5). Dashboards live under `/insights` (`requireInsightsViewer`).
+- Security (Stage 16): every page, route handler and server action calls a guard (`require*`, or a guarded helper) —
+  the route-guard test fails otherwise; a genuinely public entry point is added to its `PUBLIC` list with a reason.
+  Abuse-prone actions take `rateLimit(bucket, subject)` (`src/app/_lib/rate-limit.ts`; rules in
+  `modules/rate-limit/rules.ts`, counted after validation, IP buckets via `clientIp()`). No inline scripts or
+  third-party origins (strict nonce CSP in `src/proxy.ts`/`src/lib/csp.ts`). Use `describeError` for logged errors.
+  New tables need an entry in `modules/privacy/data-inventory.ts` (then `npx tsx scripts/render-data-inventory.ts`);
+  `db:migrate` grants the `creatorco_app` role automatically. Dev-only conveniences check `isDevOrTest()`
+  (`lib/app-env.ts`), which fails closed when APP_ENV is unset in a production build.
+- Deployment (Stage 17, docs/DEPLOYMENT.md): the app must keep building as a standalone container with no env files
+  (`next build` with nothing set) — read configuration from the environment only. New secrets go into the
+  environment's `creatorco-<env>-app-env` (via `getServerEnv`, required outside dev/test), never into the image,
+  GitHub or the DB. New scheduled work is a job type (the 5-minute tick runs it), not a new scheduler. Staging may hold
+  fictional demo data only; production never.
+- Verified brand work (Stage 18, `modules/brand-work`, README there): invoices may hold PAN/GSTIN/bank details — never
+  extract them into columns, logs, audit metadata, analytics or form state; the document bytes are the only place they
+  exist, under an opaque `bw/<hex>` key via `DocumentStorageProvider` (scanned by `FileScanProvider` before review).
+  Creator free text and staff notes pass `restrictedTextKinds`. Brand features are professional evidence only: credit
+  modules and Creator Status never import `brand-work`, and `PROFESSIONAL_INPUTS` has no brand keys (unit-tested).
+  brand-work reaches `fin` only through `financial-eligibility/brand-payment-match.ts`, which returns an enum and a
+  month; it is gated by the `brand_payment_match` consent and the `/ops` feature switch (off by default; turning on is
+  maker-checker; needs FIU/partner confirmation first). Reviewer rules (own records, four eyes on flags, reversals and
+  merges, audited signed URLs) are enforced in the service and by DB CHECKs.
 - Before handing off, run `npm run check`, then `npm run build && npm run test:e2e`.

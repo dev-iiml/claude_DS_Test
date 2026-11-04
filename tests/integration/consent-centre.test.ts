@@ -134,6 +134,10 @@ describe("consent centre read model", () => {
       ["financial_eligibility", "never"],
       ["lender_sharing", "never"],
       ["lender_handoff", "never"],
+      ["brand_opportunities", "never"],
+      ["product_analytics", "never"],
+      ["brand_work_records", "never"],
+      ["brand_payment_match", "never"],
     ]);
     const profile = centre[0]!;
     expect(profile.current).toMatchObject({ version: 1 });
@@ -330,7 +334,7 @@ describe("withdrawing the Creator Profile consent", () => {
       { db },
       { userId: m.userId, key: CONSENT_KEYS.creatorProfile, source: "settings" },
     );
-    expect(result.effects).toEqual({ membership_paused: true });
+    expect(result.effects).toEqual({ membership_paused: true, access_requests_cancelled: 0 });
 
     const [p] = await db.select().from(creatorProfiles).where(eq(creatorProfiles.id, m.creatorId));
     expect(p).toMatchObject({ profileStatus: "paused" });

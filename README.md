@@ -18,9 +18,10 @@ recommendations (Stage 10), the integration control plane (10b), the fraud layer
 ## Updating an existing local setup
 
 Pull the new files, then run `npm install && npm run db:migrate`. This applies any pending migrations (currently
-through 0028: lender proposals, partner API keys and webhooks) and publishes reference data (consent texts and,
+through 0034: Creator Status, Access, Creator Points and analytics) and publishes reference data (consent texts and,
 outside production, a mock provider route per capability). To also reload the demo data — including the sandbox
-partner and its test key — run `npm run db:reset` (recommended).
+partner, the sample Access brands and opportunities and the partnerships admin — run `npm run db:reset`
+(recommended).
 
 `npm run dev` checks the database first and stops with a list of pending migrations if it is behind the code
 (`npm run db:check` runs the same check on its own).
@@ -50,17 +51,18 @@ run when `APP_ENV` is staging or production.
 
 The password for every demo account is `SEED_DEMO_PASSWORD`, which defaults to `CreatorCo-demo-2026`.
 
-| Email                                  | Role       | State                                   |
-| -------------------------------------- | ---------- | --------------------------------------- |
-| `aarohi.menon@creators.creatorco.test` | creator    | completed · beauty · not GST registered |
-| `kabir.sethi@creators.creatorco.test`  | creator    | completed · travel · GST registered     |
-| `ishita.rao@creators.creatorco.test`   | creator    | completed · food · GST unknown → review |
-| `dev.malhotra@creators.creatorco.test` | creator    | completed · tech · not GST registered   |
-| `naina.kapoor@creators.creatorco.test` | creator    | draft, resumes at Business status       |
-| `risk.admin@staff.creatorco.test`      | risk_admin | risk console (`/admin`)                 |
-| `risk.approver@staff.creatorco.test`   | risk_admin | second approver for lender policy       |
-| `ops.admin@staff.creatorco.test`       | ops_admin  | integration control plane (`/ops`)      |
-| `ops.approver@staff.creatorco.test`    | ops_admin  | second approver for `/ops` changes      |
+| Email                                     | Role               | State                                   |
+| ----------------------------------------- | ------------------ | --------------------------------------- |
+| `aarohi.menon@creators.creatorco.test`    | creator            | completed · beauty · not GST registered |
+| `kabir.sethi@creators.creatorco.test`     | creator            | completed · travel · GST registered     |
+| `ishita.rao@creators.creatorco.test`      | creator            | completed · food · GST unknown → review |
+| `dev.malhotra@creators.creatorco.test`    | creator            | completed · tech · not GST registered   |
+| `naina.kapoor@creators.creatorco.test`    | creator            | draft, resumes at Business status       |
+| `risk.admin@staff.creatorco.test`         | risk_admin         | risk console (`/admin`)                 |
+| `risk.approver@staff.creatorco.test`      | risk_admin         | second approver for lender policy       |
+| `ops.admin@staff.creatorco.test`          | ops_admin          | integration control plane (`/ops`)      |
+| `ops.approver@staff.creatorco.test`       | ops_admin          | second approver for `/ops` changes      |
+| `partnerships.admin@staff.creatorco.test` | partnerships_admin | Access requests (`/partnerships`)       |
 
 All seed identities are invented. Emails use the reserved `.test` TLD and handles end in `.demo`. The seeded GSTIN uses
 an impossible PAN holder-type character, so it cannot match a real registration.
@@ -96,22 +98,30 @@ For E2E tests, the database role needs `CREATEDB`. If your Playwright browsers d
 
 ## Environment variables
 
-| Variable                      | Required   | Notes                                                                                                                 |
-| ----------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
-| `APP_ENV`                     | –          | `development` (default) · `test` · `staging` · `production`                                                           |
-| `APP_URL`                     | –          | Public base URL                                                                                                       |
-| `DATABASE_URL`                | ✓          | PostgreSQL connection string                                                                                          |
-| `DATABASE_URL_TEST`           | tests      | Separate DB, **dropped** on every integration run                                                                     |
-| `DATABASE_URL_E2E`            | –          | Defaults to `DATABASE_URL_TEST` with an `_e2e` suffix                                                                 |
-| `DATABASE_POOL_MAX`           | –          | Default 5                                                                                                             |
-| `DATABASE_PREPARE`            | –          | `false` behind transaction poolers (Supabase pooler :6543, PgBouncer)                                                 |
-| `SESSION_TTL_HOURS`           | –          | Absolute session lifetime, default 168 (7 days)                                                                       |
-| `SEED_DEMO_PASSWORD`          | seed       | Password for fictional demo accounts                                                                                  |
-| `PAN_FINGERPRINT_SECRET`      | prod       | ≥ 32 chars. Key for PAN fingerprints (duplicate checks). Dev/test use a built-in key                                  |
-| `FI_DATA_ENCRYPTION_KEY`      | prod       | 32 bytes, base64 (`openssl rand -base64 32`). Encrypts AA line items. Dev/test key built in                           |
-| `FI_LIVE_LINE_ITEM_RETENTION` | –          | `false` (default). Store **live** AA line items; mock/sandbox are always stored. Keep off until counsel + RE sign off |
-| `CRON_SECRET`                 | prod       | ≥ 32 chars. Enables `GET /api/internal/cron/tick` (Bearer). Unset → 404                                               |
-| `INTEGRATION_*`               | per vendor | Vendor credentials, referenced by name from `/ops`; never in the DB                                                   |
+| Variable                             | Required   | Notes                                                                                                                 |
+| ------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `APP_ENV`                            | prod       | `development` · `test` · `staging` · `production`. Unset → `development`, but `production` for a production build     |
+| `APP_URL`                            | –          | Public base URL                                                                                                       |
+| `DATABASE_URL`                       | ✓          | PostgreSQL connection string                                                                                          |
+| `DATABASE_URL_TEST`                  | tests      | Separate DB, **dropped** on every integration run                                                                     |
+| `DATABASE_URL_E2E`                   | –          | Defaults to `DATABASE_URL_TEST` with an `_e2e` suffix                                                                 |
+| `DATABASE_POOL_MAX`                  | –          | Default 5                                                                                                             |
+| `DATABASE_PREPARE`                   | –          | `false` behind transaction poolers (Supabase pooler :6543, PgBouncer)                                                 |
+| `SESSION_TTL_HOURS`                  | –          | Absolute session lifetime, default 168 (7 days)                                                                       |
+| `SEED_DEMO_PASSWORD`                 | seed       | Password for fictional demo accounts                                                                                  |
+| `PAN_FINGERPRINT_SECRET`             | prod       | ≥ 32 chars. Key for PAN fingerprints (duplicate checks). Dev/test use a built-in key                                  |
+| `FI_DATA_ENCRYPTION_KEY`             | prod       | 32 bytes, base64 (`openssl rand -base64 32`). Encrypts AA line items. Dev/test key built in                           |
+| `FI_LIVE_LINE_ITEM_RETENTION`        | –          | `false` (default). Store **live** AA line items; mock/sandbox are always stored. Keep off until counsel + RE sign off |
+| `CRON_SECRET`                        | prod       | ≥ 32 chars. Enables `GET /api/internal/cron/tick` (Bearer). Unset → 404                                               |
+| `DATABASE_MIGRATION_URL`             | prod       | Schema owner for `db:migrate`/`db:check`; `DATABASE_URL` is then a least-privilege `creatorco_app` member (Stage 16)  |
+| `PARTNER_WEBHOOK_ROOT_KEY`           | prod       | ≥ 32 chars. Root of partner webhook signing secrets (derived, never stored)                                           |
+| `ANALYTICS_PSEUDONYM_KEY`            | prod       | ≥ 32 chars. Key for pseudonymous analytics ids (versioned: `_KEY_VERSION`, `_PREVIOUS_KEYS`)                          |
+| `ANALYTICS_CAMPAIGNS`                | –          | Registered sign-up campaign slugs (comma-separated); other `utm_campaign` values are recorded as `other`              |
+| `RATE_LIMIT_KEY`                     | prod       | ≥ 32 chars. Key for hashed rate-limit subjects (IP / user / partner)                                                  |
+| `CLIENT_IP_HEADER` / `_TRUSTED_HOPS` | –          | Where the client IP comes from: `x-forwarded-for`, hops 0 (Vercel overwrites it) or n appending proxies               |
+| `RATE_LIMIT_MULTIPLIER`              | dev/test   | Loosens rate limits locally / in E2E (50). Ignored in staging/production                                              |
+| `DEV_BUREAU_CHECKS_PER_30_DAYS`      | dev/test   | Raises the 3-per-30-days credit-check limit for demos (1–100). Ignored in staging/production                          |
+| `INTEGRATION_*`                      | per vendor | Vendor credentials, referenced by name from `/ops`; never in the DB                                                   |
 
 No vendor secrets are needed while every capability runs on mocks. Session tokens are random and only their SHA-256
 hashes are stored.
@@ -295,6 +305,128 @@ src/
   5–7 fair · 8–9 strong. Third digit 9 adds a missed payment; the second digit (mod 4) sets recent enquiries.
   Example: `ABCPE1238F` → strong.
 - **Mock Account Aggregator:** see Stage 09b.
+
+### Stage 17: deployment (Google Cloud Run + Supabase, Mumbai)
+
+Runbook: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). User decisions: free tiers for the POC (upgrade path documented),
+staging + production, free scheduler and monitoring.
+
+- **Hosting:** one container image (`Dockerfile`, Next.js standalone output, non-root, no env files) on Cloud Run in
+  `asia-south1`; Supabase Postgres in `ap-south-1`. Vercel's free plan was ruled out (non-commercial use only; daily
+  cron). The app stays Vercel-compatible.
+- **Environments:** staging (fictional demo seed with a generated password, mock providers) and production (no demo
+  data; mocks refused). One image per commit, built for staging and promoted unchanged to production.
+- **CI/CD:** `.github/workflows/ci.yml` (audit, checks, build, Playwright as the app role) and `deploy.yml` (keyless
+  Workload Identity Federation; migrate → seed staging → build/push → deploy → smoke test; production only from `main`).
+- **Secrets:** Secret Manager in Mumbai, one runtime dotenv per environment mounted at `/secrets/app.env` (read with
+  `node --env-file-if-exists`) and a separate migration secret for the deployer. Nothing secret in GitHub or the image.
+- **Infra scripts:** `infra/gcp/setup.sh bootstrap|publish <env>` (APIs, registry + cleanup, service accounts, WIF,
+  secrets, budget alert, scheduler, uptime check, error-log alert) and `infra/gcp/app-env.sh <env>` (generates keys);
+  `infra/supabase/app-role.sql` (app login role).
+- **Ops:** `npm run staff:create` creates the first staff accounts (password from the environment); logs carry Cloud
+  Logging `severity`; `/ops` shows the client address the rate limiter sees, to confirm the edge settings.
+
+### Stage 16: QA and security pass
+
+Full report for partner diligence: [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md). Data inventory and
+classification: [docs/DATA_CLASSIFICATION.md](docs/DATA_CLASSIFICATION.md).
+
+- **Access control:** a route-guard inventory test (`tests/unit/route-guards.test.ts`) checks every page, route
+  handler and server action for an authorisation call, with an explicit, reasoned list of public entry points. An API
+  test checks one creator can't reach another's records.
+- **Rate limits** (user decision: Postgres, hashed IP): fixed windows in `ops.rate_limit_counters` keyed by a keyed
+  hash of the client IP (IPv6 per /64), user or partner — never the raw value — deleted after 48 hours. Sign-up,
+  sign-in, OTP send/verify, eligibility start, Access requests, app screen views, signed-out page views (capped, not
+  rejected) and the partner API. They sit on top of the existing account lockout, OTP and bureau limits. Rules:
+  `modules/rate-limit/rules.ts` (`rl-0.1.0`). Fails open if counting itself fails.
+- **Strict CSP** (user decision): a nonce per request from `src/proxy.ts` (`script-src 'self' 'nonce-…'
+'strict-dynamic'`, no third-party origins, `frame-ancestors 'none'`); APIs get a deny-all policy. Plus COOP/CORP
+  and a tighter Permissions-Policy.
+- **Log redaction:** database errors (Drizzle parameters, Postgres key values) are redacted in our logger, job errors
+  and the framework's own error output (`src/instrumentation.ts`).
+- **Least-privilege database role:** migration 0036 creates `creatorco_app` (rows only — no DDL, no TRUNCATE, no
+  migration history) with an explicit RLS policy; `db:migrate` re-applies grants after every run. The full E2E suite
+  passes with the server connected as a member of it (`DATABASE_URL_E2E_APP`).
+- **Data minimisation:** new `purge_auth_records` job (sign-in attempts and ended sessions after 180 days, verification
+  codes after 30). Data inventory with a test that every table is classified.
+- **Sign-up attribution** (user add-on, first-party): `account_created` v2 records allow-listed source/medium, a
+  registered campaign (`ANALYTICS_CAMPAIGNS`) or `other`, and the referrer kind (search/social/other) — never URLs or
+  free text. Carried from the landing page in a 24-hour cookie (`cc_attr`) and disclosed on the sign-up page. Shown on
+  `/insights` with small values folded together.
+- **Dev-only bureau limit** (user add-on): `DEV_BUREAU_CHECKS_PER_30_DAYS` in development/test.
+- **Dependencies:** Next.js 16.4.3 and Zod 4.6.7 (security advisories); `npm audit --omit=dev` is clean.
+- **Accessibility:** axe (WCAG 2.1 A/AA) E2E checks on public, creator (both themes), risk, ops and partnerships
+  screens; two label-in-name issues fixed.
+- **Staff MFA** was deferred (user decision); see the security review.
+
+### Stage 15: analytics and instrumentation
+
+- **First-party only** (user decision): events go to a separate `analytics` schema through `recordEvent`, inside the
+  transaction that makes the change. A failure is logged and dropped, never rolling back the action. No browser
+  trackers or third-party scripts. A vendor would later receive an export from this store, not live events.
+- **Event catalogue** (`modules/analytics/events.ts`, `ev-1`): every §26 funnel event plus `offer_accepted` and
+  `offer_declined`. Each has a strict property schema (small enums/booleans only) and a forbidden-key guard.
+- **Privacy:**
+  - Subjects are a keyed pseudonym (`ANALYTICS_PSEUDONYM_KEY`, versioned and rotatable).
+  - Only the India-time day is kept — no timestamp — so events can't be re-linked by time.
+  - Staff accounts are never recorded; `.test` accounts are flagged as internal.
+  - Landing and join-page views are anonymous (no ID). From Stage 16 a 24-hour cookie may carry reviewed campaign
+    tags to sign-up.
+- **Consent** (user decision: essential + optional):
+  - Funnel steps are essential, pseudonymous service measurement, disclosed in the consent centre ("Service
+    measurement").
+  - Screen views (`offer_viewed`, `access_opportunity_viewed`) need the new optional **Product analytics** consent
+    (`product_analytics` v1). Withdrawing it erases them.
+  - Eligibility and offer steps are erased when the financial-eligibility consent is withdrawn.
+- **Retention** (user decision: 24 months): the hourly `analytics_maintenance` job upserts daily counts (no IDs) under
+  an advisory lock, then rolls up and deletes raw events older than 24 months.
+- **Dashboards** (`/insights`; risk admins, super admins and the new read-only `analyst` role):
+  - **Funnel:** cohort by sign-up date, step conversion, weekly cohorts. Counts under 5 are hidden.
+  - **Models:** Traditional vs Creator-Enhanced eligibility rates, paired amount difference, eligible-only-with-signals,
+    feature missingness, model versions, fraud flag rate, and partner-lender approve / modify / decline rates (latest
+    revision) with offer acceptance. All computed by `underwriting` and `lending` from their own tables.
+  - Analysts see these as of the start of the day, with the amount difference rounded to ₹1,000.
+- **API v1:** `POST /api/v1/events` for native-app screen views (consent-gated). `GET /consents` returns
+  `serviceMeasurement`.
+
+### Stage 14: Creator Status, Access preview and Creator Points
+
+- **Creator Status** (Member / Onyx / Icon; `modules/creator-status`, rules `cs-0.1.0`):
+  - Evaluated after every Professional Graph run, from that run's signals only. Each tier is an explicit checklist:
+    verified activity, verified longevity, reach, engagement quality, posting consistency, steady engagement (Icon)
+    and authenticity (no follower spike or handle mismatch).
+  - A missing signal counts as not met, never guessed. Reach alone never earns a tier. Brand activity isn't a
+    criterion until it has a data source. The thresholds are product hypotheses to tune with real creators.
+  - Stored in `creator_status_runs` (append-only), tied to the graph run, so it is erased with the signals. Creators
+    see every criterion at `/passport/status`.
+  - **Never a credit input.** A unit test fails if underwriting, fraud, lending, financial eligibility or partners
+    import Status, Access or points.
+- **Creator Points** (`modules/rewards`, rules `pts-0.1.0`):
+  - Simulated membership points: not cash, not transferable, not withdrawable, never shown in rupees.
+  - Earned once each: welcome 500, verified mobile 100, reaching Onyx 1,000, reaching Icon 2,500. Nothing for
+    credit-related actions, consents or data sharing. Tier points aren't clawed back if Status drops.
+  - Ledger `creator_points_ledger` (append-only): balance = sum. A request holds its points; an approval leaves the
+    hold as the spend; decline, cancel, expiry or withdrawal releases it.
+- **Access** (`modules/access`):
+  - Sample opportunities from **fictional** brands (seeded; the partnerships desk can create, edit and close them).
+    Each has a lowest tier, a points cost, places and a request window.
+  - Requesting needs the new purpose-specific **"Brand opportunities"** consent (`brand_opportunities` v1), given
+    with the first request in the same transaction. In the preview nothing is sent to any brand; sharing with real
+    brands will need a v2.
+  - Creators can cancel a pending request. Pending requests expire when the opportunity closes (job
+    `expire_access_requests`, hourly) and are cancelled if membership is paused.
+  - Withdrawing the consent cancels pending requests, returns their points and erases the request history
+    (`access_requests`). Points spent on approved requests stay spent.
+- **Partnerships desk** (`/partnerships`, new role `partnerships_admin`; no risk, ops or financial access):
+  - A queue of pending requests (oldest first), each with only the creator-professional summary the consent covers.
+    Opening a request is audited.
+  - Approve, or decline with a reason (shown to the creator). Approvals never exceed places, and places can't be cut
+    below approvals already given.
+- **DB guards:** append-only status runs and ledger; an `access_requests` trigger allows only one move out of
+  `requested`, with deletes only in erasure. Withdrawal locks the consent receipts first, so a request in flight is
+  either cancelled by it or refused.
+- **API v1:** `GET /status`, `GET /access`, `GET /access/{id}`, `POST /access/{id}/request`,
+  `POST /access/requests/{id}/cancel`, `GET /points`.
 
 ### Stage 13: the creator's offer
 
@@ -565,7 +697,8 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   - its retention should be confirmed by counsel.
 - Audit metadata goes through `sanitiseAuditMetadata`, which rejects sensitive-looking keys and non-scalar values. A DB
   CHECK caps its size.
-- The logger redacts sensitive keys, form payloads are never logged, and DB query logging is off.
+- The logger redacts sensitive keys, form payloads are never logged, and DB query logging is off. Database errors are
+  redacted before they reach any log (Stage 16).
 
 ---
 
@@ -599,8 +732,9 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   reveals whether an email is registered.
 - Identity, GST and SMS providers are **mocks**. Choosing vendors and the data-rights and DPDP review of "mobile → PAN"
   lookups are open items for counsel.
-- Login throttling is per account (email hash). There is no IP or global rate limit yet.
-- No Content-Security-Policy header yet. Other security headers are set in `next.config.ts`.
+- Rate limits trust the edge proxy's client-IP header (see `CLIENT_IP_TRUSTED_HOPS`); never expose the Node server
+  directly.
+- Staff accounts have no second factor yet (deferred; see docs/SECURITY_REVIEW.md).
 - Consent withdrawal exists as an audited service primitive only. The creator-facing journey is Stage 08.
 - Consent text is **draft** and pending counsel review.
 - Social data is **mock only**. A vendor adapter (and each platform's API terms) is still to be chosen.
@@ -630,6 +764,25 @@ The API and shared pure modules are documented in [`docs/API.md`](./docs/API.md)
   check); a held fraud-review check stays "Preparing to send" until staff act (set an SLA); the lender adapter
   must be idempotent on `proposalId` (a late success after a timeout can be retried); admin nav reuses existing
   icons (new icons would be a design-system release).
+- **Stage 15 open items:**
+  - **Counsel:**
+    - Essential pseudonymous measurement without consent needs a lawful basis and privacy-notice wording (the consent
+      centre note is a stand-in).
+    - Whether eligibility and offer funnel steps may be kept at all.
+    - The 24-month retention period.
+  - Landing and join-page counts include bots and aren't rate-limited.
+  - The demo seed has no events, so `/insights` is empty until people use the app.
+  - Small-cell suppression is per cell; differences between adjacent cells can still narrow a group (no
+    complementary suppression yet).
+  - No vendor export yet.
+- **Stage 14 open items:**
+  - The Status thresholds and point amounts are untested product hypotheses.
+  - Brand activity can't count towards Status until brand or campaign data exists.
+  - Sharing request details with real brands needs consent v2, a brand agreement and a review of the ASCI and §194R
+    PR workflow.
+  - Audit events keep a minimal record of Access actions (points, tier, decline reason — no notes and no opportunity)
+    after the history is erased. Confirm this with counsel.
+  - Creators aren't notified when a request is decided.
 - **Stage 13 open items:**
   - **Counsel / RE:**
     - Whether the 3-day cooling-off minimum and the KFS fields match the partner's obligations.

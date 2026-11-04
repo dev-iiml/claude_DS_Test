@@ -14,6 +14,10 @@ import { CONSENT_KEYS, grantConsent, hasValidConsent, withdrawConsent } from "@/
 import type { ConsentKey, ConsentSource, ErasureScope, WithdrawalReason } from "@/modules/consent/domain";
 import { pauseMembership, resumeMembership } from "@/modules/creator-profile/membership";
 import { closeOpenApplications } from "@/modules/financial-eligibility/application-service";
+import { cancelPendingAccessRequests, eraseAccessRequests } from "@/modules/access";
+import { eraseBrandWorkEvents, eraseFinancialFunnelEvents, eraseOptionalEvents } from "@/modules/analytics/recorder";
+import { eraseBrandWorkRecords } from "@/modules/brand-work/erasure";
+import { resetBankMatchedPayments } from "@/modules/brand-work/payment-service";
 import { eraseFinancialInputs } from "@/modules/financial-eligibility/erasure";
 import { eraseUnderwritingRuns } from "@/modules/underwriting/erasure";
 import { withdrawUnsentProposals } from "@/modules/lending/proposal-service";
@@ -95,6 +99,19 @@ async function erase(
     }
     case "financial_inputs":
       return eraseFinancialInputs(tx, { userId: ids.userId, before, now: new Date(), releasedSubmitted: released });
+    case "access_requests":
+      return eraseAccessRequests(tx, { userId: ids.userId, before });
+    case "product_analytics_events":
+      return eraseOptionalEvents(tx, { userId: ids.userId, before });
+    case "financial_funnel_events":
+      return eraseFinancialFunnelEvents(tx, { userId: ids.userId, before });
+    case "brand_work_records":
+      return {
+        ...(await eraseBrandWorkRecords(tx, { userId: ids.userId, before })),
+        ...(await eraseBrandWorkEvents(tx, { userId: ids.userId, before })),
+      };
+    case "brand_payment_matches":
+      return resetBankMatchedPayments(tx, { userId: ids.userId });
   }
 }
 
@@ -133,7 +150,10 @@ export async function withdrawPurpose(
           eq(consentReceipts.status, "granted"),
         ),
       )
-      .orderBy(desc(consentDefinitions.version));
+      .orderBy(desc(consentDefinitions.version))
+      // Lock the receipts before applying effects: an action that holds a receipt (an Access request, an
+      // offer acceptance) either commits first — and is then undone by the effects below — or sees it withdrawn.
+      .for("update", { of: consentReceipts });
     if (!granted.length) throw new PrivacyError("not_granted");
 
     const profile = await profileFor(tx, input.userId);
@@ -149,6 +169,10 @@ export async function withdrawPurpose(
     }
     if (policy.key === CONSENT_KEYS.lenderSharing) {
       effects.proposals_cancelled = await withdrawUnsentProposals(tx, { userId: input.userId });
+    }
+    if (policy.key === CONSENT_KEYS.brandOpportunities || policy.core) {
+      // Brand consent withdrawn, or membership paused: pending Access requests are cancelled, points returned.
+      effects.access_requests_cancelled = await cancelPendingAccessRequests(tx, { userId: input.userId, now });
     }
 
     // 2. Withdraw the receipts and record the withdrawal (effects on the newest).
@@ -221,10 +245,10 @@ export async function withdrawPurpose(
     return { withdrawalId, effects, erasures, profile };
   });
 
-  // Signals computed from withdrawn social data are rebuilt from what remains.
+  // Signals computed from withdrawn social data or brand work are rebuilt from what remains.
   let graphRecomputed = false;
   if (
-    policy.key === CONSENT_KEYS.socialAccountConnection &&
+    (policy.key === CONSENT_KEYS.socialAccountConnection || policy.key === CONSENT_KEYS.brandWorkRecords) &&
     result.profile?.status === "completed" &&
     (await hasValidConsent(deps.db, input.userId, CONSENT_KEYS.professionalAnalytics, now))
   ) {

@@ -11,6 +11,8 @@ import {
 import type { Database } from "@/db/create-db";
 import type { DbExecutor } from "@/db/types";
 import { callProvider, recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
+import { syncMilestonePoints } from "@/modules/rewards/ledger-service";
 import { CONSENT_KEYS, grantConsent, hasValidConsent } from "@/modules/consent";
 import { getIdentityPrefill, namesMatch } from "@/modules/identity/identity-prefill";
 import { SELF_DECLARED_PROVIDER } from "@/modules/social-data/domain";
@@ -96,6 +98,8 @@ async function auditStep(
     entityId: profileId,
     metadata: mode === "passport" ? { section: step } : { step },
   });
+  // Passport edits may complete the profile details milestone (simulated Creator Points; idempotent).
+  if (mode === "passport") await syncMilestonePoints(db, { userId });
 }
 
 const progressFor = (mode: EditMode, current: OnboardingStep, saved: OnboardingStep) =>
@@ -452,6 +456,14 @@ export async function completeOnboarding(
       entityId: profile.id,
       metadata: { category: completed.creatorCategory, gst_status: completed.gstStatus },
     });
+    await recordEvent(tx, {
+      event: "creator_profile_completed",
+      userId,
+      props: { category: completed.creatorCategory ?? null },
+      now,
+    });
+    // Membership milestones (welcome, verified mobile, profile details) — simulated Creator Points.
+    await syncMilestonePoints(tx, { userId, now });
     return completed;
   });
 }

@@ -4,6 +4,8 @@ export {
   IntegrationChangeError,
   approveChange,
   expireStaleChanges,
+  isFeatureEnabled,
+  listFeatureSwitches,
   proposeChange,
   rejectChange,
   type ChangeDeps,

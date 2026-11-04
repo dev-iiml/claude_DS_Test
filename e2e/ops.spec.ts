@@ -70,7 +70,9 @@ test.describe("integration control plane", () => {
     await pause.getByRole("button", { name: /Pause all partner lender calls now/ }).click();
     await expect(maker.getByText("Kill switch engaged")).toBeVisible();
 
-    const lift = maker.locator("details", { has: maker.locator("summary", { hasText: "Lift the kill switch" }) });
+    const lift = maker.locator("details", {
+      has: maker.locator("summary", { hasText: "Kill switch is on — lift it" }),
+    });
     await lift.locator("summary").click();
     await lift.getByLabel("Reason").fill("Rehearsal finished");
     await lift.getByRole("button", { name: /Request to resume/ }).click();

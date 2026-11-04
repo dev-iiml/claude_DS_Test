@@ -15,11 +15,14 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDb } from "@/db";
-import { SAMPLE_OPPORTUNITIES } from "@/modules/access/sample-opportunities";
+import { listOpportunitiesForCreator } from "@/modules/access";
+import { OPPORTUNITY_KIND_LABELS } from "@/modules/access/presentation";
 import { getCreatorDashboard } from "@/modules/creator-profile/queries";
 import { getOpenApplication, listApplications } from "@/modules/financial-eligibility/application-service";
 import { getCreatorLenderView } from "@/modules/lending";
 import { FEATURE_COPY, formatFeatureValue } from "@/modules/professional-graph/presentation";
+import { getPointsSummary } from "@/modules/rewards/ledger-service";
+import { formatPoints } from "@/modules/rewards/rules";
 
 import { requireMember } from "../_lib/member";
 import { lenderBadge } from "../eligibility/_lib/lender-badge";
@@ -37,9 +40,18 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
   const sentCheck = openCheck
     ? null
     : ((await listApplications(getDb(), user.userId)).find((a) => a.status === "submitted") ?? null);
-  const sentBadge = sentCheck
-    ? lenderBadge(await getCreatorLenderView(getDb(), { userId: user.userId, applicationId: sentCheck.id }))
+  const sentView = sentCheck
+    ? await getCreatorLenderView(getDb(), { userId: user.userId, applicationId: sentCheck.id })
     : null;
+  const sentBadge = sentView ? lenderBadge(sentView) : null;
+  const simulatedPilot = sentView !== null && "simulated" in sentView && sentView.simulated === true;
+  const [opportunities, points] = await Promise.all([
+    listOpportunitiesForCreator(getDb(), { userId: user.userId, creatorId: passport.creatorId }),
+    getPointsSummary(getDb(), passport.creatorId, 0),
+  ]);
+  // What the creator can act on first; tier-locked and full ones after.
+  const rank = (a: string) => (a === "open" || a === "requested" || a === "approved" ? 0 : 1);
+  const featured = [...opportunities].sort((a, b) => rank(a.availability) - rank(b.availability)).slice(0, 3);
   const { welcome } = await searchParams;
 
   const connected = passport.accounts.filter((a) => a.status === "connected").length;
@@ -58,7 +70,7 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
       view.completion.percent < 100 && {
         href: "/passport",
         label: "Complete your Passport",
-        detail: `${view.completion.percent}% complete`,
+        detail: "Add the details that are still missing.",
       },
   ].filter((s): s is { href: string; label: string; detail: string } => Boolean(s));
 
@@ -81,7 +93,9 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,420px)_1fr] lg:items-start">
         <div className="flex flex-col gap-4">
-          <Link href="/passport" aria-label="Open your Creator Passport" className="block rounded-xl">
+          <Link href="/passport" className="block rounded-xl">
+            {/* Visible content stays part of the name (WCAG 2.5.3 label in name). */}
+            <span className="sr-only">Open your Creator Passport: </span>
             <MembershipCard
               displayName={passport.displayName}
               handle={passport.handle}
@@ -135,10 +149,14 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
             </div>
             <CardDescription>Your professional standing in the network.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col items-start gap-4">
             <p className="text-subhead text-ink-muted">
-              Status reflects your creator career and participation. It never sets financial limits.
+              Built from verified activity, longevity, reach, engagement and consistency. It never affects financial
+              eligibility.
             </p>
+            <Button asChild variant="secondary" size="sm">
+              <Link href="/passport/status">See how Status works</Link>
+            </Button>
           </CardContent>
         </Card>
 
@@ -147,14 +165,18 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
             <div className="flex items-center justify-between gap-3">
               <CardTitle>Financial eligibility</CardTitle>
               {openCheck ? (
-                <StatusBadge tone={openCheck.status === "inputs_ready" ? "success" : "info"}>
-                  {openCheck.status === "inputs_ready" ? "Check complete" : "In progress"}
+                <StatusBadge tone={openCheck.status === "inputs_ready" ? "brand" : "info"}>
+                  {openCheck.status === "inputs_ready" ? "Ready to share" : "In progress"}
                 </StatusBadge>
               ) : sentBadge ? (
                 <StatusBadge tone={sentBadge.tone}>{sentBadge.label}</StatusBadge>
               ) : null}
             </div>
-            <CardDescription>Optional, with its own separate consent.</CardDescription>
+            <CardDescription>
+              {simulatedPilot
+                ? "Simulated pilot — illustrative terms only. No loan will be made."
+                : "Optional, with its own separate consent."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-start gap-4">
             <p className="text-subhead text-ink-muted">
@@ -170,7 +192,13 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
                       : "View your check"}
                 </Link>
               ) : (
-                <Link href="/eligibility">{openCheck ? "Continue your check" : "Check financial eligibility"}</Link>
+                <Link href={openCheck?.status === "inputs_ready" ? `/eligibility/${openCheck.id}` : "/eligibility"}>
+                  {openCheck?.status === "inputs_ready"
+                    ? "Review and share"
+                    : openCheck
+                      ? "Continue your check"
+                      : "Check financial eligibility"}
+                </Link>
               )}
             </Button>
           </CardContent>
@@ -184,21 +212,32 @@ export default async function HomePage({ searchParams }: PageProps<"/dashboard">
             See all
           </Link>
         </div>
-        <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
-          {SAMPLE_OPPORTUNITIES.map((o) => (
-            <li
-              key={o.id}
-              className="w-[72%] shrink-0 snap-start rounded-card bg-surface p-5 ring-1 ring-line ring-inset sm:w-auto"
-            >
-              <p className="text-footnote font-semibold tracking-[var(--tracking-eyebrow)] text-gold uppercase">
-                {o.kind}
-              </p>
-              <p className="mt-3 text-title-3 leading-tight font-semibold tracking-tight">{o.title}</p>
-              <p className="mt-1 text-subhead text-ink-muted">{o.category}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-2 text-footnote text-ink-subtle">Sample preview — not live opportunities.</p>
+        {opportunities.length ? (
+          <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+            {featured.map((o) => (
+              <li key={o.id} className="w-[72%] shrink-0 snap-start sm:w-auto">
+                <Link
+                  href={`/access/${o.id}`}
+                  className="block h-full rounded-card bg-surface p-5 ring-1 ring-line ring-inset"
+                >
+                  <p className="text-footnote font-semibold tracking-[var(--tracking-eyebrow)] text-gold uppercase">
+                    {OPPORTUNITY_KIND_LABELS[o.kind]}
+                  </p>
+                  <p className="mt-3 text-title-3 leading-tight font-semibold tracking-tight">{o.title}</p>
+                  <p className="mt-1 text-subhead text-ink-muted">{o.brand.name}</p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-subhead text-ink-muted">Nothing open right now.</p>
+        )}
+        <p className="mt-2 text-footnote text-ink-subtle">
+          <Link href="/access/points" className="text-gold underline underline-offset-2">
+            {formatPoints(points.balance)} available
+          </Link>{" "}
+          · Preview with sample brands.
+        </p>
       </section>
     </CreatorShell>
   );

@@ -44,12 +44,16 @@ export default async function AccountPage() {
         </section>
 
         <ListGroup id="sign-in" label="Sign-in">
-          <ListRow label="Email" value={user.email} />
-          <ListRow
-            label="Mobile"
-            value={mobile?.maskedMobile ?? "Not verified"}
-            accessory={mobile ? <StatusBadge tone="success">Verified</StatusBadge> : null}
-          />
+          <ListRow label="Email" detail={user.email} />
+          {mobile ? (
+            <ListRow
+              label="Mobile"
+              detail={mobile.maskedMobile}
+              accessory={<StatusBadge tone="success">Verified</StatusBadge>}
+            />
+          ) : (
+            <ListRow href="/passport/edit/about" label="Mobile" detail="Not verified yet — verify it in About you" />
+          )}
         </ListGroup>
 
         <ListGroup id="privacy" label="Privacy">
@@ -61,7 +65,7 @@ export default async function AccountPage() {
         </ListGroup>
 
         <div>
-          <SignOutForm variant="destructive" />
+          <SignOutForm variant="secondary" />
         </div>
       </div>
     </CreatorShell>

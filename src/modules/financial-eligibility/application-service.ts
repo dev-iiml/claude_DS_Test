@@ -10,11 +10,12 @@ import {
 } from "@/db/schema";
 import type { DbExecutor } from "@/db/types";
 import { callProvider, countRecentProviderCalls, recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
 import { CONSENT_KEYS, grantConsent, hasValidConsent } from "@/modules/consent";
 import { getIdentityPrefill } from "@/modules/identity/identity-prefill";
 import type { CreditBureauProvider } from "@/providers/bureau/types";
 
-import { APPLICATION_TTL_DAYS, BUREAU_CHECKS_PER_30_DAYS, OPEN_APPLICATION_STATUSES } from "./domain";
+import { APPLICATION_TTL_DAYS, OPEN_APPLICATION_STATUSES, bureauChecksPer30Days } from "./domain";
 import { eraseFinancialInputs } from "./erasure";
 import {
   FIN_ENGINE_VERSION,
@@ -88,6 +89,7 @@ export async function startApplication(
         .where(eq(creditApplications.id, existing.id))
         .returning();
       await audit(tx, input.userId, existing.id, "financial_eligibility.consent_renewed");
+      await recordEvent(tx, { event: "financial_consent_granted", userId: input.userId, now });
       return app!;
     });
   }
@@ -112,6 +114,8 @@ export async function startApplication(
       })
       .returning();
     await audit(tx, input.userId, app!.id, "financial_eligibility.started");
+    await recordEvent(tx, { event: "financial_consent_granted", userId: input.userId, now });
+    await recordEvent(tx, { event: "financial_eligibility_started", userId: input.userId, now });
     return app!;
   });
 }
@@ -170,7 +174,7 @@ export async function runBureauCheck(
     operation: BUREAU_OPERATION,
     since: new Date(now.getTime() - 30 * 86_400_000),
   });
-  if (recent >= BUREAU_CHECKS_PER_30_DAYS) {
+  if (recent >= bureauChecksPer30Days(process.env)) {
     throw new FinancialEligibilityError(
       "bureau_limit",
       "You've reached the limit of credit checks for now. Please try again later.",
@@ -432,6 +436,7 @@ async function finalise(tx: DbExecutor, app: Application, now: Date) {
       coverage: app.cashflowCoverage ?? "none",
     },
   });
+  await recordEvent(tx, { event: "financial_inputs_completed", userId: app.userId, now });
   return updated!;
 }
 

@@ -166,10 +166,13 @@ export function BusinessForm({
           </>
         ) : (
           <p className="text-sm text-ink-muted">
-            <Link href="/onboarding/about" className="underline underline-offset-4">
-              Verify your mobile and fetch your details
+            <Link
+              href={mode === "passport" ? "/passport/edit/about" : "/onboarding/about"}
+              className="text-gold underline underline-offset-4"
+            >
+              Verify your mobile in About you
             </Link>{" "}
-            on the About you step to look this up automatically — or fill in the form below.
+            to look this up automatically — or fill in the form below.
           </p>
         )}
         {notice ? <Alert tone="warning">{notice}</Alert> : null}

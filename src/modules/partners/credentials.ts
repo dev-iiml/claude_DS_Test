@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { KEY_ENV_TAG, WEBHOOK_TOLERANCE_SECONDS, type PartnerEnvironment } from "./domain";
+import { appEnvOf } from "@/lib/app-env";
 
 /**
  * Partner credentials (Stage 12b).
@@ -23,7 +24,7 @@ function rootKey(): string {
     if (configured.length < 32) throw new Error("PARTNER_WEBHOOK_ROOT_KEY must be at least 32 characters");
     return configured;
   }
-  const env = process.env.APP_ENV ?? "development";
+  const env = appEnvOf();
   if (env === "development" || env === "test") return DEV_ONLY_ROOT;
   throw new Error("PARTNER_WEBHOOK_ROOT_KEY must be set outside development and test");
 }

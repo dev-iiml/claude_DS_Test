@@ -4,6 +4,8 @@ import { isUniqueViolation } from "@/db/errors";
 import { authIdentities, authLoginAttempts, authSessions, users } from "@/db/schema";
 import type { Database } from "@/db/create-db";
 import { recordAuditEvent } from "@/modules/audit";
+import { recordEvent } from "@/modules/analytics";
+import { EMPTY_ATTRIBUTION, type Attribution } from "@/modules/analytics/attribution";
 
 import type { SessionClient, UserRole, UserStatus } from "../domain";
 import { getDummyHash, hashPassword, needsRehash, verifyPassword } from "./password";
@@ -58,7 +60,7 @@ export type SignUpResult =
 /** Creates a credential identity + `creator` user. Staff roles are never self-assigned. */
 export async function signUpCreator(
   deps: AuthDeps,
-  input: { email: string; password: string; client?: SessionClient },
+  input: { email: string; password: string; client?: SessionClient; attribution?: Attribution },
 ): Promise<SignUpResult> {
   const email = normaliseEmail(input.email);
   const passwordHash = await hashPassword(input.password);
@@ -84,6 +86,11 @@ export async function signUpCreator(
         entityType: "user",
         entityId: created.id,
         metadata: { role: created.role },
+      });
+      await recordEvent(tx, {
+        event: "account_created",
+        userId: created.id,
+        props: { client: input.client ?? "web", ...(input.attribution ?? EMPTY_ATTRIBUTION) },
       });
 
       return created;

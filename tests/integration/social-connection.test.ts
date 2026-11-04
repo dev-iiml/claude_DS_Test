@@ -275,8 +275,8 @@ describe("social account connection (Stage 06)", () => {
   it("stores reproducible, versioned runs with per-feature provenance", async () => {
     const graph = await getLatestProfessionalGraph(db, ira.creatorId);
     expect(graph).not.toBeNull();
-    expect(graph!.engineVersion).toBe("pg-0.2.0");
-    expect(graph!.features).toHaveLength(12);
+    expect(graph!.engineVersion).toBe("pg-0.3.0");
+    expect(graph!.features).toHaveLength(26); // 12 social + 14 brand-work features (Stage 18)
     const longevity = graph!.features.find((f) => f.key === "professional_longevity_months")!;
     expect(longevity).toMatchObject({ source: "verified", confidence: "high" });
     expect(graph!.features.find((f) => f.key === "connected_platforms")!.value).toBe(2);

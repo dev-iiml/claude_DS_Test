@@ -1,11 +1,11 @@
 /**
  * Creator Status — a membership tier reflecting professional standing
- * (reach quality, longevity, brand activity, participation).
+ * (verified activity, longevity, reach, engagement quality, consistency,
+ * authenticity). Rules live in `./rules.ts`.
  *
- * Creator Status is NOT creditworthiness. It must never be an input that
- * automatically raises a credit recommendation or limit (CLAUDE.md §15).
- * Status calculation arrives with the Professional Graph; until then every
- * member is `member`.
+ * Creator Status is NOT creditworthiness. It is never an input to underwriting,
+ * fraud, lending or any limit (CLAUDE.md §15) — `tests/unit/status-isolation`
+ * enforces that those modules never import it.
  */
 export const CREATOR_STATUS_TIERS = ["member", "onyx", "icon"] as const;
 export type CreatorStatusTier = (typeof CREATOR_STATUS_TIERS)[number];
@@ -16,6 +16,11 @@ export const CREATOR_STATUS_LABELS: Record<CreatorStatusTier, string> = {
   icon: "Icon",
 };
 
-export function currentCreatorStatus(): CreatorStatusTier {
-  return "member";
+/** Member < Onyx < Icon. */
+export function tierRank(tier: CreatorStatusTier): number {
+  return CREATOR_STATUS_TIERS.indexOf(tier);
+}
+
+export function meetsTier(current: CreatorStatusTier, required: CreatorStatusTier): boolean {
+  return tierRank(current) >= tierRank(required);
 }

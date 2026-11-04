@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 import postgres from "postgres";
 
@@ -28,8 +29,10 @@ async function appliedUpTo(url: string): Promise<number | null> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const url = requireDatabaseUrl();
+// pathToFileURL percent-encodes the path (e.g. spaces), matching import.meta.url.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  // Reads the migration history, which only the schema owner can see (Stage 16 app role).
+  const url = process.env.DATABASE_MIGRATION_URL || requireDatabaseUrl();
   const journal = (
     JSON.parse(readFileSync("src/db/migrations/meta/_journal.json", "utf8")) as { entries: JournalEntry[] }
   ).entries;

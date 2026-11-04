@@ -38,7 +38,7 @@ test.describe("consent centre (Stage 08)", () => {
       .getByRole("link", { name: /Version 1 · Given/ })
       .click();
     await expect(page.getByRole("heading", { level: 1, name: "Consent receipt" })).toBeVisible();
-    await expect(page.getByText("In force")).toBeVisible();
+    await expect(page.getByText("Given", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("region", { name: "Text fingerprint" }).getByText(/^[0-9a-f]{64}$/)).toBeVisible();
 
     await page.goto("/account/consents/professional_analytics");

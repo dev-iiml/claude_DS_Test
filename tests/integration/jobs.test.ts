@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { auditEvents, jobs, users } from "@/db/schema";
 import { signUpCreator } from "@/modules/identity/auth/auth-service";
 import { enqueueJob, retryJob, runDueJobs, tick, type JobHandlers } from "@/modules/jobs";
+import { JOB_SCHEDULES, JOB_TYPES } from "@/modules/jobs/domain";
 import { JOB_HANDLERS } from "@/modules/jobs/handlers";
 
 import { authDepsFor, connectTestDb, testEmail } from "../support/db";
@@ -14,19 +15,31 @@ const at = (ms: number) => () => new Date(T0.getTime() + ms);
 
 const ok: JobHandlers["provider_health_check"] = async () => ({ done: 1 });
 const handlers = (override: Partial<JobHandlers> = {}): JobHandlers => ({
-  expire_stale_applications: ok,
-  process_deferred_erasures: ok,
-  provider_health_check: ok,
-  purge_expired_fi_data: ok,
-  process_lender_proposals: ok,
-  deliver_partner_webhooks: ok,
+  ...(Object.fromEntries(JOB_TYPES.map((t) => [t, ok])) as JobHandlers),
   ...override,
 });
 
 describe("Job runner", () => {
   it("enqueues each schedule once per window and runs them", async () => {
+    // Other test files share this database and may have queued their own jobs (e.g. document scans),
+    // so check the scheduled jobs themselves rather than the tick's totals.
     const first = await tick({ db, now: at(0), handlers: handlers() });
-    expect(first).toMatchObject({ enqueued: 6, succeeded: 6, dead: 0 });
+    expect(first).toMatchObject({ enqueued: JOB_SCHEDULES.length, dead: 0 });
+    for (let more = first.ran; more > 0;) more = (await runDueJobs({ db, now: at(0), handlers: handlers() })).ran;
+    const scheduled = await db
+      .select({ type: jobs.type, status: jobs.status })
+      .from(jobs)
+      .where(
+        inArray(
+          jobs.type,
+          JOB_SCHEDULES.map((s) => s.type),
+        ),
+      );
+    for (const { type } of JOB_SCHEDULES)
+      expect(
+        scheduled.some((j) => j.type === type && j.status === "succeeded"),
+        type,
+      ).toBe(true);
     const again = await tick({ db, now: at(30_000), handlers: handlers() });
     expect(again.enqueued).toBe(0);
     // The 1-minute webhook window rolls over first…

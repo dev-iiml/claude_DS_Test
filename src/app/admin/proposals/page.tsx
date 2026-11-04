@@ -80,7 +80,9 @@ export default async function ProposalsPage() {
                       p.decisionOutcome
                         ? `lender: ${DECISION_LABELS[p.decisionOutcome]}${p.decisionRevision && p.decisionRevision > 1 ? ` (rev ${p.decisionRevision})` : ""}`
                         : null,
-                      p.reviewAction ? `${p.reviewAction}ed → ${DECISION_LABELS[p.finalOutcome!]}` : null,
+                      p.reviewAction
+                        ? `${p.reviewAction === "override" ? "overridden" : "confirmed"} → ${DECISION_LABELS[p.finalOutcome!]}`
+                        : null,
                       p.lastError ? `error: ${p.lastError}` : null,
                     ]
                       .filter(Boolean)

@@ -1,7 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { ListGroup, ListRow, MembershipCard, PageHeader, StatusBadge, VerificationMark } from "@/components/creatorco";
+import {
+  CreatorStatusBadge,
+  ListGroup,
+  ListRow,
+  MembershipCard,
+  PageHeader,
+  StatusBadge,
+  VerificationMark,
+} from "@/components/creatorco";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FEATURE_COPY, formatFeatureValue } from "@/modules/professional-graph/presentation";
@@ -68,10 +76,37 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
             memberNumber={passport.memberNumber}
           />
 
+          <ListGroup id="status" label="Creator Status" footer="Professional standing — never a credit input.">
+            <ListRow
+              href="/passport/status"
+              label="Your Creator Status"
+              detail={
+                passport.status.basis === "no_signals"
+                  ? "Connect an account to be considered — professional signals help"
+                  : "See what each tier looks for"
+              }
+              accessory={<CreatorStatusBadge tier={passport.tier} />}
+            />
+          </ListGroup>
+
           <ListGroup id="verification" label="Verification">
             {passport.verifications.map((v) => (
-              <ListRow key={v.key} leading={<VerificationMark state={v.state} />} label={v.label} detail={v.detail} />
+              <ListRow
+                key={v.key}
+                href={v.href}
+                leading={<VerificationMark state={v.state} />}
+                label={v.label}
+                detail={v.detail}
+              />
             ))}
+          </ListGroup>
+
+          <ListGroup id="brand-work" label="Verified brand work">
+            <ListRow
+              href="/passport/brand-work"
+              label="Brand collaborations"
+              detail="Add work with brands and back it with an invoice or agreement. Verified work earns Creator Points."
+            />
           </ListGroup>
         </div>
 
@@ -128,10 +163,10 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
                 label={<span className="text-gold">Add another {p.label} account</span>}
               />
             ))}
-            {passport.connectablePlatforms.some((p) => !passport.accounts.some((a) => a.platform === p.code)) ? (
-              <ListRow href="/passport/connect" label={<span className="text-gold">Connect another account</span>} />
-            ) : passport.accounts.length === 0 ? (
+            {connected.length === 0 ? (
               <ListRow href="/passport/connect" label={<span className="text-gold">Connect an account</span>} />
+            ) : passport.connectablePlatforms.some((p) => !passport.accounts.some((a) => a.platform === p.code)) ? (
+              <ListRow href="/passport/connect" label={<span className="text-gold">Connect another account</span>} />
             ) : null}
           </ListGroup>
 
@@ -241,7 +276,17 @@ export default async function PassportPage({ searchParams }: PageProps<"/passpor
           </ListGroup>
 
           {passport.activity.length ? (
-            <ListGroup id="activity" label="Recent activity">
+            <ListGroup
+              id="activity"
+              label="Recent activity"
+              action={
+                passport.moreActivity ? (
+                  <Link href="/passport/activity" className="text-subhead text-gold">
+                    See all
+                  </Link>
+                ) : undefined
+              }
+            >
               {passport.activity.map((a) => (
                 <ListRow
                   key={a.id}

@@ -69,6 +69,25 @@ export const providerConfigs = ops
   )
   .enableRLS();
 
+/**
+ * Control-plane feature switches (Stage 18), e.g. `brand_payment_match`.
+ * Changed only through `proposeChange` (`set_feature`): on needs a second ops
+ * admin, off applies at once. No creator data.
+ */
+export const featureSwitches = ops
+  .table(
+    "feature_switches",
+    {
+      key: text("key").primaryKey(),
+      enabled: boolean("enabled").notNull().default(false),
+      version: integer("version").notNull().default(1),
+      updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
+      updatedAt: updatedAt(),
+    },
+    (t) => [check("feature_switches_key_format", sql`${t.key} ~ '^[a-z][a-z0-9_]{1,39}$'`)],
+  )
+  .enableRLS();
+
 export const providerRoutes = ops
   .table(
     "provider_routes",
@@ -291,6 +310,31 @@ export const simulatedLenderPolicies = ops
       ),
       check("simulated_lender_policies_note_length", sql`${t.note} is null or char_length(${t.note}) <= 500`),
       check("simulated_lender_policies_rules_bounded", sql`pg_column_size(${t.rules}) <= 2048`),
+    ],
+  )
+  .enableRLS();
+
+/**
+ * Rate-limit counters (Stage 16): one row per bucket, subject key and fixed
+ * window. `subject_key` is a keyed hash (`rl1:<hex>`) of an IP, user id or
+ * partner id — never the raw value. Rows older than 48 hours are deleted by
+ * the `rate_limit_purge` job.
+ */
+export const rateLimitCounters = ops
+  .table(
+    "rate_limit_counters",
+    {
+      bucket: text("bucket").notNull(),
+      subjectKey: text("subject_key").notNull(),
+      windowStart: ts("window_start").notNull(),
+      count: integer("count").notNull().default(1),
+    },
+    (t) => [
+      primaryKey({ columns: [t.bucket, t.subjectKey, t.windowStart] }),
+      index("rate_limit_counters_window_idx").on(t.windowStart),
+      check("rate_limit_counters_bucket_format", sql`${t.bucket} ~ '^[a-z_]+\\.[a-z_]+$'`),
+      check("rate_limit_counters_subject_format", sql`${t.subjectKey} ~ '^rl[0-9]+:[0-9a-f]{32}$'`),
+      check("rate_limit_counters_count_positive", sql`${t.count} > 0`),
     ],
   )
   .enableRLS();

@@ -672,7 +672,10 @@ describe("closing, expiry and withdrawal", () => {
       { userId, key: CONSENT_KEYS.financialEligibility, source: "settings" },
     );
     expect(result.effects).toEqual({ checks_closed: 1 });
-    expect(result.erasures).toEqual([{ scope: "financial_inputs", status: "completed", holdReasons: [] }]);
+    expect(result.erasures).toEqual([
+      { scope: "financial_inputs", status: "completed", holdReasons: [] },
+      { scope: "financial_funnel_events", status: "completed", holdReasons: [] },
+    ]);
     expect((await getApplication(db, { userId, applicationId }))!.status).toBe("withdrawn");
     expect(await inputsLeft(applicationId)).toBe(0);
     await expect(saveApplicationDetails({ db }, { userId, applicationId, details })).rejects.toMatchObject({
@@ -691,6 +694,7 @@ describe("closing, expiry and withdrawal", () => {
     );
     expect(result.erasures).toEqual([
       { scope: "financial_inputs", status: "deferred", holdReasons: ["credit_application_in_progress"] },
+      { scope: "financial_funnel_events", status: "completed", holdReasons: [] },
     ]);
     expect(await inputsLeft(applicationId)).toBeGreaterThan(0);
     const [profile] = await db

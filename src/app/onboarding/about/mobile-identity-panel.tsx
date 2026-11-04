@@ -212,7 +212,8 @@ export function MobileIdentityPanel({
       ) : null}
 
       <p className="text-xs text-ink-subtle">
-        Prefer not to? Skip this and type your legal name below. We store only a masked PAN, never the full number.
+        We use your mobile to find the name on your PAN, and keep only a masked PAN. Prefer not to? Skip this and type
+        your legal name below.
       </p>
     </section>
   );

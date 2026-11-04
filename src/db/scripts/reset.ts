@@ -1,3 +1,5 @@
+import { pathToFileURL } from "node:url";
+
 import postgres from "postgres";
 
 import { assertNotProduction, describeUrl, requireDatabaseUrl } from "./_env";
@@ -18,7 +20,8 @@ export async function recreateDatabase(url: string) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL percent-encodes the path (e.g. spaces), matching import.meta.url.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   assertNotProduction("db:reset");
   const url = requireDatabaseUrl();
   recreateDatabase(url)

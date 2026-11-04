@@ -8,13 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getDb } from "@/db";
 import { getServerEnv } from "@/lib/env";
 import { requireOpsAdmin } from "@/modules/identity";
-import { countPendingChanges, getIntegrationsOverview } from "@/modules/integrations";
+import { countPendingChanges, getIntegrationsOverview, listFeatureSwitches } from "@/modules/integrations";
 import { countJobsByStatus } from "@/modules/jobs";
 
 import { OpsShell } from "../_components/creator-shell";
+import { clientIp } from "../_lib/rate-limit";
 
 import { runHealthChecksAction } from "./actions";
 import { kindStatus } from "./_lib/present";
+import { FeatureSwitchForm } from "./_components/forms";
 
 export const metadata: Metadata = { title: "Integrations" };
 
@@ -23,12 +25,16 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
   const q = await searchParams;
   const db = getDb();
   const env = getServerEnv();
-  const [kinds, pending, jobs] = await Promise.all([
+  const [kinds, pending, jobs, features] = await Promise.all([
     getIntegrationsOverview(db, { production: env.APP_ENV === "production" }),
     countPendingChanges(db),
     countJobsByStatus(db),
+    listFeatureSwitches(db),
   ]);
   const degraded = kinds.filter((k) => kindStatus(k).tone !== "success").length;
+  // Deployment check (Stage 17): the address rate limits count for THIS request (the viewer's own), so ops can
+  // confirm CLIENT_IP_HEADER / CLIENT_IP_TRUSTED_HOPS match the hosting edge.
+  const seenIp = await clientIp();
 
   return (
     <OpsShell role={user.role}>
@@ -45,6 +51,11 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
         }
       />
 
+      {q.notice === "applied" || q.notice === "pending" ? (
+        <Alert tone="success" className="mb-6">
+          {q.notice === "applied" ? "Change applied." : "Change requested. A second ops admin needs to approve it."}
+        </Alert>
+      ) : null}
       {q.notice === "checked" ? (
         <Alert tone="success" className="mb-6">
           Health checks recorded.
@@ -99,6 +110,39 @@ export default async function OpsPage({ searchParams }: PageProps<"/ops">) {
             />
           );
         })}
+      </ListGroup>
+
+      <section id="features" aria-labelledby="features-heading" className="mt-8 flex flex-col gap-3">
+        <h2
+          id="features-heading"
+          className="px-4 text-footnote font-medium tracking-[0.02em] text-ink-subtle uppercase"
+        >
+          Feature switches
+        </h2>
+        {features.map((f) => (
+          <div key={f.key} className="flex flex-col gap-4 rounded-lg bg-surface p-4 ring-1 ring-line ring-inset">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-body font-medium">{f.label}</p>
+                <p className="mt-1 text-footnote text-ink-muted">{f.description}</p>
+              </div>
+              <StatusBadge tone={f.enabled ? "success" : "neutral"}>{f.enabled ? "On" : "Off"}</StatusBadge>
+            </div>
+            <FeatureSwitchForm feature={f.key} enabled={f.enabled} label={f.label} />
+          </div>
+        ))}
+        <p className="px-4 text-footnote text-ink-subtle">
+          The brand-work upload kill switch is the Document storage capability&apos;s kill switch above.
+        </p>
+      </section>
+
+      <ListGroup
+        id="request-diagnostics"
+        label="Rate-limit client address"
+        className="mt-8"
+        footer={`Should match your own public IP address (IPv6 is shown per /64). If it shows the hosting edge's address or "not found", fix CLIENT_IP_HEADER / CLIENT_IP_TRUSTED_HOPS (currently ${env.CLIENT_IP_HEADER}, ${env.CLIENT_IP_TRUSTED_HOPS} hops) — see docs/DEPLOYMENT.md.`}
+      >
+        <ListRow label="Your address, as the rate limiter sees it" value={seenIp ?? "not found"} />
       </ListGroup>
     </OpsShell>
   );

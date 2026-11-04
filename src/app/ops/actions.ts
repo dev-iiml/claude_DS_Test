@@ -84,6 +84,8 @@ function rawChange(form: FormData) {
         primaryConfigId: readText(form, "primaryConfigId"),
         fallbackConfigId: readText(form, "fallbackConfigId") || null,
       };
+    case "set_feature":
+      return { action, feature: readText(form, "feature"), enabled: readText(form, "enabled") === "true" };
     default:
       return { action, kind };
   }
@@ -119,7 +121,12 @@ export async function proposeChangeAction(_prev: FormState, form: FormData): Pro
     const kind =
       PROVIDER_KINDS.find((k) => k === readText(form, "returnKind")) ??
       ("kind" in change.data ? change.data.kind : null);
-    target = kind ? `/ops/providers/${kind}?notice=${result.status}` : `/ops/changes`;
+    target =
+      change.data.action === "set_feature"
+        ? `/ops?notice=${result.status}#features`
+        : kind
+          ? `/ops/providers/${kind}?notice=${result.status}`
+          : `/ops/changes`;
   } catch (error) {
     if (error instanceof IntegrationChangeError) return formError(error.message, { values });
     logger.error("ops.propose_failed", describeError(error));

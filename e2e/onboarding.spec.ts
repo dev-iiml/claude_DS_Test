@@ -110,7 +110,9 @@ test.describe("Cohort A0 creator journey", () => {
     await expect(page.getByRole("link", { name: /Connect a social account/ })).toBeVisible();
     await expect(page.getByText("Creator Status: Member")).toBeAttached();
     await expect(page.getByRole("link", { name: "Check financial eligibility" })).toBeVisible();
-    await expect(page.getByText(/Sample preview/)).toBeVisible();
+    // Welcome (500) + verified mobile (100) Creator Points.
+    // welcome 500 + verified mobile 100 + profile details 250
+    await expect(page.getByText(/850 points available · Preview with sample brands/)).toBeVisible();
     await expect(page.getByRole("progressbar", { name: "Passport completion" })).toHaveAttribute("aria-valuenow", "80");
     await expect(
       page
@@ -177,7 +179,7 @@ test.describe("Cohort A0 creator journey", () => {
   test("a typed GSTIN is validated as you type and checked against the registry", async ({ page }) => {
     await signIn(page, "naina.kapoor@creators.creatorco.test");
     await expect(page).toHaveURL(/\/onboarding\/business$/);
-    await expect(page.getByText(/Verify your mobile and fetch your details/)).toBeVisible();
+    await expect(page.getByText(/Verify your mobile in About you/)).toBeVisible();
     await page.getByLabel("Individual creator").check();
     await page.getByLabel("Registered for GST", { exact: true }).check();
     const gstin = page.getByLabel("GSTIN");

@@ -18,6 +18,8 @@ import {
 } from "@/modules/identity/mobile-verification";
 import { getProviders } from "@/modules/integrations/registry";
 
+import { RATE_LIMITED_MESSAGE, clientIp, rateLimit } from "../_lib/rate-limit";
+
 /**
  * Interactive identity actions used by onboarding widgets (called directly,
  * not via form submission). Each one re-authorises the creator. Responses
@@ -33,6 +35,7 @@ export async function sendOtpAction(
   ActionResult<{ challengeId: string; resendAfterSeconds: number; maskedMobile: string; demoCode: string | null }>
 > {
   const user = await requireCreator();
+  if (!(await rateLimit("otp.send", await clientIp())).ok) return fail(RATE_LIMITED_MESSAGE);
   try {
     const r = await requestMobileOtp(
       { db: getDb(), notifications: (await getProviders()).notifications },
@@ -68,6 +71,7 @@ export async function verifyOtpAction(
   code: string,
 ): Promise<ActionResult<{ maskedMobile: string }>> {
   const user = await requireCreator();
+  if (!(await rateLimit("otp.verify", user.userId)).ok) return fail(RATE_LIMITED_MESSAGE);
   try {
     const r = await verifyMobileOtp(
       { db: getDb(), notifications: (await getProviders()).notifications },

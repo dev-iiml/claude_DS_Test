@@ -10,7 +10,9 @@ import {
   partnerEvents,
   providerConfigs,
   underwritingRuns,
+  analyticsEvents,
 } from "@/db/schema";
+import { analyticsSubject } from "@/modules/analytics";
 import { CONSENT_KEYS } from "@/modules/consent";
 import {
   acceptOffer,
@@ -131,6 +133,29 @@ describe("offers (Stage 13) — simulated lender", () => {
     await expect(db.delete(offerResponses).where(eq(offerResponses.id, row.id))).rejects.toThrow();
     // No partner is registered for the simulated lender: nothing is announced.
     expect(await db.select().from(partnerEvents).where(eq(partnerEvents.proposalId, o.proposalId))).toHaveLength(0);
+
+    // Stage 15: every funnel step of this journey was measured — pseudonymously, with no terms or amounts.
+    const events = await db
+      .select({ event: analyticsEvents.event, props: analyticsEvents.props, subject: analyticsEvents.subject })
+      .from(analyticsEvents)
+      .where(eq(analyticsEvents.subject, analyticsSubject(o.userId)));
+    expect(new Set(events.map((e) => e.event))).toEqual(
+      new Set([
+        "account_created",
+        "creator_profile_completed",
+        "financial_consent_granted",
+        "financial_eligibility_started",
+        "financial_inputs_completed",
+        "underwriting_started",
+        "underwriting_completed",
+        "offer_generated",
+        "simulated_offer_accepted",
+      ]),
+    );
+    const text = JSON.stringify(events);
+    expect(text).not.toContain(o.userId);
+    expect(text).not.toMatch(/sanctioned|amount|exposure|grade|score|emi|apr/i);
+    expect(events.find((e) => e.event === "offer_generated")?.props).toEqual({ simulated: true });
   });
 
   it("can't be accepted once financial-eligibility consent is withdrawn or membership paused", async () => {
@@ -158,7 +183,10 @@ describe("offers (Stage 13) — simulated lender", () => {
       { db },
       { userId: o.userId, key: CONSENT_KEYS.financialEligibility, source: "settings" },
     );
-    expect(result.erasures).toEqual([expect.objectContaining({ scope: "financial_inputs", status: "completed" })]);
+    expect(result.erasures).toEqual([
+      expect.objectContaining({ scope: "financial_inputs", status: "completed" }),
+      expect.objectContaining({ scope: "financial_funnel_events", status: "completed" }),
+    ]);
     const [app] = await db.select().from(creditApplications).where(eq(creditApplications.id, o.applicationId));
     expect(app).toMatchObject({ status: "submitted", requestedAmount: null });
     expect(app!.inputsErasedAt).not.toBeNull();
@@ -198,7 +226,10 @@ describe("offers (Stage 13) — simulated lender", () => {
       { db },
       { userId: first.userId, key: CONSENT_KEYS.financialEligibility, source: "settings" },
     );
-    expect(result.erasures).toEqual([expect.objectContaining({ status: "deferred" })]);
+    expect(result.erasures).toEqual([
+      expect.objectContaining({ scope: "financial_inputs", status: "deferred" }),
+      expect.objectContaining({ scope: "financial_funnel_events", status: "completed" }),
+    ]);
     // The declined check is erased now; the open one waits for its offer.
     const [one] = await db.select().from(creditApplications).where(eq(creditApplications.id, first.applicationId));
     const [two] = await db.select().from(creditApplications).where(eq(creditApplications.id, app2.id));
@@ -216,7 +247,10 @@ describe("offers (Stage 13) — simulated lender", () => {
       { db },
       { userId: o.userId, key: CONSENT_KEYS.financialEligibility, source: "settings" },
     );
-    expect(result.erasures).toEqual([expect.objectContaining({ status: "deferred" })]);
+    expect(result.erasures).toEqual([
+      expect.objectContaining({ scope: "financial_inputs", status: "deferred" }),
+      expect.objectContaining({ scope: "financial_funnel_events", status: "completed" }),
+    ]);
     await processDeferredErasures({ db }); // still open: nothing more happens
     expect(
       await db.select().from(bureauSummaries).where(eq(bureauSummaries.applicationId, o.applicationId)),

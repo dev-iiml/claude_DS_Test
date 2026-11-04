@@ -79,11 +79,17 @@ export default async function ProposalPage({ params }: PageProps<"/admin/proposa
         <div className="flex flex-col gap-8">
           <ListGroup id="status" label="Status">
             <ListRow
-              label={PROPOSAL_STATUS_LABELS[p.status]}
+              label={
+                review
+                  ? review.action === "override"
+                    ? "Reviewed · overridden"
+                    : "Reviewed · confirmed"
+                  : PROPOSAL_STATUS_LABELS[p.status]
+              }
               detail={[
                 `created ${utc(p.createdAt)}`,
                 p.submittedAt ? `sent ${utc(p.submittedAt)}` : null,
-                p.attempts ? `${p.attempts} attempt(s)` : null,
+                p.attempts ? `${p.attempts} ${p.attempts === 1 ? "attempt" : "attempts"}` : null,
                 p.lastError ? `last error: ${p.lastError}` : null,
                 p.withdrawnReason ? `withdrawn: ${p.withdrawnReason.replace(/_/g, " ")}` : null,
               ]

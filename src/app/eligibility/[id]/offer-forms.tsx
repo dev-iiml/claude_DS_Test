@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { useActionState, useState } from "react";
 
 import {
@@ -69,13 +70,15 @@ export function AcceptOfferForm({
   );
 }
 
-/** Decline, with an optional reason. Quiet by design. */
+/** Decline, with an optional reason — as visible as accepting (QA pass: answering either way is equally easy). */
 export function DeclineOfferForm({ applicationId }: { applicationId: string }) {
   const [state, action] = useActionState(declineOfferAction, initialFormState);
   const [reason, setReason] = useState<string>("");
   return (
-    <details className="group rounded-control px-1">
-      <summary className="cursor-pointer text-[15px] text-ink-muted">Decline this offer</summary>
+    <details className="group">
+      <Button asChild variant="secondary" size="lg" className="w-full sm:w-auto">
+        <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">Decline this offer</summary>
+      </Button>
       <form action={action} className="mt-4 flex flex-col gap-4" noValidate>
         <FormMessage state={state} />
         <input type="hidden" name="applicationId" value={applicationId} />

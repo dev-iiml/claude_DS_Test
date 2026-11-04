@@ -158,6 +158,68 @@ export const CONSENT_DEFINITION_SEEDS = [
     ].join("\n\n"),
     activeFrom: new Date("2026-10-03T00:00:00.000Z"),
   },
+  {
+    id: "00000000-0000-4000-8000-00000000c011",
+    key: CONSENT_KEYS.brandOpportunities,
+    version: 1,
+    title: "Brand opportunities",
+    purpose:
+      "To consider your requests for brand opportunities in Access, using a summary of your Creator Professional Profile.",
+    body: [
+      "When you request an opportunity in Access, CreatorCo's partnerships team reviews your request. To do that we use your display name, creator handles, categories, city, Creator Status and a summary of your connected accounts (platforms and total audience), plus any note you add.",
+      "During the preview every opportunity and brand is a sample: nothing is sent to any brand and nothing is fulfilled. Sharing your details with a real brand will need a new version of this consent, which we'll ask you for first.",
+      "This never includes your financial information, your eligibility checks or anything a partner lender sees. Creator Points used for a request are simulated membership points — not money.",
+      "You can withdraw this consent at any time: pending requests are cancelled, their points are returned, and your request history — including your notes — is erased. Points already spent on approved requests aren't returned. CreatorCo keeps a minimal security log of the actions (such as the points involved), without your notes or which opportunities you requested.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-03T00:00:00.000Z"),
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000c012",
+    key: CONSENT_KEYS.productAnalytics,
+    version: 1,
+    title: "Product analytics",
+    purpose:
+      "To understand which CreatorCo screens and features you open, so we can improve them. Optional and off unless you turn it on.",
+    body: [
+      "With this on, CreatorCo records when you open certain screens — for example an offer or an Access opportunity — under a pseudonymous ID (a coded value, not your name, email or phone number).",
+      "These records keep only the day, not the time, and never contain your name, contact details, PAN, handles, notes, bank or bureau information, or an offer's terms, amounts, scores or reasons. Opening an offer records only that you opened one. They stay with CreatorCo and aren't sold or shared with advertisers.",
+      "This is separate from the service measurement every member is part of: CreatorCo counts key steps (such as completing your profile or starting an eligibility check) under the same kind of pseudonymous ID to run and improve the service.",
+      "You can turn this off at any time in your consent centre: we stop recording screen views and erase the ones already recorded. Records about eligibility checks and offers are also erased if you withdraw your financial-eligibility consent. Raw analytics records are kept for at most 24 months; after that only daily totals (with no IDs) remain.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-28T00:00:00.000Z"),
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000c013",
+    key: CONSENT_KEYS.brandWorkRecords,
+    version: 1,
+    title: "Verified brand work",
+    purpose:
+      "To store the brand-work records and documents you add, have CreatorCo staff verify them, and use verified records in your Creator Professional Graph.",
+    body: [
+      "When you add a brand collaboration, CreatorCo stores what you enter (the brand, who you billed, platforms, deliverables, dates and, if you add it, the invoice amount) and the documents you upload — invoices, purchase orders, agreements or remittance advice. Documents are kept in private, encrypted storage under a random reference; we don't keep the file name and we don't extract text from them.",
+      "A small team of CreatorCo brand-work reviewers opens your documents to check them against the record. Every time a reviewer opens a document is logged. Documents can include details such as your PAN, GSTIN or bank account — those stay inside the documents only and are never copied into CreatorCo's other systems, analytics or logs.",
+      "Verified records feed your Creator Professional Graph (for example how many brands you've worked with and how often they come back) and earn Creator Points at milestones. Points are the same however a payment is confirmed, and never depend on how much you were paid.",
+      "CreatorCo's partnerships team can see the brands, industries and number of collaborations from records you show on your Passport (never your private records, documents or amounts) when they review your Access requests.",
+      "This is not a credit product. Verified brand work is not used to check financial eligibility, by any partner lender or for Creator Status.",
+      "You can delete a draft at any time and withdraw this consent at any time: we stop processing straight away and erase your records, documents and their review history. Creator Points you've already earned stay.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-31T00:00:00.000Z"),
+  },
+  {
+    id: "00000000-0000-4000-8000-00000000c014",
+    key: CONSENT_KEYS.brandPaymentMatch,
+    version: 1,
+    title: "Check brand payments in shared bank data",
+    purpose:
+      "To check bank data you already shared for an eligibility check for a payment matching a verified brand-work record, and record only whether it was seen and in which month.",
+    body: [
+      "Optional. With this on, when you ask CreatorCo to check a payment, the financial-eligibility part of CreatorCo looks in the Account Aggregator data you already shared for an active eligibility check, while that data is still within its permitted period. It never asks your bank for new data.",
+      "Only two things are recorded on your brand-work record: whether a matching payment was seen, and the month. No amount, payer name, narration, account or transaction is copied out of the financial data.",
+      "You don't need this to confirm payments: your agency can confirm, or you can upload a remittance advice. Creator Points are the same whichever you choose.",
+      "You can withdraw this consent at any time: we stop checking, and payments confirmed this way go back to unconfirmed.",
+    ].join("\n\n"),
+    activeFrom: new Date("2026-10-31T00:00:00.000Z"),
+  },
 ] as const;
 
 /** The newest seeded version of a purpose (what a creator is asked to agree to now). */

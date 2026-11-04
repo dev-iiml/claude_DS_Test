@@ -20,12 +20,20 @@ routes are thin (authenticate → validate with the module's Zod schema → call
 | 409    | state conflict: `step_locked`, `profile_incomplete`, `membership_paused`, `consent_outdated`, `provider_changed`… |
 | 415    | body is not JSON                                                                                                  |
 | 422    | `validation_failed` (with `fields`) or a domain rule                                                              |
-| 429    | `locked` — too many sign-in attempts                                                                              |
+| 413    | `payload_too_large` — body over 16 KB (refused before it is read)                                                 |
+| 429    | `locked` — too many sign-in attempts for this account · `rate_limited` — too many requests (see `Retry-After`)    |
 | 503    | `service_unavailable` — a provider capability is paused (kill switch) or has no healthy route; retry later        |
 
 `provider_changed` means ops switched the provider while a social or Account Aggregator flow was in progress: start
 that flow again. Staff consoles (`/admin`, `/ops`) have no API; the only non-v1 route is the scheduler tick
 `GET /api/internal/cron/tick` (`Authorization: Bearer $CRON_SECRET`, disabled when unset), which returns job counts.
+
+Rate limits (Stage 16, `modules/rate-limit/rules.ts`): sign-up 30/hour and sign-in 60/10 min per network; eligibility
+start 10/day, Access requests 20/day and `POST /events` 300/hour per account. A `429 rate_limited` carries
+`Retry-After` (seconds).
+
+`POST /auth/sign-up` accepts optional `attribution: { utm_source?, utm_medium?, utm_campaign? }` from the app's install
+or deep link. Values are reduced to an allow-list (unknown → `other`; campaigns must be registered).
 
 ## Endpoints
 
@@ -40,6 +48,7 @@ that flow again. Staff consoles (`/admin`, `/ops`) have no API; the only non-v1 
 | `POST /onboarding/complete`                             | `{ consentDefinitionId, agree: true }` → `204`                                                                                                                                                                          |
 | `GET /consents/{key}`                                   | Current versioned text for a purpose + whether the user holds it                                                                                                                                                        |
 | `GET /passport`                                         | Creator Passport read model (no GSTIN/PAN/full mobile; no credit figures)                                                                                                                                               |
+| `GET /passport/activity?kind=&sort=&page=`              | The creator's own activity, 25 per page. `kind`: profile, identity, consent, accounts, signals; `sort`: newest (default) or oldest. Returns `{ items, page, hasMore }`                                                  |
 | `POST /social/connections`                              | `{ platform, connectionConsentId, analyticsConsentId?, additional? }` → `201 { authorizationUrl }`. `additional: true` adds another account on a platform that already has a connected one (max 3; `422 account_limit`) |
 | `POST /social/connections/complete`                     | `{ state, code }` from the provider redirect → `201 { accountId, platform, handle, snapshotsStored, graphComputed }`                                                                                                    |
 | `DELETE /social/accounts/{id}`                          | Disconnect → `204`                                                                                                                                                                                                      |
@@ -85,6 +94,45 @@ the lender's offer and Key Fact Statement fields, illustrative for the simulated
 `steps.bank` is `not_started` · `pending` · `completed` · `declined` · `unavailable` (sharing tried, no data — never
 "no income") · `skipped`; `bankCoverage` is `none` · `partial` · `complete`. With the mock AA, tests complete a journey
 with `params: { reference, status: "approved", accounts: "<last4>-<n>,…" }` (see `e2e/api.spec.ts`).
+
+### Creator Status, Access and Creator Points (Stage 14)
+
+All need an active membership (`409 membership_paused` / `profile_incomplete` otherwise). Access is a **preview**:
+brands are fictional samples and nothing is sent to them. Points are simulated membership points, never money.
+
+| Endpoint                                           | Notes                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /status`                                      | `{ tier: member\|onyx\|icon, rulesVersion, computedAt, basis: signals\|no_signals, criteria: [{ tier, key, state: met\|not_met\|missing, threshold, value }] }`. Membership standing only — never a credit input.                                                                                                                                                                                                                 |
+| `GET /access?q=&kind=&category=&show=&sort=&page=` | `{ preview, points: { balance, onHold }, opportunities, page, pages, total, categories, requests }` — 24 per page. `show`: all · available · mine · locked; `sort`: recommended (default) · closing · points_low · points_high · newest. Each opportunity has `availability`: `open` · `requested` · `approved` · `tier_locked` · `insufficient_points` · `full` · `not_open_yet` · `closed`, and the creator's latest `request`. |
+| `GET /access/{id}`                                 | `{ preview, opportunity, consentRequired }` (drafts are 404).                                                                                                                                                                                                                                                                                                                                                                     |
+| `POST /access/{id}/request`                        | `{ note?, consentDefinitionId?, agree? }`. If `brand_opportunities` isn't given yet, send its active definition id with `agree: true`; it's granted with the request or not at all. Holds the points. `403 tier_required`, `409 insufficient_points` · `full` · `closed` · `wrong_state` · `consent_required`.                                                                                                                    |
+| `POST /access/requests/{id}/cancel`                | Cancels a pending request; points returned → `{ cancelled, points }`.                                                                                                                                                                                                                                                                                                                                                             |
+| `GET /points`                                      | `{ balance, onHold, history: [{ type: earned\|held\|spent\|returned\|reversed, amount, label, occurredAt }], rulesVersion, earnGuide, tasks, terms }`.                                                                                                                                                                                                                                                                            |
+
+### Verified brand work (Stage 18)
+
+The creator's own brand-collaboration records, checked by a CreatorCo reviewer against documents. Records are
+creator-professional evidence: they never feed credit decisions or Creator Status. Messages are neutral; reason codes
+and reviewer notes are never returned.
+
+| Endpoint                                | Notes                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /brand-work`                       | `{ records, portfolio }` — own records (with documents' kind, scan status and size only) and the non-private brand portfolio (no amounts).                                                                                                                                                                                                                                    |
+| `POST /brand-work`                      | Record fields (`endBrandName`, `billedPartyType`, `billedPartyName?`, `industryCode?`, `platforms`, `deliverables`, `visibility`, `description`, `deliverablesSummary?`, `workDate`, `invoiceDate?`, `invoiceAmountRupees?`) plus `consentDefinitionId` + `agree: true` if `brand_work_records` isn't given yet. Free text must not contain tax IDs, bank or contact details. |
+| `GET · PATCH · DELETE /brand-work/{id}` | Read; edit (draft or needs a change); delete (drafts only).                                                                                                                                                                                                                                                                                                                   |
+| `POST /brand-work/{id}/documents`       | `multipart/form-data`: `kind` (invoice · purchase_order · agreement · remittance_advice), `file` (PDF/JPEG/PNG, ≤ 10 MB, magic bytes checked). Up to 5 per record. The filename is never stored. Scanned before review.                                                                                                                                                       |
+| `POST /brand-work/{id}/submit`          | Sends for verification. Waits in `submitted` until every document scans clean, then `in_review`.                                                                                                                                                                                                                                                                              |
+| `GET /brand-work/{id}/confirmation`     | `{ methods }` — `agency_confirmation`, `remittance_advice`, and `aa_match` only while the `/ops` switch is on. All earn the same points.                                                                                                                                                                                                                                      |
+| `POST /brand-work/{id}/confirmation`    | `{ method, consentDefinitionId?, agree? }`. `aa_match` needs the optional `brand_payment_match` consent and returns `match: seen\|not_seen\|unknown` (only "seen" and a month are kept). `409 feature_off`; rate limited.                                                                                                                                                     |
+
+### Analytics (Stage 15)
+
+| Endpoint        | Notes                                                                                                                                                                                                                                                      |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /events`  | A native app's screen view: `{ event: "offer_viewed" \| "access_opportunity_viewed", props }` (`{ simulated: boolean }` / `{ kind }`). Recorded only with the `product_analytics` consent → `202 { recorded }`. Other events and extra properties → `422`. |
+| `GET /consents` | Now also returns `serviceMeasurement`: the disclosure for essential, pseudonymous service measurement.                                                                                                                                                     |
+
+Funnel events are otherwise recorded on the server; apps don't send them.
 
 ## Partner API
 

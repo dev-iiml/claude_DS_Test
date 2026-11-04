@@ -1,3 +1,5 @@
+import { isDevOrTest } from "@/lib/app-env";
+
 /**
  * Financial-eligibility vocabulary (regulated financial domain).
  *
@@ -101,6 +103,17 @@ export type BureauScoreBand = (typeof BUREAU_SCORE_BANDS)[number];
 export const APPLICATION_TTL_DAYS = 90;
 /** Bureau checks per creator per rolling 30 days. */
 export const BUREAU_CHECKS_PER_30_DAYS = 3;
+
+/**
+ * The limit in force. `DEV_BUREAU_CHECKS_PER_30_DAYS` (1–100) raises it for
+ * demos and local work against the mock bureau — honoured only when APP_ENV is
+ * development or test; staging and production always use 3.
+ */
+export function bureauChecksPer30Days(env: Readonly<Record<string, string | undefined>>): number {
+  if (!isDevOrTest(env)) return BUREAU_CHECKS_PER_30_DAYS;
+  const override = Number(env.DEV_BUREAU_CHECKS_PER_30_DAYS);
+  return Number.isInteger(override) && override >= 1 && override <= 100 ? override : BUREAU_CHECKS_PER_30_DAYS;
+}
 /** Months of bank cashflow requested through the Account Aggregator. */
 export const CASHFLOW_MONTHS = 12;
 /** Data-life requested in the AA consent: no longer than an unsent check lives. */

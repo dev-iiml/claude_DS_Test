@@ -114,6 +114,7 @@ export function ReviewForm({
         <FormField
           id="message"
           label="Message to the partner lender"
+          required
           description="Sent to the partner as written (10–500 characters). Don't include anything the creator didn't agree to share."
         >
           {(a11y) => <Input {...a11y} name="message" maxLength={500} autoComplete="off" />}
@@ -121,7 +122,8 @@ export function ReviewForm({
       ) : (
         <FormField
           id="reason"
-          label={mode === "override" ? "Reason for the override" : "Note (optional)"}
+          label={mode === "override" ? "Reason for the override" : "Note"}
+          required={mode === "override"}
           description={
             mode === "override" ? "Required, 10–500 characters. Recorded with your name." : "Recorded with your name."
           }

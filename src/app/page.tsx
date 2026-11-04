@@ -4,6 +4,8 @@ import { ComplianceNote, DisplayHeading, Eyebrow, Lede, Wordmark } from "@/compo
 import { Button } from "@/components/ui/button";
 import { getCurrentUser, homePathForUser } from "@/modules/identity";
 
+import { recordAfterResponse } from "./_lib/analytics";
+
 const PILLARS = [
   {
     kicker: "Identity",
@@ -21,6 +23,8 @@ const PILLARS = [
 export default async function LandingPage() {
   const user = await getCurrentUser();
   const home = user ? await homePathForUser(user) : null;
+  // Anonymous funnel count for signed-out visitors (no identifier). Campaign tags, if any: see proxy.ts.
+  if (!user) await recordAfterResponse({ event: "landing_viewed" });
 
   return (
     <div className="flex min-h-dvh flex-col pt-safe pb-safe">
@@ -56,11 +60,6 @@ export default async function LandingPage() {
           <Button asChild size="lg" className="sm:w-auto">
             <Link href="/signup">Apply for membership</Link>
           </Button>
-          {!home ? (
-            <Button asChild size="lg" variant="secondary" className="sm:w-auto">
-              <Link href="/login">I&rsquo;m a member</Link>
-            </Button>
-          ) : null}
         </div>
 
         <ul className="mt-16 grid grid-cols-1 gap-3 sm:grid-cols-3">

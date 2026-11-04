@@ -35,7 +35,9 @@ const EFFECT_TONE = { positive: "success", negative: "warning", info: "neutral" 
 type Run = NonNullable<Awaited<ReturnType<typeof getUnderwritingRun>>>;
 type Result = NonNullable<Run["traditional"]>;
 
-const CHECK_STATUS_LABEL = { passed: "Passed", flagged: "Flagged", not_run: "Not run" } as const;
+// A check "passes" when its risk condition isn't found — say that, so "Name differs…" + "Passed" can't be misread.
+const CHECK_STATUS_LABEL = { passed: "Not detected", flagged: "Detected", not_run: "Not run" } as const;
+const SEVERITY_LABEL = { low: "Low", medium: "Medium", high: "High" } as const;
 
 function FraudSection({ fraud }: { fraud: NonNullable<Run["fraud"]> }) {
   const outcome = fraud.outcome as FraudOutcome;
@@ -62,7 +64,9 @@ function FraudSection({ fraud }: { fraud: NonNullable<Run["fraud"]> }) {
               }
               accessory={
                 flag ? (
-                  <StatusBadge tone={FRAUD_SEVERITY_TONE[flag.severity as FraudSeverity]}>{flag.severity}</StatusBadge>
+                  <StatusBadge tone={FRAUD_SEVERITY_TONE[flag.severity as FraudSeverity]}>
+                    {`${SEVERITY_LABEL[flag.severity as FraudSeverity] ?? flag.severity} severity`}
+                  </StatusBadge>
                 ) : (
                   <StatusBadge tone={c.status === "passed" ? "success" : "neutral"}>
                     {CHECK_STATUS_LABEL[c.status as keyof typeof CHECK_STATUS_LABEL] ?? c.status}

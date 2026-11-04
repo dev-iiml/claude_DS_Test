@@ -6,6 +6,7 @@ import type { Metadata, Viewport } from "next";
 
 import { colors } from "@/design/tokens";
 import { getAppearance } from "@/lib/appearance";
+import { appEnvOf } from "@/lib/app-env";
 
 export const metadata: Metadata = {
   title: { default: "CreatorCo", template: "%s · CreatorCo" },
@@ -38,7 +39,15 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const appearance = await getAppearance();
   return (
     <html lang="en-IN" data-theme={appearance} suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        {appEnvOf() === "staging" ? (
+          // Staging is public and holds fictional demo data only (Stage 17).
+          <p role="note" className="bg-elevated px-4 py-2 text-center text-footnote text-ink-muted">
+            Demo environment with fictional data. Please don&rsquo;t enter real personal or financial details.
+          </p>
+        ) : null}
+        {children}
+      </body>
     </html>
   );
 }

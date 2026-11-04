@@ -202,8 +202,8 @@ The demo seed creates:
 ## Limits and open items
 
 - **Partner network controls:** mTLS or an IP allowlist for partner calls belongs at the edge or a gateway and isn't
-  built yet. Rate limiting isn't built either; keys are 256-bit, so brute force isn't a concern, but abuse by a valid
-  key isn't throttled.
+  built yet. Since Stage 16 each partner is limited to 600 calls a minute (`429 rate_limited` with `Retry-After`);
+  keys are 256-bit, so brute force isn't a concern.
 - **Webhook SSRF:** the in-app guard checks the resolved addresses before connecting. A DNS-rebinding window remains
   until delivery goes through an egress proxy that pins the address.
 - **Retention:** events and delivery logs (identifiers and HTTP statuses only) are kept until the proposal is erased.

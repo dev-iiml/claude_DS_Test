@@ -17,6 +17,12 @@ export const metadata: Metadata = { title: "Underwriting" };
 const utc = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 const MODEL_LABEL: Record<string, string> = { traditional: "Traditional", creator_enhanced: "Creator-Enhanced" };
 
+const OUTCOME_LABEL: Record<string, string> = {
+  recommend: "Recommend",
+  refer: "Refer",
+  not_recommended: "Not recommended",
+};
+
 export default async function UnderwritingPage() {
   const admin = await requireAdmin();
   const db = getDb();
@@ -66,7 +72,7 @@ export default async function UnderwritingPage() {
       <ListGroup
         id="runs"
         label="Recent runs"
-        footer="Pseudonymous: check IDs only. Opening a run is audited."
+        footer="Grades read Traditional → Creator-Enhanced, A (strongest) to E. Pseudonymous: check IDs only. Opening a run is audited."
         className="mt-8"
       >
         {runs.length === 0 ? (
@@ -91,7 +97,7 @@ export default async function UnderwritingPage() {
               }
               accessory={
                 r.fraud?.outcome === "review" ? (
-                  <StatusBadge tone={FRAUD_OUTCOME_TONE.review}>fraud review</StatusBadge>
+                  <StatusBadge tone={FRAUD_OUTCOME_TONE.review}>Fraud review</StatusBadge>
                 ) : (
                   <StatusBadge
                     tone={
@@ -102,7 +108,9 @@ export default async function UnderwritingPage() {
                           : "neutral"
                     }
                   >
-                    {r.creatorEnhanced?.outcome ?? "—"}
+                    {r.creatorEnhanced?.outcome
+                      ? (OUTCOME_LABEL[r.creatorEnhanced.outcome] ?? r.creatorEnhanced.outcome)
+                      : "—"}
                   </StatusBadge>
                 )
               }
@@ -124,7 +132,7 @@ export default async function UnderwritingPage() {
             <ListRow
               key={`${f.code}-${f.severity}`}
               label={FRAUD_CHECK_LABELS[f.code as FraudCheckCode]?.title ?? f.code}
-              detail={f.severity}
+              detail={`${f.severity.charAt(0).toUpperCase()}${f.severity.slice(1)} severity`}
               value={<span className="tabular-nums">{f.n}</span>}
             />
           ))

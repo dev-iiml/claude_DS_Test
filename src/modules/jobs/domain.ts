@@ -1,3 +1,5 @@
+import { redactLogText } from "@/lib/log-redaction";
+
 /**
  * Background job vocabulary and pure policy. Jobs carry identifiers and
  * counts only — never personal or financial payloads.
@@ -9,6 +11,14 @@ export const JOB_TYPES = [
   "purge_expired_fi_data",
   "process_lender_proposals",
   "deliver_partner_webhooks",
+  "expire_access_requests",
+  "analytics_maintenance",
+  "rate_limit_purge",
+  "purge_auth_records",
+  "grant_membership_milestones",
+  "brand_work_scan_document",
+  "brand_work_erase_documents",
+  "brand_work_consent_reminders",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
 
@@ -61,6 +71,46 @@ export const JOB_SCHEDULES: readonly JobSchedule[] = [
     everyMinutes: 1,
   },
   {
+    type: "expire_access_requests",
+    label: "Expire Access requests",
+    description: "Closes pending Access requests whose opportunity has closed and returns their Creator Points.",
+    everyMinutes: 60,
+  },
+  {
+    type: "analytics_maintenance",
+    label: "Analytics rollups and retention",
+    description:
+      "Rolls up daily event counts (no identifiers) and deletes raw analytics events older than 24 months once their day is rolled up.",
+    everyMinutes: 60,
+  },
+  {
+    type: "rate_limit_purge",
+    label: "Purge rate-limit counters",
+    description: "Deletes rate-limit counters (hashed network/account keys, counts only) older than 48 hours.",
+    everyMinutes: 60,
+  },
+  {
+    type: "purge_auth_records",
+    label: "Purge expired security records",
+    description:
+      "Deletes sign-in attempts and ended sessions after 180 days, and mobile verification codes after 30 days.",
+    everyMinutes: 60,
+  },
+  {
+    type: "grant_membership_milestones",
+    label: "Grant membership milestones",
+    description:
+      "Grants Creator Points for membership anniversaries and any milestone a hook missed (idempotent; never for consents or credit).",
+    everyMinutes: 1_440,
+  },
+  {
+    type: "brand_work_consent_reminders",
+    label: "Bank-data permission reminders",
+    description:
+      "Refreshes neutral in-app notices for creators whose Account Aggregator permission is ending or whose shared bank data has passed its permitted period. No points, no urgency.",
+    everyMinutes: 1_440,
+  },
+  {
     type: "provider_health_check",
     label: "Provider health checks",
     description: "Checks every enabled provider configuration.",
@@ -89,5 +139,5 @@ export function describeJobError(error: unknown): string {
   if (!(error instanceof Error)) return "Unknown error";
   const root = error.message.startsWith("Failed query") && error.cause instanceof Error ? error.cause : error;
   const message = root.message.split(/\bparams:/)[0] ?? "";
-  return `${root.name}: ${message}`.replace(/\s+/g, " ").trim().slice(0, 300);
+  return redactLogText(`${root.name}: ${message}`).replace(/\s+/g, " ").trim().slice(0, 300);
 }
